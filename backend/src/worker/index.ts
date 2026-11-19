@@ -9,6 +9,12 @@ import { processSummonerJob } from './processor';
 import { config } from '../config';
 import { disconnectPrisma } from '../db/prisma';
 
+// Polyfill BigInt JSON serialization
+(BigInt.prototype as any).toJSON = function () {
+  const n = Number(this);
+  return Number.isSafeInteger(n) ? n : this.toString();
+};
+
 async function main() {
   console.log('=================================================================');
   console.log('⚡ RiftHero Riot API Worker Starting...');

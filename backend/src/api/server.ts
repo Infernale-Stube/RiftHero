@@ -8,6 +8,12 @@ import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
 import { disconnectPrisma } from '../db/prisma';
 
+// Polyfill BigInt JSON serialization for Fastify / Prisma responses
+(BigInt.prototype as any).toJSON = function () {
+  const n = Number(this);
+  return Number.isSafeInteger(n) ? n : this.toString();
+};
+
 export async function buildServer() {
   const server = Fastify({
     logger: {

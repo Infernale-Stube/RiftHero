@@ -440,10 +440,12 @@ export async function getLiveGame(
     const primaryRune = p.runes?.perkIds?.[0] || p.perks?.perkIds?.[0] || null;
     const secondaryStyle = p.runes?.perkSubStyle || p.perks?.perkSubStyle || null;
 
+    const rawSummonerLevel =
+      dbEntry?.summonerLevel ??
+      liveLevelMap.get(p.puuid) ??
+      (p.puuid === puuid ? summoner?.summonerLevel : undefined);
     const summonerLevel =
-      dbEntry?.summonerLevel ||
-      liveLevelMap.get(p.puuid) ||
-      (p.puuid === summoner?.puuid ? summoner?.summonerLevel : undefined);
+      rawSummonerLevel != null ? Number(rawSummonerLevel) : undefined;
 
     const resolvedRiotId =
       p.riotId ||
@@ -454,19 +456,19 @@ export async function getLiveGame(
       'Unknown';
 
     const formatted: LiveGameParticipant = {
-      puuid: p.puuid,
+      puuid: String(p.puuid || ''),
       riotId: resolvedRiotId,
       summonerName: p.summonerName || (resolvedRiotId.includes('#') ? resolvedRiotId.split('#')[0] : resolvedRiotId),
       summonerLevel,
-      teamId: p.teamId,
-      championId: p.championId,
+      teamId: Number(p.teamId),
+      championId: Number(p.championId),
       championName: champName,
       teamPosition,
-      spell1Id: p.spell1Id,
-      spell2Id: p.spell2Id,
-      profileIconId: p.profileIconId,
-      primaryRune,
-      secondaryStyle,
+      spell1Id: Number(p.spell1Id),
+      spell2Id: Number(p.spell2Id),
+      profileIconId: Number(p.profileIconId),
+      primaryRune: primaryRune != null ? Number(primaryRune) : null,
+      secondaryStyle: secondaryStyle != null ? Number(secondaryStyle) : null,
       rank: rankFormatted,
       championStats: champStats,
     };
@@ -487,13 +489,14 @@ export async function getLiveGame(
 
   const bans: BannedChampion[] = [];
   for (const b of rawBans) {
-    if (b.championId > 0) {
-      const champName = await getChampionNameById(b.championId);
+    const champId = Number(b.championId);
+    if (champId > 0) {
+      const champName = await getChampionNameById(champId);
       bans.push({
-        championId: b.championId,
+        championId: champId,
         championName: champName,
-        teamId: b.teamId,
-        pickTurn: b.pickTurn || 0,
+        teamId: Number(b.teamId),
+        pickTurn: Number(b.pickTurn || 0),
       });
     }
   }
@@ -501,13 +504,13 @@ export async function getLiveGame(
   return {
     inGame: true,
     game: {
-      gameId: currentGame.gameId,
-      gameStartTime: currentGame.gameStartTime || Date.now(),
-      gameLength: currentGame.gameLength || 0,
-      mapId: currentGame.mapId,
-      queueId: currentGame.gameQueueConfigId,
-      queueName: getQueueName(currentGame.gameQueueConfigId),
-      gameMode: currentGame.gameMode,
+      gameId: Number(currentGame.gameId),
+      gameStartTime: Number(currentGame.gameStartTime || Date.now()),
+      gameLength: Number(currentGame.gameLength || 0),
+      mapId: Number(currentGame.mapId || 0),
+      queueId: Number(currentGame.gameQueueConfigId || 0),
+      queueName: getQueueName(Number(currentGame.gameQueueConfigId || 0)),
+      gameMode: currentGame.gameMode || 'CLASSIC',
       blueTeam,
       redTeam,
       bans,
