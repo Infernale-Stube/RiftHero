@@ -20,6 +20,7 @@ export interface TranslationDictionary {
   home: {
     heroBadge: string;
     heroTitle1: string;
+    heroTitle2: string;
     heroTitleHighlight: string;
     heroSubtitle: string;
     feature1Title: string;
@@ -245,7 +246,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
-      heroTitle1: 'Finde jeden Spieler. Analysiere',
+      heroTitle1: 'Finde jeden Spieler.',
+      heroTitle2: 'Analysiere',
       heroTitleHighlight: 'jedes Match.',
       heroSubtitle:
         'Echtzeit Live-Game Scouting, detaillierte Match-Historien, DeepLoL Performance Ratings und Champion-Masteries auf einen Blick.',
@@ -471,7 +473,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
-      heroTitle1: 'Scout Every Player. Dominate the',
+      heroTitle1: 'Scout Every Player.',
+      heroTitle2: 'Dominate the',
       heroTitleHighlight: 'Rift',
       heroSubtitle:
         'Real-time live game scouting, detailed match breakdowns, DeepLoL performance ratings, and champion masteries at a glance.',

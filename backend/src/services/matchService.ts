@@ -166,7 +166,7 @@ export async function getSummonerMatches(
     offset?: number;
   } = {}
 ): Promise<{ matches: FormattedMatch[]; total: number }> {
-  const { queueFilter, limit = 20, offset = 0 } = options;
+  const { queueFilter, limit = 10, offset = 0 } = options;
   const queueIds = mapQueueFilterToId(queueFilter);
 
   const matchWhere: any = {};

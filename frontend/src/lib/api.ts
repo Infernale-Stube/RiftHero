@@ -59,7 +59,7 @@ export async function fetchSummonerMatches(
   region: string,
   tag: string,
   queue?: string,
-  limit = 20,
+  limit = 10,
   offset = 0
 ): Promise<{ matches: FormattedMatch[]; total: number }> {
   const baseUrl = getApiBaseUrl();

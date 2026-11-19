@@ -35,7 +35,7 @@ export async function matchRoutes(fastify: FastifyInstance) {
         return { matches: [], total: 0 };
       }
 
-      const take = limit ? Math.min(parseInt(limit, 10), 50) : 20;
+      const take = limit ? Math.min(parseInt(limit, 10), 50) : 10;
       const skip = offset ? parseInt(offset, 10) : 0;
 
       const result = await getSummonerMatches(summoner.puuid, {

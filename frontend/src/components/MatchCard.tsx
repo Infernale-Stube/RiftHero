@@ -6,6 +6,8 @@ import Link from 'next/link';
 import {
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   ExternalLink,
   Trophy,
@@ -55,6 +57,76 @@ function formatScore(score?: DeepLolScore | number): number {
   const val = typeof score === 'number' ? score : score.score;
   const scaled = val <= 10 ? val * 10 : val;
   return Math.round(Math.min(100, Math.max(0, scaled)));
+}
+
+function ItemSlot({
+  itemId,
+  size = 24,
+  isTrinket = false,
+}: {
+  itemId?: number;
+  size?: 24 | 32;
+  isTrinket?: boolean;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const isValid = Boolean(itemId && itemId > 0 && !hasError);
+
+  const containerClasses =
+    size === 32
+      ? `h-8 w-8 min-w-[32px] min-h-[32px] rounded-md ${
+          isTrinket ? 'border border-amber-500/25' : 'border border-white/[0.08]'
+        } bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm`
+      : `h-6 w-6 min-w-[24px] min-h-[24px] rounded ${
+          isTrinket ? 'border border-amber-500/25' : 'border border-white/[0.08]'
+        } bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm`;
+
+  return (
+    <div className={containerClasses}>
+      {isValid ? (
+        <Image
+          src={getItemIconUrl(itemId!)}
+          alt=""
+          width={size}
+          height={size}
+          className="h-full w-full object-cover"
+          unoptimized
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <div className="w-1 h-1 rounded-full bg-white/[0.06]" />
+      )}
+    </div>
+  );
+}
+
+function BanSlot({ champId }: { champId?: number | null }) {
+  const [hasError, setHasError] = useState(false);
+  const isValid = Boolean(champId && champId > 0 && !hasError);
+
+  return (
+    <div
+      className="relative w-5 h-5 min-w-[20px] max-w-[20px] min-h-[20px] max-h-[20px] rounded overflow-hidden border border-white/10 bg-black/60 shrink-0 shadow-sm flex items-center justify-center"
+      title={isValid ? `Gebannter Champion ID ${champId}` : 'Kein Ban'}
+    >
+      {isValid ? (
+        <>
+          <Image
+            src={getChampionIconByIdUrl(champId!)}
+            alt=""
+            width={20}
+            height={20}
+            className="h-full w-full object-cover grayscale opacity-60"
+            unoptimized
+            onError={() => setHasError(true)}
+          />
+          <div className="absolute inset-0 bg-red-500/25 pointer-events-none" />
+          <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45 pointer-events-none" />
+        </>
+      ) : (
+        <div className="w-1 h-1 rounded-full bg-white/[0.08]" />
+      )}
+    </div>
+  );
 }
 
 export default function MatchCard({ match, region }: MatchCardProps) {
@@ -191,35 +263,15 @@ export default function MatchCard({ match, region }: MatchCardProps) {
               </span>
             </div>
 
-            {/* Bans (Clean, compact 20x20px inline icons with red slash) */}
-            {bans.length > 0 && (
-              <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                <span className="text-[11px] text-zinc-500 font-bold">Bans:</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  {bans.slice(0, 5).map((champId, bIdx) => (
-                    <div
-                      key={bIdx}
-                      className="relative w-5 h-5 min-w-[20px] max-w-[20px] min-h-[20px] max-h-[20px] rounded overflow-hidden border border-white/15 bg-black/80 shrink-0 shadow-sm"
-                      title={`Banned Champion ID ${champId}`}
-                    >
-                      <Image
-                        src={getChampionIconByIdUrl(champId)}
-                        alt="Ban"
-                        width={20}
-                        height={20}
-                        className="h-full w-full object-cover grayscale opacity-60"
-                        unoptimized
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-red-500/25 pointer-events-none" />
-                      <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45 pointer-events-none" />
-                    </div>
-                  ))}
-                </div>
+            {/* Bans (Always 5 slots per team, with empty slot placeholders) */}
+            <div className="flex items-center gap-1.5 ml-2 shrink-0">
+              <span className="text-[11px] text-zinc-500 font-bold">Bans:</span>
+              <div className="flex items-center gap-1 shrink-0">
+                {[0, 1, 2, 3, 4].map((slotIdx) => (
+                  <BanSlot key={slotIdx} champId={bans[slotIdx]} />
+                ))}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Right: Table Column Labels with Interactive Damage/Taken Toggle */}
@@ -232,21 +284,24 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             <button
               type="button"
               onClick={() => setDamageMode((prev) => (prev === 'dealt' ? 'taken' : 'dealt'))}
-              className={`w-28 py-1 px-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                damageMode === 'dealt'
-                  ? 'bg-orange-500/15 border-orange-500/30 text-orange-400 hover:bg-orange-500/25'
-                  : 'bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25'
-              }`}
+              className="w-28 flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-white/[0.05] transition-colors cursor-pointer group"
               title={
                 damageMode === 'dealt'
-                  ? 'Damage Dealt (Klicken für Damage Taken)'
-                  : 'Damage Taken (Klicken für Damage Dealt)'
+                  ? 'Zu Schaden Erhalten (Taken) wechseln'
+                  : 'Zu Ausgeteilter Schaden (Damage) wechseln'
               }
             >
-              <span className="text-[10px] font-black uppercase tracking-wider">
+              <span
+                className={`text-[10px] font-black uppercase tracking-wider transition-colors ${
+                  damageMode === 'taken' ? 'text-sky-400' : 'text-zinc-400 group-hover:text-zinc-200'
+                }`}
+              >
                 {damageMode === 'dealt' ? 'DAMAGE' : 'TAKEN'}
               </span>
-              <span className="text-[9px] opacity-70">⇄</span>
+              <div className="flex items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
+                <ChevronLeft className="h-3 w-3" />
+                <ChevronRight className="h-3 w-3" />
+              </div>
             </button>
             <span className="w-14 text-center">VISION</span>
             <span className="w-16 text-right pr-1">GOLD</span>
@@ -384,41 +439,12 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                 {/* Right: Columns for Build, KDA, KP, CS, Damage/Taken, Vision, Gold, Score */}
                 <div className="flex items-center justify-between lg:justify-end gap-2 text-xs flex-1">
                   {/* BUILD: 6 items + Trinket */}
-                  <div className="w-[185px] flex items-center gap-0.5 shrink-0 justify-center">
-                    {p.items.slice(0, 6).map((itemId, idx) => (
-                      <div
-                        key={idx}
-                        className="h-5.5 w-5.5 rounded bg-black/60 border border-white/[0.08] overflow-hidden flex items-center justify-center"
-                      >
-                        {itemId > 0 ? (
-                          <Image
-                            src={getItemIconUrl(itemId)}
-                            alt={`Item ${itemId}`}
-                            width={22}
-                            height={22}
-                            className="h-full w-full object-cover"
-                            unoptimized
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
-                          />
-                        ) : null}
-                      </div>
+                  <div className="w-[185px] flex items-center gap-1 shrink-0 justify-center">
+                    {[0, 1, 2, 3, 4, 5].map((idx) => (
+                      <ItemSlot key={idx} itemId={p.items[idx]} size={24} />
                     ))}
-                    <div className="h-5.5 w-5.5 rounded bg-black/60 border border-amber-500/20 overflow-hidden flex items-center justify-center ml-1.5">
-                      {p.items[6] > 0 ? (
-                        <Image
-                          src={getItemIconUrl(p.items[6])}
-                          alt="Trinket"
-                          width={22}
-                          height={22}
-                          className="h-full w-full object-cover"
-                          unoptimized
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : null}
+                    <div className="ml-1">
+                      <ItemSlot itemId={p.items[6]} size={24} isTrinket />
                     </div>
                   </div>
 
@@ -459,10 +485,10 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                         </>
                       ) : (
                         <>
-                          <span className="text-purple-300">
+                          <span className="text-sky-300 font-bold">
                             {(p.totalDamageTaken / 1000).toFixed(1)}K
                           </span>
-                          <span className="text-[10px] text-purple-400/70 font-medium">
+                          <span className="text-[10px] text-sky-400/80 font-medium">
                             {Math.round(p.totalDamageTaken / durationMinutes)}/m
                           </span>
                         </>
@@ -471,7 +497,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                     <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
-                          damageMode === 'dealt' ? 'bg-orange-500' : 'bg-purple-500'
+                          damageMode === 'dealt' ? 'bg-orange-500' : 'bg-sky-400'
                         }`}
                         style={{
                           width: `${
@@ -680,41 +706,11 @@ export default function MatchCard({ match, region }: MatchCardProps) {
         <div className="flex flex-col items-center justify-center gap-2 shrink-0">
           {/* Row 1: Items (6 items + Trinket, 32px larger icons) */}
           <div className="flex items-center gap-1">
-            {participant.items.slice(0, 6).map((itemId, idx) => (
-              <div
-                key={idx}
-                className="h-8 w-8 rounded-md border border-white/[0.08] bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm"
-              >
-                {itemId > 0 ? (
-                  <Image
-                    src={getItemIconUrl(itemId)}
-                    alt={`Item ${itemId}`}
-                    width={32}
-                    height={32}
-                    className="h-full w-full object-cover"
-                    unoptimized
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : null}
-              </div>
+            {[0, 1, 2, 3, 4, 5].map((idx) => (
+              <ItemSlot key={idx} itemId={participant.items[idx]} size={32} />
             ))}
-            {/* Trinket */}
-            <div className="h-8 w-8 rounded-md border border-amber-500/20 bg-black/60 overflow-hidden flex items-center justify-center ml-2 shrink-0 shadow-sm">
-              {participant.items[6] > 0 ? (
-                <Image
-                  src={getItemIconUrl(participant.items[6])}
-                  alt="Trinket"
-                  width={32}
-                  height={32}
-                  className="h-full w-full object-cover"
-                  unoptimized
-                  onError={(e) => {
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
-                />
-              ) : null}
+            <div className="ml-2">
+              <ItemSlot itemId={participant.items[6]} size={32} isTrinket />
             </div>
           </div>
 

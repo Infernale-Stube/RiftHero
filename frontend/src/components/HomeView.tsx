@@ -88,9 +88,12 @@ export default function HomeView() {
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white mb-4">
-          {t('home.heroTitle1')}{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500">
-            {t('home.heroTitleHighlight')}
+          <span className="block">{t('home.heroTitle1')}</span>
+          <span className="block mt-1 sm:mt-2">
+            {t('home.heroTitle2')}{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500">
+              {t('home.heroTitleHighlight')}
+            </span>
           </span>
         </h1>
 
@@ -235,20 +238,22 @@ export default function HomeView() {
               className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-black/40 p-3.5 transition-all hover:border-amber-500/30 hover:bg-white/[0.02]"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="relative h-12 w-12 rounded-full overflow-hidden border border-white/10 shrink-0 shadow-md">
-                  <Image
-                    src={getChampionIconUrl(champ.name)}
-                    alt={champ.name}
-                    width={48}
-                    height={48}
-                    className="h-full w-full object-cover"
-                    unoptimized
-                  />
+                <div className="relative shrink-0">
+                  <div className="h-12 w-12 rounded-full overflow-hidden border border-white/10 shadow-md">
+                    <Image
+                      src={getChampionIconUrl(champ.name)}
+                      alt={champ.name}
+                      width={48}
+                      height={48}
+                      className="h-full w-full object-cover"
+                      unoptimized
+                    />
+                  </div>
                   <div
-                    className={`absolute bottom-0 right-0 rounded-tl px-1 text-[8px] font-black uppercase ${
+                    className={`absolute -bottom-1 -right-1 rounded-md px-1.5 py-0.5 text-[9px] font-black tracking-tight uppercase shadow-md border border-black/80 flex items-center justify-center leading-none z-10 ${
                       champ.tier === 'S+'
                         ? 'bg-amber-400 text-black'
-                        : 'bg-sky-500 text-black'
+                        : 'bg-sky-400 text-black'
                     }`}
                   >
                     {champ.tier}

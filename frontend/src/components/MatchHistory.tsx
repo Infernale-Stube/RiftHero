@@ -213,7 +213,7 @@ export default function MatchHistory({
                 ) : (
                   <>
                     <ChevronDown className="h-4 w-4 text-orange-400" />
-                    <span>{locale === 'de' ? 'Mehr Matches anzeigen (+20)' : 'Show more matches (+20)'}</span>
+                    <span>{locale === 'de' ? 'Mehr Matches anzeigen (+10)' : 'Show more matches (+10)'}</span>
                   </>
                 )}
               </button>

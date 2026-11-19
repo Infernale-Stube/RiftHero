@@ -56,7 +56,7 @@ export default function SummonerMatchesPage() {
       setIsLoadingMatches(true);
       try {
         const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
-          fetchSummonerMatches(region, tag, queue, 20, 0),
+          fetchSummonerMatches(region, tag, queue, 10, 0),
           fetchChampionStats(region, tag, queue),
           fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
           fetchPlayedWith(region, tag, 5),
@@ -85,7 +85,7 @@ export default function SummonerMatchesPage() {
     if (isLoadingMore || matches.length >= totalMatches) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetchSummonerMatches(region, tag, activeQueue, 20, matches.length);
+      const res = await fetchSummonerMatches(region, tag, activeQueue, 10, matches.length);
       setMatches((prev) => [...prev, ...res.matches]);
       setTotalMatches(res.total);
     } catch (err) {
