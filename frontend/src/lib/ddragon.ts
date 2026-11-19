@@ -82,3 +82,69 @@ export function getStyleIconUrl(styleId: number | null): string {
   if (!path) return '';
   return `https://ddragon.leagueoflegends.com/cdn/img/${path}`;
 }
+
+// Official Ingame Objective Icons from CommunityDragon
+const CD_MATCH_HISTORY_BASE = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default';
+
+export type ObjectiveType = 'baron' | 'dragon' | 'herald' | 'voidgrub' | 'tower' | 'inhibitor';
+
+export function getObjectiveIconUrl(
+  objective: ObjectiveType,
+  team: 'blue' | 'red' | 'neutral' = 'neutral'
+): string {
+  const teamCode = team === 'red' ? '200' : '100';
+
+  switch (objective) {
+    case 'baron':
+      return `${CD_MATCH_HISTORY_BASE}/baron-${teamCode}.png`;
+    case 'dragon':
+      return `${CD_MATCH_HISTORY_BASE}/dragon-${teamCode}.png`;
+    case 'herald':
+      return `${CD_MATCH_HISTORY_BASE}/herald-${teamCode}.png`;
+    case 'voidgrub':
+      return `${CD_MATCH_HISTORY_BASE}/right_icons_grub.png`;
+    case 'tower':
+      return `${CD_MATCH_HISTORY_BASE}/tower-${teamCode}.png`;
+    case 'inhibitor':
+      return `${CD_MATCH_HISTORY_BASE}/inhibitor-${teamCode}.png`;
+    default:
+      return `${CD_MATCH_HISTORY_BASE}/dragon-100.png`;
+  }
+}
+
+export function getDragonSubtypeIconUrl(
+  subType: string,
+  team: 'blue' | 'red' = 'blue'
+): string {
+  const teamCode = team === 'red' ? '200' : '100';
+  const clean = subType.toUpperCase();
+
+  if (clean.includes('FIRE') || clean.includes('INFERNAL')) {
+    return `${CD_MATCH_HISTORY_BASE}/fire-${teamCode}.png`;
+  }
+  if (clean.includes('WATER') || clean.includes('OCEAN')) {
+    return `${CD_MATCH_HISTORY_BASE}/water-${teamCode}.png`;
+  }
+  if (clean.includes('EARTH') || clean.includes('MOUNTAIN')) {
+    return `${CD_MATCH_HISTORY_BASE}/earth-${teamCode}.png`;
+  }
+  if (clean.includes('AIR') || clean.includes('CLOUD')) {
+    return `${CD_MATCH_HISTORY_BASE}/air-${teamCode}.png`;
+  }
+  if (clean.includes('ELDER')) {
+    return `${CD_MATCH_HISTORY_BASE}/elder-${teamCode}.png`;
+  }
+  return `${CD_MATCH_HISTORY_BASE}/dragon-${teamCode}.png`;
+}
+
+export function getDragonSubtypeName(subType: string): string {
+  const clean = subType.toUpperCase();
+  if (clean.includes('FIRE') || clean.includes('INFERNAL')) return 'Infernal';
+  if (clean.includes('WATER') || clean.includes('OCEAN')) return 'Ocean';
+  if (clean.includes('EARTH') || clean.includes('MOUNTAIN')) return 'Mountain';
+  if (clean.includes('AIR') || clean.includes('CLOUD')) return 'Cloud';
+  if (clean.includes('HEXTECH')) return 'Hextech';
+  if (clean.includes('CHEMTECH')) return 'Chemtech';
+  if (clean.includes('ELDER')) return 'Elder Dragon';
+  return 'Drake';
+}

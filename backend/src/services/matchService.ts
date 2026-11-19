@@ -29,6 +29,8 @@ export interface FormattedMatchParticipant {
   spells: number[];
   primaryRune: number | null;
   secondaryStyle: number | null;
+  killParticipation?: number;
+  damageShare?: number;
 }
 
 export interface TeamTotals {
@@ -54,10 +56,17 @@ export interface FormattedMatch {
   maxDamage: number;
 }
 
-function formatParticipant(p: any, durationMinutes: number): FormattedMatchParticipant {
+function formatParticipant(
+  p: any,
+  durationMinutes: number,
+  teamKills = 0,
+  teamDamage = 0
+): FormattedMatchParticipant {
   const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
   const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
   const kdaCalc = p.deaths === 0 ? p.kills + p.assists : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
+  const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
+  const damageShare = teamDamage > 0 ? Math.round((p.totalDamageDealtToChampions / teamDamage) * 100) : 0;
 
   return {
     puuid: p.puuid,
@@ -74,6 +83,8 @@ function formatParticipant(p: any, durationMinutes: number): FormattedMatchParti
     deaths: p.deaths,
     assists: p.assists,
     kda: kdaCalc,
+    killParticipation,
+    damageShare,
     totalDamageDealtToChampions: p.totalDamageDealtToChampions,
     totalDamageTaken: p.totalDamageTaken,
     cs,
@@ -141,24 +152,37 @@ export async function getSummonerMatches(
     const durationMinutes = m.gameDuration / 60;
     const allParticipants = m.participants || [];
 
-    const formattedParticipants = allParticipants.map((p) => formatParticipant(p, durationMinutes));
+    const blueTotalKills = allParticipants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.kills, 0);
+    const redTotalKills = allParticipants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.kills, 0);
+    const blueTotalDmg = allParticipants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
+    const redTotalDmg = allParticipants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
+
+    const formattedParticipants = allParticipants.map((p) => {
+      const isBlue = p.teamId === 100;
+      return formatParticipant(
+        p,
+        durationMinutes,
+        isBlue ? blueTotalKills : redTotalKills,
+        isBlue ? blueTotalDmg : redTotalDmg
+      );
+    });
     const blueTeam = formattedParticipants.filter((p) => p.teamId === 100);
     const redTeam = formattedParticipants.filter((p) => p.teamId === 200);
 
     const blueTeamTotals: TeamTotals = {
-      kills: blueTeam.reduce((acc, p) => acc + p.kills, 0),
+      kills: blueTotalKills,
       deaths: blueTeam.reduce((acc, p) => acc + p.deaths, 0),
       assists: blueTeam.reduce((acc, p) => acc + p.assists, 0),
       gold: blueTeam.reduce((acc, p) => acc + p.goldEarned, 0),
-      damage: blueTeam.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
+      damage: blueTotalDmg,
     };
 
     const redTeamTotals: TeamTotals = {
-      kills: redTeam.reduce((acc, p) => acc + p.kills, 0),
+      kills: redTotalKills,
       deaths: redTeam.reduce((acc, p) => acc + p.deaths, 0),
       assists: redTeam.reduce((acc, p) => acc + p.assists, 0),
       gold: redTeam.reduce((acc, p) => acc + p.goldEarned, 0),
-      damage: redTeam.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
+      damage: redTotalDmg,
     };
 
     const maxDamage = Math.max(
@@ -166,7 +190,13 @@ export async function getSummonerMatches(
       1
     );
 
-    const currentFormatted = formatParticipant(up, durationMinutes);
+    const isCurrentBlue = up.teamId === 100;
+    const currentFormatted = formatParticipant(
+      up,
+      durationMinutes,
+      isCurrentBlue ? blueTotalKills : redTotalKills,
+      isCurrentBlue ? blueTotalDmg : redTotalDmg
+    );
 
     return {
       matchId: m.id,

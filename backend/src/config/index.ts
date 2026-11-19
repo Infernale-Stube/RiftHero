@@ -18,13 +18,13 @@ export const config = {
   rateLimit10m: parseInt(process.env.RATE_LIMIT_10M || '60000', 10),
 
   // Match Ingestion & Snowball
-  initialMatchCount: parseInt(process.env.INITIAL_MATCH_COUNT || '50', 10),
+  initialMatchCount: parseInt(process.env.INITIAL_MATCH_COUNT || '100', 10),
   enableSnowballCrawler: process.env.ENABLE_SNOWBALL_CRAWLER !== 'false',
   snowballMatchDepth: parseInt(process.env.SNOWBALL_MATCH_DEPTH || '20', 10),
   snowballMaxConcurrency: parseInt(process.env.SNOWBALL_MAX_CONCURRENCY || '3', 10),
   fetchAllSeasonMatches: process.env.FETCH_ALL_SEASON_MATCHES !== 'false',
-  seasonStartEpoch: parseInt(process.env.SEASON_START_EPOCH || '1704844800', 10), // Jan 10, 2024
-  maxSeasonMatches: parseInt(process.env.MAX_SEASON_MATCHES || '1500', 10),
+  seasonStartEpoch: parseInt(process.env.SEASON_START_EPOCH || '0', 10), // 0 = fetch ALL matches across all history
+  maxSeasonMatches: parseInt(process.env.MAX_SEASON_MATCHES || '5000', 10),
 
   // Profile Stale Check (minutes)
   profileStaleMinutes: parseInt(process.env.PROFILE_STALE_MINUTES || '2', 10),

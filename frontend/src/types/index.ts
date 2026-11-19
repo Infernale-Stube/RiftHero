@@ -56,6 +56,11 @@ export interface MatchParticipant {
   spells: number[];
   primaryRune: number | null;
   secondaryStyle: number | null;
+  teamPosition?: string | null;
+  killParticipation?: number;
+  damageShare?: number;
+  totalHeal?: number;
+  goldSpent?: number;
 }
 
 export interface TeamTotals {

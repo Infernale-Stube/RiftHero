@@ -163,27 +163,32 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
         },
       });
     } else {
-      // Active user profile: Paginate to fetch ALL matches of the current season!
+      // Active user profile: Paginate to fetch ALL matches into database!
       let start = 0;
       const batchSize = 100;
       const seasonStart = config.seasonStartEpoch;
 
       while (start < config.maxSeasonMatches) {
+        const params: any = {
+          start,
+          count: batchSize,
+        };
+        // Only set startTime if a non-zero timestamp is provided
+        if (seasonStart && seasonStart > 0) {
+          params.startTime = seasonStart;
+        }
+
         const batch = await rApi.matchV5.getIdsByPuuid({
           cluster: cluster as any,
           puuid,
-          params: {
-            start,
-            count: batchSize,
-            startTime: seasonStart,
-          },
+          params,
         });
 
         if (!batch || batch.length === 0) break;
         matchIds.push(...batch);
         start += batch.length;
 
-        job.log(`[Worker] Season Match Crawler: Found ${matchIds.length} match IDs so far...`);
+        job.log(`[Worker] Match Crawler: Found ${matchIds.length} match IDs so far...`);
 
         // Reached end of history
         if (batch.length < batchSize) break;
@@ -214,6 +219,13 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     if (existingMatch) {
       // If match exists and our summoner is already connected, skip
       if (existingMatch.participants.length > 0) {
+        const p = existingMatch.participants[0];
+        if (!p.summonerId) {
+          await prisma.matchParticipant.update({
+            where: { id: p.id },
+            data: { summonerId: savedSummoner.id },
+          });
+        }
         continue;
       }
     }

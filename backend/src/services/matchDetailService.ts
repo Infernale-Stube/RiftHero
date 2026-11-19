@@ -189,11 +189,20 @@ export async function getMatchDetails(
   const participants = match.participants || [];
   const durationMinutes = match.gameDuration / 60;
 
+  const blueTotalKills = participants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.kills, 0);
+  const redTotalKills = participants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.kills, 0);
+  const blueTotalDamage = participants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
+  const redTotalDamage = participants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
+
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
       const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
       const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
       const kda = p.deaths === 0 ? p.kills + p.assists : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
+      const teamKills = p.teamId === 100 ? blueTotalKills : redTotalKills;
+      const teamDmg = p.teamId === 100 ? blueTotalDamage : redTotalDamage;
+      const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
+      const damageShare = teamDmg > 0 ? Math.round((p.totalDamageDealtToChampions / teamDmg) * 100) : 0;
 
       return {
         id: p.id,
@@ -212,6 +221,8 @@ export async function getMatchDetails(
         deaths: p.deaths,
         assists: p.assists,
         kda,
+        killParticipation,
+        damageShare,
         totalDamageDealtToChampions: p.totalDamageDealtToChampions,
         physicalDamageDealtToChampions: p.physicalDamageDealtToChampions || 0,
         magicDamageDealtToChampions: p.magicDamageDealtToChampions || 0,

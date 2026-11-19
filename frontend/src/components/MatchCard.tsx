@@ -470,21 +470,24 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             </Link>
           </div>
 
-          {/* Blue Team Scorecard */}
-          {renderTeamTable(
-            blueTeam,
-            true,
-            blueTeam.some((p) => p.win),
-            blueTeamTotals
-          )}
+          {/* Side-by-Side Team Scorecards */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* Blue Team Scorecard */}
+            {renderTeamTable(
+              blueTeam,
+              true,
+              blueTeam.some((p) => p.win),
+              blueTeamTotals
+            )}
 
-          {/* Red Team Scorecard */}
-          {renderTeamTable(
-            redTeam,
-            false,
-            redTeam.some((p) => p.win),
-            redTeamTotals
-          )}
+            {/* Red Team Scorecard */}
+            {renderTeamTable(
+              redTeam,
+              false,
+              redTeam.some((p) => p.win),
+              redTeamTotals
+            )}
+          </div>
         </div>
       )}
     </div>
