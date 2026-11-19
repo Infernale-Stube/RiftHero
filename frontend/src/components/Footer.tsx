@@ -20,12 +20,6 @@ export default function Footer() {
               {t('footer.copyright', { year })}
             </span>
           </div>
-
-          <div className="flex items-center gap-4 text-xs font-semibold text-zinc-400">
-            <span className="text-emerald-400">{t('footer.prodKey')}</span>
-            <span className="text-zinc-600">•</span>
-            <span>{t('footer.snowball')}</span>
-          </div>
         </div>
 
         <p className="text-[11px] text-zinc-600 leading-relaxed max-w-4xl mx-auto sm:mx-0 text-center sm:text-left">

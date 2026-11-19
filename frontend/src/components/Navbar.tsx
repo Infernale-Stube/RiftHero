@@ -39,14 +39,9 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Status & Language Switcher */}
+        {/* Language Switcher */}
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
-
-          <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400 font-bold">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{t('nav.apiOnline')}</span>
-          </div>
         </div>
       </div>
     </header>
