@@ -315,11 +315,6 @@ export default function ChampionStatsView({
                           <div className="font-bold text-white text-sm">
                             {champ.championName}
                           </div>
-                          {champ.primaryRole && champ.primaryRole !== 'UNKNOWN' && (
-                            <span className="inline-block mt-0.5 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-zinc-400 uppercase">
-                              {champ.primaryRole}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>

@@ -18,7 +18,7 @@ export default function HomeView({ recentSummoners }: HomeViewProps) {
   return (
     <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-12 sm:px-6 lg:px-8">
       {/* Hero Section */}
-      <div className="flex flex-col items-center text-center max-w-3xl mb-10">
+      <div className="flex flex-col items-center text-center max-w-4xl w-full mb-10">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 text-xs font-bold text-orange-400 uppercase tracking-wider mb-6 shadow-sm">
           <Zap className="h-3.5 w-3.5" />
           <span>{t('home.heroBadge')}</span>
@@ -36,12 +36,12 @@ export default function HomeView({ recentSummoners }: HomeViewProps) {
         </p>
 
         {/* Central Search Bar */}
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-3xl sm:max-w-4xl">
           <SearchBar defaultRegion="euw" />
         </div>
 
         {/* Recent Searches (from LocalStorage) */}
-        <div className="w-full max-w-2xl mt-5">
+        <div className="w-full max-w-3xl sm:max-w-4xl mt-5">
           <RecentSearches />
         </div>
       </div>

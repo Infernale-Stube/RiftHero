@@ -34,7 +34,7 @@ export default function Navbar() {
 
         {/* Compact Search Bar in Header if not on Home */}
         {!isHome && (
-          <div className="hidden md:block w-96">
+          <div className="hidden md:block w-[440px] lg:w-[580px] xl:w-[700px]">
             <SearchBar compact />
           </div>
         )}
