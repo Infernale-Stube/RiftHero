@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { Search, Trophy, Swords, Zap, Shield, Coins, Award } from 'lucide-react';
+import { Search, Trophy, Swords, Zap, Shield, Coins } from 'lucide-react';
 import { ChampionStatSummary } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -249,17 +249,16 @@ export default function ChampionStatsView({
               </th>
               <th
                 onClick={() => handleSort('gold')}
-                className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
+                className="py-3 pr-4 pl-3 cursor-pointer hover:text-white transition-colors"
               >
                 {t('champions.colGold')} {sortField === 'gold' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
-              <th className="py-3 pr-4 pl-3">Multikills (5x 4x 3x 2x)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-zinc-500">
+                <td colSpan={8} className="py-12 text-center text-zinc-500">
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
                     <span>{t('champions.loading')}</span>
@@ -268,7 +267,7 @@ export default function ChampionStatsView({
               </tr>
             ) : filteredAndSortedStats.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-zinc-500">
+                <td colSpan={8} className="py-12 text-center text-zinc-500">
                   {t('champions.noChampions')}
                 </td>
               </tr>
@@ -282,12 +281,6 @@ export default function ChampionStatsView({
                     : champ.kda >= 2.0
                     ? 'text-amber-400'
                     : 'text-zinc-400';
-
-                const hasMultikills =
-                  (champ.pentaKills && champ.pentaKills > 0) ||
-                  (champ.quadraKills && champ.quadraKills > 0) ||
-                  (champ.tripleKills && champ.tripleKills > 0) ||
-                  (champ.doubleKills && champ.doubleKills > 0);
 
                 return (
                   <tr
@@ -380,42 +373,12 @@ export default function ChampionStatsView({
                     </td>
 
                     {/* Gold */}
-                    <td className="py-3 px-3">
+                    <td className="py-3 pr-4 pl-3">
                       <div className="font-bold text-amber-300">
                         {((champ.avgGold || 0) / 1000).toFixed(1)}k
                       </div>
                       <div className="text-[11px] text-zinc-500">
                         Vision: {champ.avgVisionScore || 0}
-                      </div>
-                    </td>
-
-                    {/* Multikills (5x Penta, 4x Quadra, 3x Triple, 2x Double) */}
-                    <td className="py-3 pr-4 pl-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {champ.pentaKills && champ.pentaKills > 0 ? (
-                          <span className="flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-500/40 shadow-sm" title="Penta Kills">
-                            <Award className="h-3 w-3" />
-                            5x {champ.pentaKills}
-                          </span>
-                        ) : null}
-                        {champ.quadraKills && champ.quadraKills > 0 ? (
-                          <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-black text-rose-300 border border-rose-500/40" title="Quadra Kills">
-                            4x {champ.quadraKills}
-                          </span>
-                        ) : null}
-                        {champ.tripleKills && champ.tripleKills > 0 ? (
-                          <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/40" title="Triple Kills">
-                            3x {champ.tripleKills}
-                          </span>
-                        ) : null}
-                        {champ.doubleKills && champ.doubleKills > 0 ? (
-                          <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300 border border-sky-500/40" title="Double Kills">
-                            2x {champ.doubleKills}
-                          </span>
-                        ) : null}
-                        {!hasMultikills && (
-                          <span className="text-[11px] text-zinc-600 font-semibold">-</span>
-                        )}
                       </div>
                     </td>
                   </tr>
