@@ -25,7 +25,6 @@ import {
   getRuneIconUrl,
   getStyleIconUrl,
   getPositionIconUrl,
-  getObjectiveIconUrl,
   getParticipantPosition,
   getParticipantPositionOrder,
 } from '@/lib/ddragon';
@@ -61,6 +60,8 @@ function formatScore(score?: DeepLolScore | number): number {
 export default function MatchCard({ match, region }: MatchCardProps) {
   const { locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
+
   const {
     win,
     queueName,
@@ -94,6 +95,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
   // Compute game-wide stats
   const allParticipants = [...blueTeam, ...redTeam];
   const maxGameDamage = Math.max(...allParticipants.map((p) => p.totalDamageDealtToChampions), 1);
+  const maxGameDamageTaken = Math.max(...allParticipants.map((p) => p.totalDamageTaken), 1);
   const maxGameGold = Math.max(...allParticipants.map((p) => p.goldEarned), 1);
   const maxGameCs = Math.max(...allParticipants.map((p) => p.cs), 1);
 
@@ -145,7 +147,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
     return (
       <div className="flex flex-col rounded-xl border border-white/[0.06] bg-black/40 overflow-hidden">
         {/* Team Header Row */}
-        <div className="flex items-center justify-between px-3 py-2 text-xs border-b border-white/[0.06] bg-white/[0.02]">
+        <div className="flex items-center justify-between px-3.5 py-2.5 text-xs border-b border-white/[0.06] bg-white/[0.02]">
           {/* Left: Outcome, Side, Objective counters, Bans */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
@@ -168,48 +170,51 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             {/* Objective icons + counts */}
             <div className="flex items-center gap-2.5 text-[11px] text-zinc-300 font-bold ml-1">
               <span className="flex items-center gap-1" title="Kills">
-                <Swords className="h-3 w-3 text-zinc-400" />
+                <Swords className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{sideKills}</span>
               </span>
               <span className="flex items-center gap-1" title="Towers">
-                <Shield className="h-3 w-3 text-zinc-400" />
+                <Shield className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{sideTowers}</span>
               </span>
               <span className="flex items-center gap-1" title="Dragons">
-                <Flame className="h-3 w-3 text-zinc-400" />
+                <Flame className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{sideDragons}</span>
               </span>
               <span className="flex items-center gap-1" title="Barons">
-                <Crown className="h-3 w-3 text-zinc-400" />
+                <Crown className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{sideBarons}</span>
               </span>
               <span className="flex items-center gap-1" title="Voidgrubs / Herald">
-                <Eye className="h-3 w-3 text-zinc-400" />
+                <Eye className="h-3.5 w-3.5 text-zinc-400" />
                 <span>{sideGrubs}</span>
               </span>
             </div>
 
-            {/* Bans */}
+            {/* Bans (Clean, compact 20x20px inline icons with red slash) */}
             {bans.length > 0 && (
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
                 <span className="text-[11px] text-zinc-500 font-bold">Bans:</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {bans.slice(0, 5).map((champId, bIdx) => (
                     <div
                       key={bIdx}
-                      className="relative h-4.5 w-4.5 rounded overflow-hidden border border-white/10 bg-black/60 shrink-0"
+                      className="relative w-5 h-5 min-w-[20px] max-w-[20px] min-h-[20px] max-h-[20px] rounded overflow-hidden border border-white/15 bg-black/80 shrink-0 shadow-sm"
                       title={`Banned Champion ID ${champId}`}
                     >
                       <Image
                         src={getChampionIconByIdUrl(champId)}
                         alt="Ban"
-                        width={18}
-                        height={18}
+                        width={20}
+                        height={20}
                         className="h-full w-full object-cover grayscale opacity-60"
                         unoptimized
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
                       />
-                      <div className="absolute inset-0 bg-red-500/25" />
-                      <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45" />
+                      <div className="absolute inset-0 bg-red-500/25 pointer-events-none" />
+                      <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45 pointer-events-none" />
                     </div>
                   ))}
                 </div>
@@ -217,16 +222,32 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             )}
           </div>
 
-          {/* Right: Table Column Labels */}
+          {/* Right: Table Column Labels with Interactive Damage/Taken Toggle */}
           <div className="hidden lg:flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500">
             <span className="w-[185px] text-center">BUILD</span>
             <span className="w-16 text-center">KDA</span>
             <span className="w-12 text-center">KP</span>
             <span className="w-14 text-center">CS</span>
-            <span className="w-28 text-center flex items-center justify-center gap-1">
-              <span>DAMAGE</span>
-              <span className="text-[8px] text-zinc-600">&lt;&gt;</span>
-            </span>
+            {/* Interactive Toggle Button for Damage Dealt vs Damage Taken */}
+            <button
+              type="button"
+              onClick={() => setDamageMode((prev) => (prev === 'dealt' ? 'taken' : 'dealt'))}
+              className={`w-28 py-1 px-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                damageMode === 'dealt'
+                  ? 'bg-orange-500/15 border-orange-500/30 text-orange-400 hover:bg-orange-500/25'
+                  : 'bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25'
+              }`}
+              title={
+                damageMode === 'dealt'
+                  ? 'Damage Dealt (Klicken für Damage Taken)'
+                  : 'Damage Taken (Klicken für Damage Dealt)'
+              }
+            >
+              <span className="text-[10px] font-black uppercase tracking-wider">
+                {damageMode === 'dealt' ? 'DAMAGE' : 'TAKEN'}
+              </span>
+              <span className="text-[9px] opacity-70">⇄</span>
+            </button>
             <span className="w-14 text-center">VISION</span>
             <span className="w-16 text-right pr-1">GOLD</span>
             <span className="w-12 text-center">SCORE</span>
@@ -242,16 +263,12 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             const rankInfo = getRankInfo(p);
             const pKeystone = getRuneIconUrl(p.primaryRune);
             const pStyle = getStyleIconUrl(p.secondaryStyle);
-            const damagePercent = Math.min(
-              100,
-              Math.max(3, Math.round((p.totalDamageDealtToChampions / maxGameDamage) * 100))
-            );
             const pScore = formatScore(p.score);
 
             return (
               <div
                 key={p.puuid}
-                className={`flex flex-col lg:flex-row lg:items-center justify-between px-3 py-2 gap-2 text-xs transition-colors ${
+                className={`flex flex-col lg:flex-row lg:items-center justify-between px-3.5 py-2.5 gap-2 text-xs transition-colors ${
                   isTarget ? 'bg-white/[0.06] border-l-2 border-l-white/60' : 'hover:bg-white/[0.02]'
                 }`}
               >
@@ -274,17 +291,23 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                     )}
                   </div>
 
-                  {/* Champion Avatar with Level */}
-                  <div className="relative h-8 w-8 rounded-full overflow-hidden border border-white/10 shrink-0">
-                    <Image
-                      src={getChampionIconUrl(p.championName)}
-                      alt={p.championName}
-                      width={32}
-                      height={32}
-                      className="h-full w-full object-cover"
-                      unoptimized
-                    />
-                    <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-black/90 border border-white/20 text-[8px] font-bold text-white flex items-center justify-center">
+                  {/* Champion Avatar with Uncropped Level Badge */}
+                  <div className="relative h-8 w-8 shrink-0">
+                    <div className="h-full w-full rounded-full overflow-hidden border border-white/10 shadow-sm">
+                      <Image
+                        src={getChampionIconUrl(p.championName)}
+                        alt={p.championName}
+                        width={32}
+                        height={32}
+                        className="h-full w-full object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    {/* Level badge floating on top at bottom-right - Not clipped by overflow-hidden! */}
+                    <div
+                      className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-black/95 border border-white/30 text-[8px] font-black text-white flex items-center justify-center shadow-md z-10"
+                      title={`Level ${p.champLevel}`}
+                    >
                       {p.champLevel}
                     </div>
                   </div>
@@ -358,7 +381,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   </div>
                 </div>
 
-                {/* Right: Columns for Build, KDA, KP, CS, Damage, Vision, Gold, Score */}
+                {/* Right: Columns for Build, KDA, KP, CS, Damage/Taken, Vision, Gold, Score */}
                 <div className="flex items-center justify-between lg:justify-end gap-2 text-xs flex-1">
                   {/* BUILD: 6 items + Trinket */}
                   <div className="w-[185px] flex items-center gap-0.5 shrink-0 justify-center">
@@ -375,6 +398,9 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                             height={22}
                             className="h-full w-full object-cover"
                             unoptimized
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
                           />
                         ) : null}
                       </div>
@@ -388,6 +414,9 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                           height={22}
                           className="h-full w-full object-cover"
                           unoptimized
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
                         />
                       ) : null}
                     </div>
@@ -416,20 +445,47 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                     <span className="text-[10px] text-zinc-400 font-medium">{p.csPerMinute}/m</span>
                   </div>
 
-                  {/* DAMAGE */}
+                  {/* DAMAGE / TAKEN COLUMN */}
                   <div className="w-28 flex flex-col justify-center shrink-0">
                     <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-zinc-200">
-                        {(p.totalDamageDealtToChampions / 1000).toFixed(1)}K
-                      </span>
-                      <span className="text-[10px] text-zinc-500 font-medium">
-                        {Math.round(p.totalDamageDealtToChampions / durationMinutes)}/m
-                      </span>
+                      {damageMode === 'dealt' ? (
+                        <>
+                          <span className="text-zinc-200">
+                            {(p.totalDamageDealtToChampions / 1000).toFixed(1)}K
+                          </span>
+                          <span className="text-[10px] text-zinc-500 font-medium">
+                            {Math.round(p.totalDamageDealtToChampions / durationMinutes)}/m
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-purple-300">
+                            {(p.totalDamageTaken / 1000).toFixed(1)}K
+                          </span>
+                          <span className="text-[10px] text-purple-400/70 font-medium">
+                            {Math.round(p.totalDamageTaken / durationMinutes)}/m
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
                       <div
-                        className="h-full rounded-full bg-orange-500"
-                        style={{ width: `${damagePercent}%` }}
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          damageMode === 'dealt' ? 'bg-orange-500' : 'bg-purple-500'
+                        }`}
+                        style={{
+                          width: `${
+                            damageMode === 'dealt'
+                              ? Math.min(
+                                  100,
+                                  Math.max(3, Math.round((p.totalDamageDealtToChampions / maxGameDamage) * 100))
+                                )
+                              : Math.min(
+                                  100,
+                                  Math.max(3, Math.round((p.totalDamageTaken / maxGameDamageTaken) * 100))
+                                )
+                          }%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -506,19 +562,21 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             className={`w-1.5 self-stretch min-h-[68px] rounded-full my-0.5 shrink-0 ${accentBarClass}`}
           />
 
-          {/* Champion Avatar with Level */}
-          <div className="relative h-15 w-15 sm:h-16 sm:w-16 rounded-full overflow-hidden border border-white/10 shrink-0 shadow-md">
-            <Image
-              src={getChampionIconUrl(participant.championName)}
-              alt={participant.championName}
-              width={64}
-              height={64}
-              className="h-full w-full object-cover"
-              unoptimized
-            />
-            {/* Level Badge at bottom-right */}
+          {/* Champion Avatar with Uncropped Level Badge */}
+          <div className="relative h-16 w-16 shrink-0">
+            <div className="h-full w-full rounded-full overflow-hidden border border-white/10 shadow-md">
+              <Image
+                src={getChampionIconUrl(participant.championName)}
+                alt={participant.championName}
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+                unoptimized
+              />
+            </div>
+            {/* Level Badge at bottom-right - Not cropped by overflow-hidden! */}
             <div
-              className="absolute bottom-0 right-0 h-5 w-5 rounded-full bg-black/90 border border-white/20 text-[10px] font-black text-white flex items-center justify-center shadow-sm"
+              className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/95 border border-white/30 text-[10px] font-black text-white flex items-center justify-center shadow-lg z-10"
               title={`Level ${participant.champLevel}`}
             >
               {participant.champLevel}
@@ -635,6 +693,9 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                     height={32}
                     className="h-full w-full object-cover"
                     unoptimized
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
                   />
                 ) : null}
               </div>
@@ -649,6 +710,9 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   height={32}
                   className="h-full w-full object-cover"
                   unoptimized
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
                 />
               ) : null}
             </div>
@@ -848,7 +912,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex h-9 w-9 items-center justify-center text-zinc-400 hover:text-white transition-colors ml-1 shrink-0"
+            className="flex h-9 w-9 items-center justify-center text-zinc-400 hover:text-white transition-colors ml-1 shrink-0 cursor-pointer"
             aria-label="Toggle Match Details"
           >
             {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
