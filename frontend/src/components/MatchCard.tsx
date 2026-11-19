@@ -331,6 +331,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             const pKeystone = getRuneIconUrl(p.primaryRune);
             const pStyle = getStyleIconUrl(p.secondaryStyle);
             const pScore = formatScore(p.score);
+            const pRole = getParticipantPosition(p);
 
             return (
               <div
@@ -339,8 +340,8 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   isTarget ? 'bg-white/[0.06] border-l-2 border-l-white/60' : 'hover:bg-white/[0.02]'
                 }`}
               >
-                {/* Left: Rank Badge + Champion Avatar + Spells/Runes + Name */}
-                <div className="flex items-center gap-2.5 min-w-[220px]">
+                {/* Left: Rank Badge + Champion Avatar + Spells/Runes + Role Icon + Name */}
+                <div className="flex items-center gap-2.5 min-w-[240px]">
                   {/* Rank Badge: MVP (gold), ACE (teal), or 2nd..10th */}
                   <div className="w-10 sm:w-11 h-6 rounded-md flex items-center justify-center shrink-0">
                     {rankInfo.isMvp ? (
@@ -430,6 +431,20 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                       </div>
                     </div>
                   </div>
+
+                  {/* Role Icon */}
+                  {pRole ? (
+                    <div className="flex items-center justify-center shrink-0 w-4 h-4" title={pRole}>
+                      <Image
+                        src={getPositionIconUrl(pRole)}
+                        alt={pRole}
+                        width={14}
+                        height={14}
+                        className="h-3.5 w-3.5 object-contain opacity-75 filter brightness-110"
+                        unoptimized
+                      />
+                    </div>
+                  ) : null}
 
                   {/* Player Game Name & Champion Name */}
                   <div className="flex flex-col justify-center min-w-[95px] max-w-[125px] shrink-0">

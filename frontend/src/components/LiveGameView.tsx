@@ -11,9 +11,6 @@ import {
   getSpellIconUrl,
   getRuneIconUrl,
   getStyleIconUrl,
-  getParticipantPosition,
-  getParticipantPositionOrder,
-  getPositionIconUrl,
 } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
 import { getWinrateColor } from '@/lib/utils';
@@ -74,12 +71,7 @@ export default function LiveGameView({
   const { game } = liveData;
 
   const renderRoster = (team: LiveGameParticipant[], isBlue: boolean) => {
-    // Sort team by position: TOP (1) -> JUNGLE (2) -> MID (3) -> ADC (4) -> SUPPORT (5)
-    const sortedTeam = [...team].sort((a, b) => {
-      const orderA = getParticipantPositionOrder(a);
-      const orderB = getParticipantPositionOrder(b);
-      return orderA - orderB;
-    });
+    const sortedTeam = team;
 
     // Bans belonging to this team
     const teamBans = (game.bans || []).filter(
@@ -151,7 +143,6 @@ export default function LiveGameView({
             const cleanName = pRiotId.includes('#') ? pRiotId.split('#')[0] : pRiotId;
             const cleanTag = pRiotId.includes('#') ? pRiotId.split('#')[1] : targetTag;
             const formattedTag = `${cleanName}-${cleanTag}`;
-            const pos = getParticipantPosition(p);
 
             const runeKeystone = getRuneIconUrl(p.primaryRune);
             const runeStyle = getStyleIconUrl(p.secondaryStyle);
@@ -289,21 +280,8 @@ export default function LiveGameView({
                         )}
                       </div>
 
-                      {/* Line 2: Position Badge + Champion Name */}
+                      {/* Line 2: Champion Name */}
                       <div className="flex items-center gap-1.5 text-xs text-zinc-300 mt-0.5">
-                        {pos && (
-                          <div className="flex items-center gap-1 rounded bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-black uppercase text-zinc-300 shrink-0">
-                            <Image
-                              src={getPositionIconUrl(pos)}
-                              alt={pos}
-                              width={12}
-                              height={12}
-                              className="h-3 w-3 object-contain opacity-75"
-                              unoptimized
-                            />
-                            <span>{pos}</span>
-                          </div>
-                        )}
                         <span className="font-semibold text-zinc-200 truncate">
                           {p.championName}
                         </span>
