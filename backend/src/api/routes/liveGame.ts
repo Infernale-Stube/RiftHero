@@ -21,8 +21,16 @@ export async function liveGameRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const result = await getLiveGame(region, gameName, tagLine);
-      return result;
+      try {
+        const result = await getLiveGame(region, gameName, tagLine);
+        return result;
+      } catch (err: any) {
+        console.error('[LiveGame Route Error]:', err);
+        return {
+          inGame: false,
+          message: 'Fehler beim Abrufen des Live-Spiels: ' + (err?.message || 'Unbekannter Fehler'),
+        };
+      }
     }
   );
 }

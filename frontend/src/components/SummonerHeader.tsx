@@ -294,20 +294,27 @@ export default function SummonerHeader({
             {t('summoner.tabChallenges')}
           </Link>
 
-          {isLive && (
-            <Link
-              href={`${basePath}/live`}
-              onClick={() => onTabChange?.('live')}
-              className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
-                currentTab === 'live'
-                  ? 'text-emerald-400 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-emerald-500'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-400" />
-              <span>{t('summoner.tabLive')}</span>
-            </Link>
-          )}
+          <Link
+            href={`${basePath}/live`}
+            onClick={() => onTabChange?.('live')}
+            className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
+              currentTab === 'live'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                : isLive
+                ? 'text-emerald-400 hover:text-emerald-300'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            {isLive ? (
+              <span className="relative flex h-2 w-2 mr-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+            ) : (
+              <Radio className="h-3.5 w-3.5 text-zinc-500" />
+            )}
+            <span>{t('summoner.tabLive')}</span>
+          </Link>
         </div>
       </div>
     </div>

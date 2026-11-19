@@ -58,7 +58,7 @@ export default function LiveGameView({
           {t('live.notInGame')}
         </h3>
         <p className="text-xs text-slate-400 max-w-md mb-6">
-          {t('live.notInGameDesc', { name: `${gameName}#${tagLine}` })}
+          {liveData?.message || t('live.notInGameDesc', { name: `${gameName}#${tagLine}` })}
         </p>
         <button
           onClick={onRefresh}

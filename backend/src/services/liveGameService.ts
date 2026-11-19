@@ -4,6 +4,7 @@ import { config } from '../config';
 import {
   normalizeRegion,
   getPlatformForRegion,
+  getClusterForRegion,
   getQueueName,
 } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
@@ -134,6 +135,13 @@ export interface LiveGameResponse {
   message?: string;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
+
 export async function getLiveGame(
   rawRegion: string,
   gameName: string,
@@ -141,52 +149,101 @@ export async function getLiveGame(
 ): Promise<LiveGameResponse> {
   const region = normalizeRegion(rawRegion);
   const platform = getPlatformForRegion(region);
+  const cleanTag = tagLine ? tagLine.replace(/^#/, '').trim() : '';
 
-  // 1. Obtain summoner PUUID from DB
+  // 1. Obtain summoner PUUID from DB (with flexible tag matching)
   let summoner = await prisma.summoner.findFirst({
     where: {
       region,
       gameName: { equals: gameName, mode: 'insensitive' },
-      tagLine: { equals: tagLine, mode: 'insensitive' },
+      ...(cleanTag ? { tagLine: { equals: cleanTag, mode: 'insensitive' } } : {}),
     },
     select: { puuid: true, id: true, summonerLevel: true },
   });
+
+  if (!summoner) {
+    summoner = await prisma.summoner.findFirst({
+      where: {
+        gameName: { equals: gameName, mode: 'insensitive' },
+        ...(cleanTag ? { tagLine: { equals: cleanTag, mode: 'insensitive' } } : {}),
+      },
+      select: { puuid: true, id: true, summonerLevel: true },
+    });
+  }
 
   const rApi = getRiotClient();
 
   // If summoner not yet in DB, fetch account directly to get puuid
   let puuid = summoner?.puuid;
   if (!puuid) {
+    const cluster = getClusterForRegion(region);
     try {
-      const cluster = platform.toLowerCase().startsWith('eu') ? 'europe' : 'americas';
       const acc = await rApi.account.getByRiotId({
         region: cluster as any,
         gameName,
-        tagLine,
+        tagLine: cleanTag || region.toUpperCase(),
       });
-      puuid = acc.puuid;
+      puuid = acc?.puuid;
     } catch {
-      return { inGame: false, message: 'Spieler konnte nicht gefunden werden' };
+      // Direct REST fallback for Account-v1
+      if (config.riotApiKey) {
+        try {
+          const res = await fetch(
+            `https://${cluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(cleanTag || region.toUpperCase())}`,
+            { headers: { 'X-Riot-Token': config.riotApiKey } }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as any;
+            puuid = data?.puuid;
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
   }
 
-  // 2. Query Spectator-v5 via rApi
+  if (!puuid) {
+    return { inGame: false, message: 'Spieler konnte nicht gefunden werden.' };
+  }
+
+  // 2. Query Spectator-v5 via rApi with direct fetch fallback
   let currentGame: any;
   try {
-    // In Spectator v5, summonerId parameter accepts encryptedPUUID
     currentGame = await rApi.spectator.getBySummonerId({
       region: platform as any,
       summonerId: puuid,
     });
   } catch (err: any) {
-    // 404 means player is not currently in a live match
-    if (err.status === 404 || err.statusCode === 404 || (err.message && err.message.includes('404'))) {
+    const status = err?.status || err?.statusCode || err?.response?.status;
+    if (status === 404 || (err?.message && err.message.includes('404'))) {
       return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
     }
-    return { inGame: false, message: 'Kein aktives Spiel gefunden oder Spectator-Service nicht verfügbar.' };
+
+    // Direct Spectator-v5 fallback
+    if (config.riotApiKey) {
+      try {
+        const specUrl = `https://${platform.toLowerCase()}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${encodeURIComponent(puuid)}`;
+        const specRes = await fetch(specUrl, {
+          headers: { 'X-Riot-Token': config.riotApiKey },
+        });
+        if (specRes.status === 404) {
+          return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+        }
+        if (specRes.ok) {
+          currentGame = await specRes.json();
+        }
+      } catch (specErr) {
+        console.error('[Spectator direct fetch error]:', specErr);
+      }
+    }
+
+    if (!currentGame) {
+      return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+    }
   }
 
-  if (!currentGame || !currentGame.participants) {
+  if (!currentGame || !Array.isArray(currentGame.participants) || currentGame.participants.length === 0) {
     return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
   }
 
@@ -222,25 +279,28 @@ export async function getLiveGame(
     champStatsMap.set(key, entry);
   }
 
-  // 3c. For participants missing soloRank in DB, fetch live from Riot League API
-  const missingRankPuuids = participantPuuids.filter((puuid) => {
-    const dbEntry = summonerMap.get(puuid);
+  // 3c. For participants missing soloRank in DB, fetch live from Riot League API (with timeout protection)
+  const missingRankPuuids = participantPuuids.filter((pId) => {
+    const dbEntry = summonerMap.get(pId);
     return !dbEntry?.ranks?.some((r: any) => r.queueType === 'RANKED_SOLO_5x5');
   });
 
   const liveRankMap = new Map<string, any>();
   if (missingRankPuuids.length > 0) {
     await Promise.allSettled(
-      missingRankPuuids.map(async (puuid) => {
+      missingRankPuuids.slice(0, 10).map(async (pId) => {
         try {
-          const entries = await rApi.league.getEntriesByPUUID({
-            region: platform as any,
-            puuid,
-          });
-          const solo = entries.find((e: any) => e.queueType === 'RANKED_SOLO_5x5');
+          const entries = await withTimeout(
+            rApi.league.getEntriesByPUUID({
+              region: platform as any,
+              puuid: pId,
+            }),
+            2000
+          );
+          const solo = entries?.find((e: any) => e.queueType === 'RANKED_SOLO_5x5');
           if (solo) {
             const total = solo.wins + solo.losses;
-            liveRankMap.set(puuid, {
+            liveRankMap.set(pId, {
               tier: solo.tier,
               rank: solo.rank,
               leaguePoints: solo.leaguePoints,
@@ -256,35 +316,41 @@ export async function getLiveGame(
     );
   }
 
-  // 3d. Resolve summonerLevel for participants missing in DB
-  const missingLevelPuuids = participantPuuids.filter((puuid) => {
-    const dbEntry = summonerMap.get(puuid);
+  // 3d. Resolve summonerLevel for participants missing in DB (with timeout protection)
+  const missingLevelPuuids = participantPuuids.filter((pId) => {
+    const dbEntry = summonerMap.get(pId);
     return !dbEntry?.summonerLevel;
   });
 
   const liveLevelMap = new Map<string, number>();
   if (missingLevelPuuids.length > 0) {
     await Promise.allSettled(
-      missingLevelPuuids.map(async (puuid) => {
+      missingLevelPuuids.slice(0, 10).map(async (pId) => {
         try {
-          const sumDto = await rApi.summoner.getByPUUID({
-            region: platform as any,
-            puuid,
-          });
+          const sumDto = await withTimeout(
+            rApi.summoner.getByPUUID({
+              region: platform as any,
+              puuid: pId,
+            }),
+            2000
+          );
           if (sumDto && typeof sumDto.summonerLevel === 'number') {
-            liveLevelMap.set(puuid, sumDto.summonerLevel);
+            liveLevelMap.set(pId, sumDto.summonerLevel);
           }
         } catch {
           if (config.riotApiKey) {
             try {
-              const res = await fetch(
-                `https://${platform.toLowerCase()}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
-                { headers: { 'X-Riot-Token': config.riotApiKey } }
+              const res = await withTimeout(
+                fetch(
+                  `https://${platform.toLowerCase()}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(pId)}`,
+                  { headers: { 'X-Riot-Token': config.riotApiKey } }
+                ),
+                2000
               );
               if (res.ok) {
                 const data = (await res.json()) as any;
                 if (data && typeof data.summonerLevel === 'number') {
-                  liveLevelMap.set(puuid, data.summonerLevel);
+                  liveLevelMap.set(pId, data.summonerLevel);
                 }
               }
             } catch {
@@ -323,8 +389,9 @@ export async function getLiveGame(
     const champStats = champStatsMap.get(`${p.puuid}_${p.championId}`) || null;
     const teamPosition = resolveParticipantPosition(p, champName);
 
-    const primaryRune = p.perks?.perkIds?.[0] || null;
-    const secondaryStyle = p.perks?.perkSubStyle || null;
+    // Support both perks and runes structures
+    const primaryRune = p.runes?.perkIds?.[0] || p.perks?.perkIds?.[0] || null;
+    const secondaryStyle = p.runes?.perkSubStyle || p.perks?.perkSubStyle || null;
 
     const summonerLevel =
       dbEntry?.summonerLevel ||
@@ -356,19 +423,23 @@ export async function getLiveGame(
     }
   }
 
-  // 4. Resolve bans
+  // 4. Resolve bans (support both currentGame.bans and currentGame.bannedChampions)
+  const rawBans = Array.isArray(currentGame.bans)
+    ? currentGame.bans
+    : Array.isArray(currentGame.bannedChampions)
+    ? currentGame.bannedChampions
+    : [];
+
   const bans: BannedChampion[] = [];
-  if (Array.isArray(currentGame.bannedChampions)) {
-    for (const b of currentGame.bannedChampions) {
-      if (b.championId > 0) {
-        const champName = await getChampionNameById(b.championId);
-        bans.push({
-          championId: b.championId,
-          championName: champName,
-          teamId: b.teamId,
-          pickTurn: b.pickTurn,
-        });
-      }
+  for (const b of rawBans) {
+    if (b.championId > 0) {
+      const champName = await getChampionNameById(b.championId);
+      bans.push({
+        championId: b.championId,
+        championName: champName,
+        teamId: b.teamId,
+        pickTurn: b.pickTurn || 0,
+      });
     }
   }
 

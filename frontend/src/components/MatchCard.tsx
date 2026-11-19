@@ -217,9 +217,25 @@ export default function MatchCard({ match, region }: MatchCardProps) {
     const sideGrubs = obj.horde?.kills ?? obj.riftHerald?.kills ?? 0;
 
     return (
-      <div className="flex flex-col rounded-xl border border-white/[0.06] bg-black/40 overflow-hidden">
+      <div
+        className={`flex flex-col rounded-xl border overflow-hidden ${
+          isRemake
+            ? 'border-slate-800 bg-[#12151c]/90'
+            : teamWon
+            ? 'border-emerald-500/25 bg-[#07190f]/90'
+            : 'border-rose-500/25 bg-[#17060a]/90'
+        }`}
+      >
         {/* Team Header Row */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 text-xs border-b border-white/[0.06] bg-white/[0.02]">
+        <div
+          className={`flex items-center justify-between px-3.5 py-2.5 text-xs border-b ${
+            isRemake
+              ? 'border-slate-700/30 bg-slate-800/30 text-slate-300'
+              : teamWon
+              ? 'border-emerald-500/20 bg-emerald-950/40 text-emerald-300'
+              : 'border-rose-500/20 bg-rose-950/40 text-rose-300'
+          }`}
+        >
           {/* Left: Outcome, Side, Objective counters, Bans */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
@@ -228,7 +244,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   isRemake
                     ? 'text-slate-400'
                     : teamWon
-                    ? 'text-teal-400'
+                    ? 'text-emerald-400'
                     : 'text-rose-400'
                 }`}
               >
@@ -539,7 +555,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                         rankInfo.isMvp
                           ? 'text-amber-400 text-sm'
                           : rankInfo.isAce
-                          ? 'text-teal-400 text-sm'
+                          ? 'text-emerald-400 text-sm'
                           : 'text-zinc-200'
                       }`}
                     >
@@ -555,25 +571,25 @@ export default function MatchCard({ match, region }: MatchCardProps) {
     );
   };
 
-  // Sleek, refined outcome colors
+  // Saturated, rich outcome colors (Victory = emerald green, Defeat = crimson red, not pale!)
   const outcomeText = isRemake ? 'REMAKE' : win ? 'VICTORY' : 'DEFEAT';
   const cardBgClass = isRemake
-    ? 'bg-[#13161c]/95 border-slate-700/30 hover:border-slate-600/40'
+    ? 'bg-[#12151c]/95 border-slate-700/40 hover:border-slate-600/50'
     : win
-    ? 'bg-[#101722]/95 border-sky-900/30 hover:border-sky-700/40'
-    : 'bg-[#181216]/95 border-rose-950/40 hover:border-rose-900/40';
+    ? 'bg-gradient-to-r from-[#0c2417] via-[#091b11] to-[#07140d] border-emerald-500/40 hover:border-emerald-400/60 shadow-[0_4px_24px_rgba(16,185,129,0.08)]'
+    : 'bg-gradient-to-r from-[#2c0d14] via-[#20090e] to-[#150508] border-rose-500/40 hover:border-rose-400/60 shadow-[0_4px_24px_rgba(244,63,94,0.08)]';
 
   const accentBarClass = isRemake
-    ? 'bg-slate-500'
+    ? 'bg-slate-400'
     : win
-    ? 'bg-blue-500'
-    : 'bg-rose-500/90';
+    ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.85)]'
+    : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.85)]';
 
   const outcomeTextClass = isRemake
-    ? 'text-slate-300'
+    ? 'text-slate-300 font-black'
     : win
-    ? 'text-sky-400'
-    : 'text-rose-400';
+    ? 'text-emerald-400 font-black'
+    : 'text-rose-400 font-black';
 
   return (
     <div
@@ -775,8 +791,8 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   <span>MVP {formatScore(participant.score)}</span>
                 </span>
               ) : participant.score.isAce ? (
-                <span className="flex items-center gap-1 rounded bg-teal-500/20 border border-teal-500/40 px-2 py-0.5 text-xs font-black text-teal-300 shadow-sm">
-                  <Award className="h-3 w-3 text-teal-400" />
+                <span className="flex items-center gap-1 rounded bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-xs font-black text-emerald-300 shadow-sm">
+                  <Award className="h-3 w-3 text-emerald-400" />
                   <span>ACE {formatScore(participant.score)}</span>
                 </span>
               ) : (
