@@ -124,7 +124,7 @@ export default function SummonerLayout({
         reloadLiveGame: loadLiveGame,
       }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
         <AutoRefreshWatcher
           region={region}
           tag={tag}
@@ -138,6 +138,9 @@ export default function SummonerLayout({
             ranks={profileData.ranks}
             isUpdating={profileData.isUpdating}
             isLive={liveData?.inGame || false}
+            liveData={liveData}
+            isLoadingLive={isLoadingLive}
+            onRefreshLive={loadLiveGame}
           />
         </div>
 

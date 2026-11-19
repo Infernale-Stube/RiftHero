@@ -37,28 +37,6 @@ export default function LiveGameView({
   onRefresh,
 }: LiveGameViewProps) {
   const { t } = useTranslation();
-  // Live Timer
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!liveData?.inGame || !liveData.game) return;
-
-    const startTime = liveData.game.gameStartTime;
-    const initialElapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
-    setElapsedSeconds(initialElapsed);
-
-    const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [liveData]);
-
-  const formatTimer = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
 
   if (isLoading) {
     return (
@@ -404,42 +382,6 @@ export default function LiveGameView({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Live Game Top Status Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-black/60 to-black/60 p-5 shadow-xl">
-        <div className="flex items-center gap-3.5 mb-3 sm:mb-0">
-          <div className="flex h-3 w-3 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                {t('live.gameActive')}
-              </span>
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs font-bold text-white">{game.queueName}</span>
-            </div>
-            <div className="text-xs text-slate-400 mt-0.5">
-              {t('live.gameMode', { mode: game.gameMode })}
-            </div>
-          </div>
-        </div>
-
-        {/* Live Timer Counter & Refresh */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 font-mono text-base font-black text-amber-300">
-            <span>{formatTimer(elapsedSeconds)}</span>
-          </div>
-          <button
-            onClick={onRefresh}
-            className="flex items-center justify-center h-10 w-10 rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
-            title={t('live.refreshTitle')}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Team Rosters Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {renderRoster(game.blueTeam, true)}

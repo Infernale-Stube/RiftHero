@@ -1,10 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Globe, ChevronLeft } from 'lucide-react';
-import { SummonerData, SummonerRank } from '@/types';
+import { Radio, Globe, ChevronLeft, RefreshCw } from 'lucide-react';
+import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
@@ -17,6 +18,9 @@ interface SummonerHeaderProps {
   activeTab?: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live';
   onTabChange?: (tab: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live') => void;
   isLive?: boolean;
+  liveData?: LiveGameResponse | null;
+  isLoadingLive?: boolean;
+  onRefreshLive?: () => void;
 }
 
 export default function SummonerHeader({
@@ -26,10 +30,36 @@ export default function SummonerHeader({
   activeTab: controlledTab,
   onTabChange,
   isLive = false,
+  liveData,
+  isLoadingLive = false,
+  onRefreshLive,
 }: SummonerHeaderProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const cleanPath = (pathname || '').replace(/\/$/, '');
+
+  // Live Timer for active match
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!liveData?.inGame || !liveData.game) return;
+
+    const startTime = liveData.game.gameStartTime;
+    const initialElapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+    setElapsedSeconds(initialElapsed);
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [liveData]);
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   // Resolve active tab from URL path or prop
   const currentTab =
@@ -180,14 +210,51 @@ export default function SummonerHeader({
             </div>
           </div>
 
-          {/* Right Block: Clean and quiet without any sync notifications */}
-          {summoner.lastFetchedAt && (
-            <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
+          {/* Right Block: Live Game Info or Cached Time */}
+          <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+            {liveData?.inGame && liveData.game ? (
+              <div className="flex items-center gap-3 bg-gradient-to-r from-rose-950/80 via-black/80 to-black/90 border border-rose-500/40 rounded-xl px-4 py-2.5 shadow-xl backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                  </span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black uppercase tracking-wider text-rose-400">
+                        {t('live.gameActive')}
+                      </span>
+                      <span className="text-zinc-600 text-xs">•</span>
+                      <span className="text-xs font-bold text-white">{liveData.game.queueName}</span>
+                    </div>
+                    <span className="text-[11px] text-zinc-400 font-medium">
+                      {t('live.gameMode', { mode: liveData.game.gameMode })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pl-3 border-l border-white/10">
+                  <div className="font-mono text-sm sm:text-base font-black text-amber-300 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 shadow-inner">
+                    {formatTimer(elapsedSeconds)}
+                  </div>
+                  {onRefreshLive && (
+                    <button
+                      onClick={onRefreshLive}
+                      disabled={isLoadingLive}
+                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-white/10 bg-white/[0.06] text-zinc-300 hover:text-white hover:bg-white/[0.12] transition-colors disabled:opacity-50"
+                      title={t('live.refreshTitle')}
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isLoadingLive ? 'animate-spin text-orange-400' : ''}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : summoner.lastFetchedAt ? (
               <span className="text-[11px] text-zinc-500 font-medium">
                 {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
               </span>
-            </div>
-          )}
+            ) : null}
+          </div>
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}

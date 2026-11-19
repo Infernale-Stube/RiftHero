@@ -101,7 +101,7 @@ export default function SummonerMatchesPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
-      <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
+      <div className="w-full lg:w-[350px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
         {/* Ranked Solo/Duo Card with LP History Graph */}
         <RankCard
           title={t('summoner.soloRank')}
