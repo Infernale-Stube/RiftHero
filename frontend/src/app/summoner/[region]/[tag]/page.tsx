@@ -8,18 +8,24 @@ import {
   fetchSummonerMatches,
   fetchChampionStats,
   fetchLiveGame,
+  fetchLpHistory,
+  fetchPlayedWith,
 } from '@/lib/api';
 import {
   SummonerProfileResponse,
   FormattedMatch,
   ChampionStatSummary,
   LiveGameResponse,
+  LpHistorySummary,
+  PlayedWithTeammate,
 } from '@/types';
 import SummonerHeader from '@/components/SummonerHeader';
 import ChampionStats from '@/components/ChampionStats';
 import MatchHistory from '@/components/MatchHistory';
 import LiveGameView from '@/components/LiveGameView';
 import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
+import RankCard from '@/components/RankCard';
+import PlayedWithWidget from '@/components/PlayedWithWidget';
 
 export default function SummonerPage() {
   const params = useParams();
@@ -37,6 +43,10 @@ export default function SummonerPage() {
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [champStats, setChampStats] = useState<ChampionStatSummary[]>([]);
   const [activeQueue, setActiveQueue] = useState<string>('all');
+
+  // LP History & Teammates state
+  const [lpHistory, setLpHistory] = useState<LpHistorySummary | null>(null);
+  const [playedWith, setPlayedWith] = useState<PlayedWithTeammate[]>([]);
 
   // Live Game State
   const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
@@ -65,13 +75,17 @@ export default function SummonerPage() {
     if (!region || !tag) return;
     setIsLoadingMatches(true);
     try {
-      const [matchesRes, statsRes] = await Promise.all([
+      const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
         fetchSummonerMatches(region, tag, queue, 20, 0),
         fetchChampionStats(region, tag, queue),
+        fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
+        fetchPlayedWith(region, tag, 5),
       ]);
       setMatches(matchesRes.matches);
       setTotalMatches(matchesRes.total);
       setChampStats(statsRes);
+      setLpHistory(lpHRes);
+      setPlayedWith(playedRes);
     } catch (err: any) {
       console.error('Failed to load matches/stats:', err);
     } finally {
@@ -110,7 +124,7 @@ export default function SummonerPage() {
 
   useEffect(() => {
     loadProfile();
-    loadLiveGame(); // Check silently if live game is currently ongoing
+    loadLiveGame();
   }, [loadProfile, loadLiveGame]);
 
   useEffect(() => {
@@ -137,9 +151,9 @@ export default function SummonerPage() {
   if (isLoadingProfile) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-4">
-        <Loader2 className="h-10 w-10 animate-spin text-hextech-blue mb-4" />
-        <h2 className="text-lg font-bold text-slate-200">Profil wird geladen...</h2>
-        <p className="text-xs text-slate-500 mt-1">PostgreSQL & Riot API Überprüfung</p>
+        <Loader2 className="h-10 w-10 animate-spin text-orange-400 mb-4" />
+        <h2 className="text-lg font-bold text-zinc-200">Profil wird geladen...</h2>
+        <p className="text-xs text-zinc-500 mt-1">PostgreSQL & Riot API Überprüfung</p>
       </div>
     );
   }
@@ -150,7 +164,7 @@ export default function SummonerPage() {
         <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-8 shadow-xl">
           <AlertCircle className="mx-auto h-12 w-12 text-rose-400 mb-3" />
           <h2 className="text-xl font-bold text-white mb-2">Profil konnte nicht geladen werden</h2>
-          <p className="text-sm text-slate-300">{error}</p>
+          <p className="text-sm text-zinc-300">{error}</p>
         </div>
       </div>
     );
@@ -160,16 +174,16 @@ export default function SummonerPage() {
   if (!profileData?.summoner) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-4 text-center">
-        <div className="rounded-2xl border border-hextech-blue/30 bg-black/60 p-8 max-w-md shadow-2xl backdrop-blur-md">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-hextech-blue mb-4" />
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0d1116] p-8 max-w-md shadow-2xl backdrop-blur-md">
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-orange-400 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">
             Neuer Spieler wird erfasst
           </h2>
-          <p className="text-sm text-slate-300 mb-4">
-            Dieses Profil ist noch nicht in PostgreSQL gespeichert. Der Worker ruft gerade Matches und Liga-Ränge über die Riot Production API ab.
+          <p className="text-sm text-zinc-400 mb-4">
+            Dieses Profil ist noch nicht in PostgreSQL gespeichert. Der Worker ruft gerade alle Matches und Liga-Ränge über die Riot Production API ab.
           </p>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-amber-300">
-            <span className="h-2 w-2 rounded-full bg-hextech-blue animate-ping" />
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-orange-300">
+            <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />
             <span>High-Priority Ingestion läuft...</span>
           </div>
         </div>
@@ -185,9 +199,11 @@ export default function SummonerPage() {
   }
 
   const { gameName, tagLine } = profileData.summoner;
+  const soloRank = profileData.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
+  const flexRank = profileData.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Auto-Refresh Background Watcher */}
       <AutoRefreshWatcher
         region={region}
@@ -196,8 +212,8 @@ export default function SummonerPage() {
         onRefreshCompleted={handleRefreshCompleted}
       />
 
-      {/* Summoner Header (Breadcrumb, Avatar, Level, Riot ID, Rank Cards, Section Tabs) */}
-      <div className="mb-8">
+      {/* LoLDB Header */}
+      <div className="mb-6">
         <SummonerHeader
           summoner={profileData.summoner}
           ranks={profileData.ranks}
@@ -205,6 +221,7 @@ export default function SummonerPage() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isLive={liveData?.inGame || false}
+          onRefresh={handleRefreshCompleted}
         />
       </div>
 
@@ -221,14 +238,9 @@ export default function SummonerPage() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Champion Overview Sidebar */}
-          <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6">
-            <ChampionStats stats={champStats} />
-          </div>
-
-          {/* Right Column: Match History with Details & "Mehr anzeigen" Pagination */}
-          <div className="lg:col-span-8 xl:col-span-8">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Main Column: Match History (LoLDB Left/Main) */}
+          <div className="flex-1 w-full min-w-0">
             <MatchHistory
               matches={matches}
               region={region}
@@ -239,6 +251,35 @@ export default function SummonerPage() {
               hasMore={matches.length < totalMatches}
               isLoadingMore={isLoadingMore}
               onLoadMore={handleLoadMore}
+            />
+          </div>
+
+          {/* Right Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
+          <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
+            {/* Ranked Solo/Duo Card with LP History Graph */}
+            <RankCard
+              title="Ranked Solo/Duo"
+              rankData={soloRank}
+              lpHistory={lpHistory}
+            />
+
+            {/* Ranked Flex Card (if ranked) */}
+            {flexRank && (
+              <RankCard
+                title="Ranked Flex"
+                rankData={flexRank}
+              />
+            )}
+
+            {/* Played With Synergy Widget (LoLDB Signature) */}
+            <PlayedWithWidget
+              teammates={playedWith}
+              region={region}
+            />
+
+            {/* Champion Stats */}
+            <ChampionStats
+              stats={champStats}
             />
           </div>
         </div>

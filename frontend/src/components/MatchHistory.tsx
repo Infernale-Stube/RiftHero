@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Swords, Loader2, ChevronDown } from 'lucide-react';
 import { FormattedMatch } from '@/types';
 import MatchCard from './MatchCard';
@@ -17,9 +18,9 @@ interface MatchHistoryProps {
 }
 
 const QUEUE_TABS = [
-  { id: 'all', label: 'Alle Spiele' },
-  { id: 'ranked_solo', label: 'Ranked Solo/Duo' },
-  { id: 'ranked_flex', label: 'Ranked Flex' },
+  { id: 'all', label: 'All' },
+  { id: 'ranked_solo', label: 'Solo' },
+  { id: 'ranked_flex', label: 'Flex' },
   { id: 'aram', label: 'ARAM' },
 ];
 
@@ -34,21 +35,79 @@ export default function MatchHistory({
   isLoadingMore = false,
   onLoadMore,
 }: MatchHistoryProps) {
+  // Group matches by day like LoLDB (e.g. "Today 2W 1L", "Yesterday 3W 0L", "Nov 17 6W 1L")
+  const groupedMatches = useMemo(() => {
+    const groups: Array<{
+      dateLabel: string;
+      wins: number;
+      losses: number;
+      matches: FormattedMatch[];
+    }> = [];
+
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+
+    const groupMap = new Map<string, { wins: number; losses: number; matches: FormattedMatch[] }>();
+    const order: string[] = [];
+
+    matches.forEach((m) => {
+      const d = new Date(m.gameCreation);
+      const dStr = d.toDateString();
+
+      let label = dStr;
+      if (dStr === todayStr) {
+        label = 'Today';
+      } else if (dStr === yesterdayStr) {
+        label = 'Yesterday';
+      } else {
+        label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
+      if (!groupMap.has(label)) {
+        groupMap.set(label, { wins: 0, losses: 0, matches: [] });
+        order.push(label);
+      }
+
+      const grp = groupMap.get(label)!;
+      grp.matches.push(m);
+      if (m.win) {
+        grp.wins++;
+      } else {
+        grp.losses++;
+      }
+    });
+
+    order.forEach((label) => {
+      const grp = groupMap.get(label)!;
+      groups.push({
+        dateLabel: label,
+        wins: grp.wins,
+        losses: grp.losses,
+        matches: grp.matches,
+      });
+    });
+
+    return groups;
+  }, [matches]);
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Queue Filter Tabs & Total Count Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+    <div className="flex flex-col gap-5">
+      {/* Queue Filter Bar (Exact LoLDB pill styling with orange indicator) */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04]">
           {QUEUE_TABS.map((tab) => {
             const isActive = activeQueue === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => onQueueChange(tab.id)}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                className={`relative rounded-[7px] px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-hextech-blue text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                    ? 'bg-white/[0.07] text-white after:absolute after:inset-x-[30%] after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-orange-400'
+                    : 'text-zinc-500 hover:text-zinc-200'
                 }`}
               >
                 {tab.label}
@@ -58,56 +117,70 @@ export default function MatchHistory({
         </div>
 
         {total > 0 && (
-          <span className="text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
-            {matches.length} von {total} Matches
+          <span className="text-xs text-zinc-500 font-medium">
+            {matches.length} of {total} Matches
           </span>
         )}
       </div>
 
-      {/* Match Cards List */}
+      {/* Match Cards List grouped by day */}
       {isLoading ? (
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-28 rounded-xl border border-white/[0.06] bg-black/40 animate-pulse"
+              className="h-24 rounded-xl border border-white/[0.06] bg-[#0d1116] animate-pulse"
             />
           ))}
         </div>
       ) : matches.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.08] bg-black/40 p-12 text-center">
-          <Swords className="mx-auto h-10 w-10 text-slate-600 mb-2.5" />
-          <p className="text-sm font-bold text-slate-200">
+        <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-12 text-center">
+          <Swords className="mx-auto h-10 w-10 text-zinc-600 mb-2.5" />
+          <p className="text-sm font-bold text-zinc-200">
             Keine Matches in dieser Kategorie gefunden
           </p>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
             Sobald der Hintergrund-Worker neue Matches analysiert hat, erscheinen sie automatisch hier.
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {matches.map((match) => (
-            <MatchCard key={match.matchId} match={match} region={region} />
+        <div className="flex flex-col gap-6">
+          {groupedMatches.map((group) => (
+            <div key={group.dateLabel} className="flex flex-col gap-2.5">
+              {/* Date Group Header: e.g. "Yesterday 3W 0L" */}
+              <div className="flex items-center gap-2 text-xs font-bold px-1">
+                <span className="text-zinc-300 font-black">{group.dateLabel}</span>
+                <span className="text-emerald-400">{group.wins}W</span>
+                <span className="text-rose-400">{group.losses}L</span>
+              </div>
+
+              {/* Day's Matches */}
+              <div className="flex flex-col gap-2.5">
+                {group.matches.map((match) => (
+                  <MatchCard key={match.matchId} match={match} region={region} />
+                ))}
+              </div>
+            </div>
           ))}
 
           {/* Load More Matches Button */}
           {hasMore && (
-            <div className="mt-4 flex justify-center">
+            <div className="mt-2 flex justify-center">
               <button
                 type="button"
                 onClick={onLoadMore}
                 disabled={isLoadingMore}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-6 py-3 text-xs font-bold text-slate-200 hover:bg-white/[0.09] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:border-white/20 active:scale-98"
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-6 py-3 text-xs font-bold text-zinc-200 hover:bg-white/[0.09] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:border-white/20 active:scale-98"
               >
                 {isLoadingMore ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin text-hextech-blue" />
+                    <Loader2 className="h-4 w-4 animate-spin text-orange-400" />
                     <span>Lade weitere Matches...</span>
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="h-4 w-4 text-hextech-blue" />
-                    <span>Mehr Spiele anzeigen (+20)</span>
+                    <ChevronDown className="h-4 w-4 text-orange-400" />
+                    <span>Mehr Matches anzeigen (+20)</span>
                   </>
                 )}
               </button>
@@ -115,7 +188,7 @@ export default function MatchHistory({
           )}
 
           {!hasMore && matches.length > 0 && (
-            <div className="text-center py-4 text-xs text-slate-500 font-medium">
+            <div className="text-center py-4 text-xs text-zinc-500 font-medium">
               Alle gespeicherten Matches geladen ({matches.length})
             </div>
           )}

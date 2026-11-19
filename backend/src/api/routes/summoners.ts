@@ -5,6 +5,8 @@ import {
 } from '../../services/summonerService';
 import { getSummonerJobStatus } from '../../queue/bullmq';
 import { normalizeRegion } from '../../riot/regions';
+import { prisma } from '../../db/prisma';
+import { getSummonerLpHistory, getPlayedWithStats } from '../../services/lpService';
 
 export function parseRiotIdTag(tagParam: string): { gameName: string; tagLine: string } {
   const decoded = decodeURIComponent(tagParam);
@@ -74,6 +76,67 @@ export async function summonerRoutes(fastify: FastifyInstance) {
 
       const status = await getSummonerJobStatus(normalizeRegion(region), gameName, tagLine);
       return { status };
+    }
+  );
+
+  // LP History progression for LP graph
+  fastify.get(
+    '/summoners/:region/:tag/lp-history',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+        Querystring: { queue?: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { queue = 'RANKED_SOLO_5x5' } = request.query;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      const summoner = await prisma.summoner.findFirst({
+        where: {
+          region: normalizeRegion(region),
+          gameName: { equals: gameName, mode: 'insensitive' },
+          tagLine: { equals: tagLine, mode: 'insensitive' },
+        },
+      });
+
+      if (!summoner) {
+        return reply.status(404).send({ error: 'Summoner not found' });
+      }
+
+      return await getSummonerLpHistory(summoner.id, summoner.puuid, queue);
+    }
+  );
+
+  // Played With teammates synergy
+  fastify.get(
+    '/summoners/:region/:tag/played-with',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+        Querystring: { limit?: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { limit } = request.query;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      const summoner = await prisma.summoner.findFirst({
+        where: {
+          region: normalizeRegion(region),
+          gameName: { equals: gameName, mode: 'insensitive' },
+          tagLine: { equals: tagLine, mode: 'insensitive' },
+        },
+      });
+
+      if (!summoner) {
+        return [];
+      }
+
+      const take = limit ? Math.min(parseInt(limit, 10), 20) : 5;
+      return await getPlayedWithStats(summoner.puuid, take);
     }
   );
 }

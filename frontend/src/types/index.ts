@@ -28,6 +28,41 @@ export interface SummonerProfileResponse {
   status: 'cached' | 'fetching' | 'not_found';
 }
 
+export interface LpPoint {
+  date: string;
+  timestamp: number;
+  tier: string;
+  rank: string;
+  leaguePoints: number;
+  totalLp: number;
+  delta: number;
+  win?: boolean;
+}
+
+export interface LpHistorySummary {
+  queueType: string;
+  currentTier: string;
+  currentRank: string;
+  currentLp: number;
+  netDeltaLp: number;
+  peakTier: string;
+  peakRank: string;
+  peakLp: number;
+  longestWinStreak: number;
+  points: LpPoint[];
+}
+
+export interface PlayedWithTeammate {
+  puuid: string;
+  gameName: string;
+  tagLine: string;
+  profileIconId?: number;
+  games: number;
+  wins: number;
+  losses: number;
+  winrate: number;
+}
+
 export interface MatchParticipant {
   puuid: string;
   riotIdGameName: string;

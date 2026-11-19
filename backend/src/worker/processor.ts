@@ -11,6 +11,7 @@ import {
   enqueueLowPrioritySummoner,
 } from '../queue/bullmq';
 import { config } from '../config';
+import { recordLpSnapshot } from '../services/lpService';
 
 export async function processSummonerJob(job: Job<SummonerJobData>): Promise<void> {
   const { gameName, tagLine, region: rawRegion, matchCount, isSnowball } = job.data;
@@ -145,6 +146,21 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
           hotStreak: entry.hotStreak || false,
         },
       });
+
+      // Record LP Snapshot for tracking
+      try {
+        await recordLpSnapshot(
+          savedSummoner.id,
+          entry.queueType,
+          entry.tier,
+          entry.rank,
+          entry.leaguePoints,
+          entry.wins,
+          entry.losses
+        );
+      } catch (lpErr) {
+        // Ignore snapshot errors
+      }
     }
   }
 

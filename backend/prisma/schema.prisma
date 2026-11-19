@@ -24,6 +24,7 @@ model Summoner {
   updatedAt      DateTime  @updatedAt
 
   ranks          SummonerRank[]
+  lpSnapshots    SummonerLpSnapshot[]
   participants   MatchParticipant[]
 
   @@index([gameName, tagLine])
@@ -52,6 +53,25 @@ model SummonerRank {
   @@unique([summonerId, queueType])
   @@index([tier, leaguePoints])
   @@map("summoner_ranks")
+}
+
+model SummonerLpSnapshot {
+  id           String   @id @default(cuid())
+  summonerId   String
+  queueType    String   // RANKED_SOLO_5x5, RANKED_FLEX_SR
+  tier         String   // IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
+  rank         String   // I, II, III, IV
+  leaguePoints Int      @default(0)
+  totalLp      Int      @default(0) // Continuous ladder point: Iron IV 0LP = 0, Silver IV = 800, etc.
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  delta        Int?     // LP delta since previous snapshot (+24, -19)
+  recordedAt   DateTime @default(now())
+
+  summoner     Summoner @relation(fields: [summonerId], references: [id], onDelete: Cascade)
+
+  @@index([summonerId, queueType, recordedAt(sort: Desc)])
+  @@map("summoner_lp_snapshots")
 }
 
 model Match {

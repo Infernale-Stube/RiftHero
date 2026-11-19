@@ -5,6 +5,8 @@ import {
   RecentSummoner,
   LiveGameResponse,
   MatchDetailResponse,
+  LpHistorySummary,
+  PlayedWithTeammate,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -142,5 +144,41 @@ export async function fetchMatchDetails(
   } catch (err) {
     console.error(`Failed to fetch match details for ${matchId}:`, err);
     return null;
+  }
+}
+
+export async function fetchLpHistory(
+  region: string,
+  tag: string,
+  queue = 'RANKED_SOLO_5x5'
+): Promise<LpHistorySummary | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(
+      `${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/lp-history?queue=${encodeURIComponent(queue)}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchPlayedWith(
+  region: string,
+  tag: string,
+  limit = 5
+): Promise<PlayedWithTeammate[]> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(
+      `${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/played-with?limit=${limit}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
   }
 }
