@@ -1,7 +1,5 @@
-import HomeView from '@/components/HomeView';
+import { redirect } from 'next/navigation';
 
-export const revalidate = 300; // cache page
-
-export default function HomePage() {
-  return <HomeView />;
+export default function RootPage() {
+  redirect('/de');
 }

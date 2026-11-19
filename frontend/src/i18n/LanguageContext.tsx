@@ -1,11 +1,20 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Locale, TranslationDictionary, translations } from './translations';
 
 interface LanguageContextType {
   locale: Locale;
   setLocale: (loc: Locale) => void;
+  localePath: (path: string) => string;
   t: (path: string, params?: Record<string, string | number>) => string;
   dict: TranslationDictionary;
 }
@@ -13,62 +22,66 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('de');
-  const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
 
+  // Determine current locale from URL path prefix (/en/... or /de/...)
+  const pathLocale: Locale = pathname?.startsWith('/en') ? 'en' : 'de';
+  const [locale, setLocaleState] = useState<Locale>(pathLocale);
+
+  // Synchronize when pathname changes (e.g. user clicked /en or /de link)
   useEffect(() => {
-    setIsMounted(true);
-    try {
-      // 1. Prioritize URL parameter (?lang=en or ?lang=de or ?hl=en or ?locale=en)
-      let fromUrl: Locale | null = null;
-      if (typeof window !== 'undefined') {
-        const searchParams = new URLSearchParams(window.location.search);
-        const urlLang = searchParams.get('lang') || searchParams.get('hl') || searchParams.get('locale');
-        if (urlLang === 'de' || urlLang === 'en') {
-          fromUrl = urlLang;
-        }
-      }
-
-      if (fromUrl) {
-        setLocaleState(fromUrl);
-        localStorage.setItem('rifthero_locale', fromUrl);
-        document.documentElement.lang = fromUrl;
-        return;
-      }
-
-      // 2. Fallback to localStorage
-      const saved = localStorage.getItem('rifthero_locale') as Locale | null;
-      if (saved === 'de' || saved === 'en') {
-        setLocaleState(saved);
-        document.documentElement.lang = saved;
-      } else if (typeof navigator !== 'undefined') {
-        // 3. Fallback to browser language
-        const browserLang = navigator.language.toLowerCase();
-        const detected: Locale = browserLang.startsWith('de') ? 'de' : 'en';
-        setLocaleState(detected);
-        document.documentElement.lang = detected;
-      }
-    } catch {
-      // Ignore localStorage read errors (e.g. private mode)
+    if (pathLocale !== locale) {
+      setLocaleState(pathLocale);
+      document.documentElement.lang = pathLocale;
     }
-  }, []);
+  }, [pathLocale, locale]);
 
-  const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
+  // Set document language and sync cookie on mount or change
+  useEffect(() => {
     try {
-      localStorage.setItem('rifthero_locale', newLocale);
-      document.documentElement.lang = newLocale;
-
-      // Keep URL search param in sync (?lang=de / ?lang=en)
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('lang', newLocale);
-        window.history.replaceState({}, '', url.toString());
-      }
+      document.documentElement.lang = locale;
+      localStorage.setItem('rifthero_locale', locale);
+      document.cookie = `rifthero_locale=${locale}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
       // Ignore
     }
-  }, []);
+  }, [locale]);
+
+  const setLocale = useCallback(
+    (newLocale: Locale) => {
+      setLocaleState(newLocale);
+      try {
+        localStorage.setItem('rifthero_locale', newLocale);
+        document.cookie = `rifthero_locale=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+        document.documentElement.lang = newLocale;
+
+        if (pathname) {
+          const pathWithoutLocale = pathname.replace(/^\/(de|en)(\/|$)/, '/');
+          const targetPath =
+            pathWithoutLocale === '/'
+              ? `/${newLocale}`
+              : `/${newLocale}${pathWithoutLocale.startsWith('/') ? pathWithoutLocale : `/${pathWithoutLocale}`}`;
+
+          const search = typeof window !== 'undefined' ? window.location.search : '';
+          const hash = typeof window !== 'undefined' ? window.location.hash : '';
+          router.push(`${targetPath}${search}${hash}`);
+        }
+      } catch {
+        // Ignore
+      }
+    },
+    [pathname, router]
+  );
+
+  const localePath = useCallback(
+    (path: string): string => {
+      const clean = path.replace(/^\/(de|en)(\/|$)/, '/');
+      const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+      return normalized === '/' ? `/${locale}` : `/${locale}${normalized}`;
+    },
+    [locale]
+  );
 
   const dict = translations[locale];
 
@@ -113,7 +126,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t, dict }}>
+    <LanguageContext.Provider value={{ locale, setLocale, localePath, t, dict }}>
       {children}
     </LanguageContext.Provider>
   );
@@ -128,6 +141,6 @@ export function useLanguage(): LanguageContextType {
 }
 
 export function useTranslation() {
-  const { t, locale, dict, setLocale } = useLanguage();
-  return { t, locale, dict, setLocale };
+  const { t, locale, dict, setLocale, localePath } = useLanguage();
+  return { t, locale, dict, setLocale, localePath };
 }

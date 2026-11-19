@@ -36,7 +36,7 @@ export default function LiveGameView({
   isLoading,
   onRefresh,
 }: LiveGameViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   if (isLoading) {
     return (
@@ -271,7 +271,7 @@ export default function LiveGameView({
                       {/* Line 1: Summoner Name + Tagline + DU badge */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Link
-                          href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                          href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                           className={`truncate text-sm font-bold hover:text-orange-400 transition-colors ${
                             isTarget ? 'text-amber-400' : 'text-slate-100'
                           }`}

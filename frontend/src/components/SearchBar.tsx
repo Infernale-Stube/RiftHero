@@ -90,7 +90,7 @@ export default function SearchBar({
 
     setIsFocused(false);
     const formattedTag = `${gameName}-${tagLine}`;
-    router.push(`/summoner/${reg}/${encodeURIComponent(formattedTag)}`);
+    router.push(`/${locale}/summoner/${reg}/${encodeURIComponent(formattedTag)}`);
   };
 
   const handleSubmit = (e: FormEvent) => {

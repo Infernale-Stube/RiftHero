@@ -74,7 +74,7 @@ export default function RecentSearches() {
           return (
             <Link
               key={`${item.region}-${item.gameName}-${item.tagLine}`}
-              href={`/summoner/${item.region}/${encodeURIComponent(formattedTag)}`}
+              href={`/${locale}/summoner/${item.region}/${encodeURIComponent(formattedTag)}`}
               className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-orange-500/50 hover:bg-[#131924] shadow-sm"
             >
               <span className="rounded bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-orange-400">

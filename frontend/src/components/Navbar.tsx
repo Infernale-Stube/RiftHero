@@ -9,14 +9,14 @@ import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isHome = pathname === '/';
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isHome = pathname === '/' || pathname === '/de' || pathname === '/en';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#0a0d12]/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href={`/${locale}`} className="flex items-center gap-2.5 group">
           <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 p-0.5 shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105">
             <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0d12]">
               <Shield className="h-5 w-5 text-orange-400 transition-colors group-hover:text-amber-300" />

@@ -438,7 +438,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   {/* Player Game Name & Champion Name */}
                   <div className="flex flex-col justify-center min-w-[95px] max-w-[125px] shrink-0">
                     <Link
-                      href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                      href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                       className={`truncate text-xs hover:text-white transition-colors ${
                         isTarget ? 'text-white font-black' : 'text-zinc-200 font-bold'
                       }`}
@@ -854,7 +854,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                           />
                         </div>
                         <Link
-                          href={`/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
+                          href={`/${locale}/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
                           className={`truncate hover:text-white transition-colors ${
                             isBlueCurrent
                               ? 'font-black text-white'
@@ -902,7 +902,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                           />
                         </div>
                         <Link
-                          href={`/summoner/${region}/${encodeURIComponent(redFormatted)}`}
+                          href={`/${locale}/summoner/${region}/${encodeURIComponent(redFormatted)}`}
                           className={`truncate hover:text-white transition-colors ${
                             isRedCurrent
                               ? 'font-black text-white'
@@ -956,7 +956,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           {/* Bottom Action Bar: "Match Details" Button */}
           <div className="flex items-center justify-end pt-2">
             <Link
-              href={`/match/${region}/${match.matchId}#participant${participant.puuid}`}
+              href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-bold text-zinc-200 hover:bg-white/10 hover:text-white transition-all shadow-sm active:scale-98"
             >
               <span>Match Details</span>

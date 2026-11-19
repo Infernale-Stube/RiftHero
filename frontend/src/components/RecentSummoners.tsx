@@ -47,7 +47,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
           return (
             <Link
               key={s.id}
-              href={`/summoner/${s.region}/${encodeURIComponent(formattedTag)}`}
+              href={`/${locale}/summoner/${s.region}/${encodeURIComponent(formattedTag)}`}
               className="group flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#0c1017]/80 p-3.5 transition-all hover:border-orange-500/40 hover:bg-[#121722] hover:shadow-xl hover:shadow-orange-500/5 shadow-md"
             >
               <div className="flex items-center gap-3">

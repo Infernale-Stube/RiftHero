@@ -356,7 +356,7 @@ export default function MatchDetailPage() {
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5 truncate">
                         <Link
-                          href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                          href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                           className={`truncate text-sm font-bold hover:text-white transition-colors ${
                             isHighlighted ? 'text-amber-400' : 'text-slate-200'
                           }`}

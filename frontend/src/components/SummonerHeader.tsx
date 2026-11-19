@@ -34,7 +34,7 @@ export default function SummonerHeader({
   isLoadingLive = false,
   onRefreshLive,
 }: SummonerHeaderProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const pathname = usePathname();
   const cleanPath = (pathname || '').replace(/\/$/, '');
 
@@ -77,7 +77,7 @@ export default function SummonerHeader({
   const soloRank = ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
   const formattedTag = `${summoner.gameName}-${summoner.tagLine}`;
-  const basePath = `/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
+  const basePath = `/${locale}/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
 
   const getRegionName = (reg: string) => {
     switch (reg.toLowerCase()) {
@@ -99,7 +99,7 @@ export default function SummonerHeader({
       {/* Breadcrumb Navigation (LoLDB Style) */}
       <nav aria-label="breadcrumb" className="flex items-center gap-2 text-xs text-zinc-400">
         <Link
-          href="/"
+          href={`/${locale}`}
           className="flex items-center gap-1 hover:text-white transition-colors"
         >
           <ChevronLeft className="h-3.5 w-3.5" />

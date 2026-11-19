@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { MatchParticipant } from '@/types';
 import { getChampionIconUrl } from '@/lib/ddragon';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface ParticipantListProps {
   region: string;
@@ -16,6 +19,7 @@ export default function ParticipantList({
   blueTeam,
   redTeam,
 }: ParticipantListProps) {
+  const { locale } = useTranslation();
   const renderTeam = (team: MatchParticipant[], isBlue: boolean) => (
     <div className="flex flex-col gap-1 w-full sm:w-[130px]">
       {team.map((p) => {
@@ -26,7 +30,7 @@ export default function ParticipantList({
         return (
           <Link
             key={p.puuid}
-            href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+            href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
             className={`group flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors ${
               isCurrent ? 'bg-rift-700/80 font-bold' : 'hover:bg-rift-800/60'
             }`}

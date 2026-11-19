@@ -5,7 +5,7 @@ import { ShieldAlert } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function NotFound() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-4 text-center">
@@ -16,7 +16,7 @@ export default function NotFound() {
           {t('common.pageNotFoundDesc')}
         </p>
         <Link
-          href="/"
+          href={`/${locale}`}
           className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-hextech-blue px-5 py-2.5 text-sm font-bold text-white shadow-md hover:brightness-110 transition-all"
         >
           {t('common.backToHome')}

@@ -13,7 +13,7 @@ interface PlayedWithWidgetProps {
 }
 
 export default function PlayedWithWidget({ teammates, region }: PlayedWithWidgetProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   if (!teammates || teammates.length === 0) {
     return null;
@@ -51,7 +51,7 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
             >
               {/* Player Avatar & Name */}
               <Link
-                href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                 className="flex items-center gap-2.5 min-w-0 group"
               >
                 <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/10 group-hover:border-white/30 transition-colors shadow-sm">
