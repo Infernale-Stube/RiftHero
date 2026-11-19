@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, CheckCircle2 } from 'lucide-react';
 import { fetchSummonerStatus } from '@/lib/api';
-import { useTranslation } from '@/i18n/LanguageContext';
 
 interface AutoRefreshWatcherProps {
   region: string;
@@ -19,10 +17,8 @@ export default function AutoRefreshWatcher({
   isUpdating: initialUpdating,
   onRefreshCompleted,
 }: AutoRefreshWatcherProps) {
-  const { t } = useTranslation();
   const router = useRouter();
   const [updating, setUpdating] = useState(initialUpdating);
-  const [justCompleted, setJustCompleted] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -45,17 +41,12 @@ export default function AutoRefreshWatcher({
         if (status === 'completed' || status === 'not_found' || checks >= maxChecks) {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           setUpdating(false);
-          setJustCompleted(true);
 
           if (onRefreshCompleted) {
             onRefreshCompleted();
           } else {
             router.refresh();
           }
-
-          setTimeout(() => {
-            setJustCompleted(false);
-          }, 4000);
         }
       } catch (e) {
         // network retry
@@ -67,21 +58,6 @@ export default function AutoRefreshWatcher({
     };
   }, [updating, region, tag, router, onRefreshCompleted]);
 
-  if (!updating && !justCompleted) return null;
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {updating ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-hextech-blue/50 bg-rift-950/95 px-4 py-2.5 text-xs font-semibold text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
-          <RefreshCw className="h-4 w-4 animate-spin text-hextech-blue" />
-          <span>{t('summoner.syncingToast')}</span>
-        </div>
-      ) : justCompleted ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/50 bg-rift-950/95 px-4 py-2.5 text-xs font-semibold text-emerald-400 shadow-2xl backdrop-blur-md animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          <span>{t('summoner.syncCompletedToast')}</span>
-        </div>
-      ) : null}
-    </div>
-  );
+  // Completely silent background watcher as requested: no toasts or popups
+  return null;
 }

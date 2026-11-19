@@ -18,6 +18,7 @@ export interface SummonerData {
   profileIconId: number;
   summonerLevel: number;
   lastFetchedAt: string | null;
+  backgroundUrl?: string | null;
 }
 
 export interface SummonerProfileResponse {

@@ -253,7 +253,7 @@ export default function ChampionStatsView({
               >
                 {t('champions.colGold')} {sortField === 'gold' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
-              <th className="py-3 pr-4 pl-3">{t('champions.colHighlights')}</th>
+              <th className="py-3 pr-4 pl-3">Multikills (5x 4x 3x 2x)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
@@ -282,6 +282,12 @@ export default function ChampionStatsView({
                     : champ.kda >= 2.0
                     ? 'text-amber-400'
                     : 'text-zinc-400';
+
+                const hasMultikills =
+                  (champ.pentaKills && champ.pentaKills > 0) ||
+                  (champ.quadraKills && champ.quadraKills > 0) ||
+                  (champ.tripleKills && champ.tripleKills > 0) ||
+                  (champ.doubleKills && champ.doubleKills > 0);
 
                 return (
                   <tr
@@ -388,31 +394,32 @@ export default function ChampionStatsView({
                       </div>
                     </td>
 
-                    {/* Highlights (Penta, Quadra, Max Kills) */}
+                    {/* Multikills (5x Penta, 4x Quadra, 3x Triple, 2x Double) */}
                     <td className="py-3 pr-4 pl-3">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {champ.pentaKills && champ.pentaKills > 0 ? (
-                          <span className="flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-500/30">
+                          <span className="flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-500/40 shadow-sm" title="Penta Kills">
                             <Award className="h-3 w-3" />
-                            Penta x{champ.pentaKills}
+                            5x {champ.pentaKills}
                           </span>
                         ) : null}
                         {champ.quadraKills && champ.quadraKills > 0 ? (
-                          <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/30">
-                            Quadra x{champ.quadraKills}
+                          <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-black text-rose-300 border border-rose-500/40" title="Quadra Kills">
+                            4x {champ.quadraKills}
                           </span>
                         ) : null}
                         {champ.tripleKills && champ.tripleKills > 0 ? (
-                          <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300 border border-sky-500/30">
-                            Triple x{champ.tripleKills}
+                          <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/40" title="Triple Kills">
+                            3x {champ.tripleKills}
                           </span>
                         ) : null}
-                        {champ.maxKills && champ.maxKills > 0 ? (
-                          <span className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                            Max {champ.maxKills} Kills
+                        {champ.doubleKills && champ.doubleKills > 0 ? (
+                          <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300 border border-sky-500/40" title="Double Kills">
+                            2x {champ.doubleKills}
                           </span>
-                        ) : (
-                          <span className="text-[11px] text-zinc-600">-</span>
+                        ) : null}
+                        {!hasMultikills && (
+                          <span className="text-[11px] text-zinc-600 font-semibold">-</span>
                         )}
                       </div>
                     </td>

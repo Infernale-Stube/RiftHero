@@ -1,118 +1,86 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  fetchSummonerProfile,
   fetchSummonerMatches,
   fetchChampionStats,
-  fetchLiveGame,
   fetchLpHistory,
   fetchPlayedWith,
-  fetchSummonerChallenges,
 } from '@/lib/api';
 import {
-  SummonerProfileResponse,
   FormattedMatch,
   ChampionStatSummary,
-  LiveGameResponse,
   LpHistorySummary,
   PlayedWithTeammate,
-  FormattedPlayerChallenges,
 } from '@/types';
-import SummonerHeader from '@/components/SummonerHeader';
 import ChampionStats from '@/components/ChampionStats';
-import ChampionStatsView from '@/components/ChampionStatsView';
-import ChallengesView from '@/components/ChallengesView';
 import MatchHistory from '@/components/MatchHistory';
-import LiveGameView from '@/components/LiveGameView';
-import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
 import RankCard from '@/components/RankCard';
 import PlayedWithWidget from '@/components/PlayedWithWidget';
+import { useSummonerContext } from './SummonerContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 
-export default function SummonerPage() {
+export default function SummonerMatchesPage() {
   const { t } = useTranslation();
-  const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { region, tag, profileData } = useSummonerContext();
 
-  const region = (params?.region as string) || 'euw';
-  const tag = (params?.tag as string) || '';
+  // Legacy tab redirects
+  useEffect(() => {
+    const rawTab = searchParams.get('tab');
+    if (rawTab === 'champions') {
+      router.replace(`/summoner/${region}/${tag}/champions`);
+    } else if (rawTab === 'challenges') {
+      router.replace(`/summoner/${region}/${tag}/challenges`);
+    } else if (rawTab === 'live') {
+      router.replace(`/summoner/${region}/${tag}/live`);
+    }
+  }, [searchParams, router, region, tag]);
 
-  const rawTab = searchParams.get('tab');
-  const initialTab =
-    rawTab === 'champions'
-      ? 'champions'
-      : rawTab === 'challenges'
-      ? 'challenges'
-      : rawTab === 'live'
-      ? 'live'
-      : 'matches';
-
-  const [activeTab, setActiveTab] = useState<'matches' | 'champions' | 'challenges' | 'live'>(initialTab);
-
-  const [profileData, setProfileData] = useState<SummonerProfileResponse | null>(null);
   const [matches, setMatches] = useState<FormattedMatch[]>([]);
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [champStats, setChampStats] = useState<ChampionStatSummary[]>([]);
   const [activeQueue, setActiveQueue] = useState<string>('all');
 
-  // LP History & Teammates state
   const [lpHistory, setLpHistory] = useState<LpHistorySummary | null>(null);
   const [playedWith, setPlayedWith] = useState<PlayedWithTeammate[]>([]);
 
-  // Challenges state
-  const [challengesData, setChallengesData] = useState<FormattedPlayerChallenges | null>(null);
-  const [isLoadingChallenges, setIsLoadingChallenges] = useState<boolean>(false);
-
-  // Live Game State
-  const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(false);
-
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load Profile
-  const loadProfile = useCallback(async () => {
-    if (!region || !tag) return;
-    try {
-      const data = await fetchSummonerProfile(region, tag);
-      setProfileData(data);
-    } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden des Profils');
-    } finally {
-      setIsLoadingProfile(false);
+  const loadMatchesAndStats = useCallback(
+    async (queue: string) => {
+      if (!region || !tag) return;
+      setIsLoadingMatches(true);
+      try {
+        const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
+          fetchSummonerMatches(region, tag, queue, 20, 0),
+          fetchChampionStats(region, tag, queue),
+          fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
+          fetchPlayedWith(region, tag, 5),
+        ]);
+        setMatches(matchesRes.matches);
+        setTotalMatches(matchesRes.total);
+        setChampStats(statsRes);
+        setLpHistory(lpHRes);
+        setPlayedWith(playedRes);
+      } catch (err: any) {
+        console.error('Failed to load matches/stats:', err);
+      } finally {
+        setIsLoadingMatches(false);
+      }
+    },
+    [region, tag]
+  );
+
+  useEffect(() => {
+    if (profileData?.summoner) {
+      loadMatchesAndStats(activeQueue);
     }
-  }, [region, tag]);
+  }, [profileData?.summoner, activeQueue, loadMatchesAndStats]);
 
-  // Load Initial Matches & Champion Stats
-  const loadMatchesAndStats = useCallback(async (queue: string) => {
-    if (!region || !tag) return;
-    setIsLoadingMatches(true);
-    try {
-      const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
-        fetchSummonerMatches(region, tag, queue, 20, 0),
-        fetchChampionStats(region, tag, queue),
-        fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
-        fetchPlayedWith(region, tag, 5),
-      ]);
-      setMatches(matchesRes.matches);
-      setTotalMatches(matchesRes.total);
-      setChampStats(statsRes);
-      setLpHistory(lpHRes);
-      setPlayedWith(playedRes);
-    } catch (err: any) {
-      console.error('Failed to load matches/stats:', err);
-    } finally {
-      setIsLoadingMatches(false);
-    }
-  }, [region, tag]);
-
-  // Load More Matches (Pagination)
   const handleLoadMore = async () => {
     if (isLoadingMore || matches.length >= totalMatches) return;
     setIsLoadingMore(true);
@@ -127,228 +95,54 @@ export default function SummonerPage() {
     }
   };
 
-  // Load Live Game
-  const loadLiveGame = useCallback(async () => {
-    if (!region || !tag) return;
-    setIsLoadingLive(true);
-    try {
-      const res = await fetchLiveGame(region, tag);
-      setLiveData(res);
-    } catch (err) {
-      console.error('Failed to load live game:', err);
-    } finally {
-      setIsLoadingLive(false);
-    }
-  }, [region, tag]);
-
-  // Load Challenges
-  const loadChallenges = useCallback(async () => {
-    if (!region || !tag) return;
-    setIsLoadingChallenges(true);
-    try {
-      const data = await fetchSummonerChallenges(region, tag);
-      setChallengesData(data);
-    } catch (err) {
-      console.error('Failed to load challenges:', err);
-    } finally {
-      setIsLoadingChallenges(false);
-    }
-  }, [region, tag]);
-
-  useEffect(() => {
-    loadProfile();
-    loadLiveGame();
-  }, [loadProfile, loadLiveGame]);
-
-  useEffect(() => {
-    if (profileData?.summoner) {
-      loadMatchesAndStats(activeQueue);
-    }
-  }, [profileData?.summoner, activeQueue, loadMatchesAndStats]);
-
-  useEffect(() => {
-    if (activeTab === 'live') {
-      loadLiveGame();
-    } else if (activeTab === 'challenges' && !challengesData) {
-      loadChallenges();
-    }
-  }, [activeTab, loadLiveGame, loadChallenges, challengesData]);
-
-  const handleTabChange = (newTab: 'matches' | 'champions' | 'challenges' | 'live') => {
-    setActiveTab(newTab);
-    const newParams = new URLSearchParams(searchParams ? searchParams.toString() : '');
-    if (newTab === 'matches') {
-      newParams.delete('tab');
-    } else {
-      newParams.set('tab', newTab);
-    }
-    const queryStr = newParams.toString() ? `?${newParams.toString()}` : '';
-    router.replace(`/summoner/${region}/${tag}${queryStr}`, { scroll: false });
-  };
-
-  const handleQueueChange = (queue: string) => {
-    setActiveQueue(queue);
-  };
-
-  const handleRefreshCompleted = () => {
-    loadProfile();
-    loadMatchesAndStats(activeQueue);
-    if (activeTab === 'challenges') {
-      loadChallenges();
-    }
-  };
-
-  if (isLoadingProfile) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-4">
-        <Loader2 className="h-10 w-10 animate-spin text-orange-400 mb-4" />
-        <h2 className="text-lg font-bold text-zinc-200">{t('summoner.loadingProfile')}</h2>
-        <p className="text-xs text-zinc-500 mt-1">{t('summoner.loadingSubtitle')}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-8 shadow-xl">
-          <AlertCircle className="mx-auto h-12 w-12 text-rose-400 mb-3" />
-          <h2 className="text-xl font-bold text-white mb-2">{t('summoner.profileNotFound')}</h2>
-          <p className="text-sm text-zinc-300">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If summoner was never seen before and is currently being fetched by the worker
-  if (!profileData?.summoner) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center p-4 text-center">
-        <div className="rounded-2xl border border-white/[0.08] bg-[#0d1116] p-8 max-w-md shadow-2xl backdrop-blur-md">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-orange-400 mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">
-            {t('summoner.newPlayerTitle')}
-          </h2>
-          <p className="text-sm text-zinc-400 mb-4">
-            {t('summoner.newPlayerDesc')}
-          </p>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-orange-300">
-            <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />
-            <span>{t('summoner.highPrioritySync')}</span>
-          </div>
-        </div>
-
-        <AutoRefreshWatcher
-          region={region}
-          tag={tag}
-          isUpdating={true}
-          onRefreshCompleted={handleRefreshCompleted}
-        />
-      </div>
-    );
-  }
-
-  const { gameName, tagLine } = profileData.summoner;
-  const soloRank = profileData.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
-  const flexRank = profileData.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
+  const soloRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
+  const flexRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Auto-Refresh Background Watcher */}
-      <AutoRefreshWatcher
-        region={region}
-        tag={tag}
-        isUpdating={profileData.isUpdating}
-        onRefreshCompleted={handleRefreshCompleted}
-      />
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
+      {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
+      <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
+        {/* Ranked Solo/Duo Card with LP History Graph */}
+        <RankCard
+          title={t('summoner.soloRank')}
+          rankData={soloRank}
+          lpHistory={lpHistory}
+        />
 
-      {/* LoLDB Header */}
-      <div className="mb-6">
-        <SummonerHeader
-          summoner={profileData.summoner}
-          ranks={profileData.ranks}
-          isUpdating={profileData.isUpdating}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          isLive={liveData?.inGame || false}
+        {/* Ranked Flex Card (if ranked) */}
+        {flexRank && (
+          <RankCard
+            title={t('summoner.flexRank')}
+            rankData={flexRank}
+          />
+        )}
+
+        {/* Played With Synergy Widget (LoLDB Signature) */}
+        <PlayedWithWidget
+          teammates={playedWith}
+          region={region}
+        />
+
+        {/* Champion Stats */}
+        <ChampionStats
+          stats={champStats}
         />
       </div>
 
-      {/* Main Content Area based on Active Tab */}
-      {activeTab === 'live' ? (
-        <div className="w-full">
-          <LiveGameView
-            region={region}
-            gameName={gameName}
-            tagLine={tagLine}
-            liveData={liveData}
-            isLoading={isLoadingLive}
-            onRefresh={loadLiveGame}
-          />
-        </div>
-      ) : activeTab === 'champions' ? (
-        <div className="w-full">
-          <ChampionStatsView
-            stats={champStats}
-            activeQueue={activeQueue}
-            onQueueChange={handleQueueChange}
-            isLoading={isLoadingMatches}
-          />
-        </div>
-      ) : activeTab === 'challenges' ? (
-        <div className="w-full">
-          <ChallengesView
-            challengesData={challengesData}
-            isLoading={isLoadingChallenges}
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
-          <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
-            {/* Ranked Solo/Duo Card with LP History Graph */}
-            <RankCard
-              title={t('summoner.soloRank')}
-              rankData={soloRank}
-              lpHistory={lpHistory}
-            />
-
-            {/* Ranked Flex Card (if ranked) */}
-            {flexRank && (
-              <RankCard
-                title={t('summoner.flexRank')}
-                rankData={flexRank}
-              />
-            )}
-
-            {/* Played With Synergy Widget (LoLDB Signature) */}
-            <PlayedWithWidget
-              teammates={playedWith}
-              region={region}
-            />
-
-            {/* Champion Stats */}
-            <ChampionStats
-              stats={champStats}
-            />
-          </div>
-
-          {/* Right Main Column: Match History (Breiter & spacious) */}
-          <div className="flex-1 w-full min-w-0">
-            <MatchHistory
-              matches={matches}
-              region={region}
-              activeQueue={activeQueue}
-              onQueueChange={handleQueueChange}
-              isLoading={isLoadingMatches}
-              total={totalMatches}
-              hasMore={matches.length < totalMatches}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={handleLoadMore}
-            />
-          </div>
-        </div>
-      )}
+      {/* Right Main Column: Match History */}
+      <div className="flex-1 w-full min-w-0">
+        <MatchHistory
+          matches={matches}
+          region={region}
+          activeQueue={activeQueue}
+          onQueueChange={(queue) => setActiveQueue(queue)}
+          isLoading={isLoadingMatches}
+          total={totalMatches}
+          hasMore={matches.length < totalMatches}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={handleLoadMore}
+        />
+      </div>
     </div>
   );
 }

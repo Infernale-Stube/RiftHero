@@ -14,6 +14,7 @@ export interface SummonerProfileResponse {
     profileIconId: number;
     summonerLevel: number;
     lastFetchedAt: string | null;
+    backgroundUrl?: string | null;
   } | null;
   ranks: Array<{
     queueType: string;
@@ -102,6 +103,28 @@ export async function getSummonerProfile(
     };
   }
 
+  // 5. Resolve player's top champion for profile background splash art
+  let backgroundUrl: string | null = null;
+  try {
+    const topChamp = await prisma.matchParticipant.groupBy({
+      by: ['championName'],
+      where: { puuid: summoner.puuid },
+      _count: { matchId: true },
+      orderBy: {
+        _count: {
+          matchId: 'desc',
+        },
+      },
+      take: 1,
+    });
+
+    if (topChamp.length > 0 && topChamp[0].championName) {
+      backgroundUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${topChamp[0].championName}_0.jpg`;
+    }
+  } catch (err) {
+    // fallback
+  }
+
   return {
     summoner: {
       id: summoner.id,
@@ -113,6 +136,7 @@ export async function getSummonerProfile(
       profileIconId: summoner.profileIconId,
       summonerLevel: Number(summoner.summonerLevel),
       lastFetchedAt: summoner.lastFetchedAt?.toISOString() || null,
+      backgroundUrl,
     },
     ranks: formattedRanks,
     isStale,

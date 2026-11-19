@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users } from 'lucide-react';
 import { PlayedWithTeammate } from '@/types';
 import { getProfileIconUrl, getChampionIconUrl } from '@/lib/ddragon';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -31,13 +30,13 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
         </div>
       </div>
 
-      {/* Teammates List */}
+      {/* Teammates List - strictly name, avatar, games count and winrate without champion info */}
       <div className="divide-y divide-white/[0.04]">
         {teammates.map((item) => {
           const formattedTag = `${item.gameName}-${item.tagLine || region.toUpperCase()}`;
           const isGoodWinrate = item.winrate >= 50;
 
-          // Resolve avatar: actual profile icon if available, else their champion avatar
+          // Resolve avatar: actual profile icon if available, else standard fallback
           const avatarUrl =
             item.profileIconId && item.profileIconId > 0 && item.profileIconId !== 29
               ? getProfileIconUrl(item.profileIconId)
@@ -69,11 +68,6 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
                   <span className="truncate font-bold text-zinc-300 group-hover:text-white transition-colors">
                     {item.gameName}
                   </span>
-                  {item.championName && (
-                    <span className="text-[9px] text-zinc-500 truncate">
-                      {t('summoner.playedWithAs', { champ: item.championName })}
-                    </span>
-                  )}
                 </div>
               </Link>
 
