@@ -48,6 +48,9 @@ export interface MatchParticipant {
   cs: number;
   csPerMinute: number;
   visionScore: number;
+  wardsPlaced: number;
+  wardsKilled: number;
+  controlWards: number;
   goldEarned: number;
   items: number[];
   spells: number[];
@@ -55,12 +58,12 @@ export interface MatchParticipant {
   secondaryStyle: number | null;
 }
 
-export interface TeamMember {
-  puuid: string;
-  riotIdGameName: string;
-  riotIdTagline: string;
-  championId: number;
-  championName: string;
+export interface TeamTotals {
+  kills: number;
+  deaths: number;
+  assists: number;
+  gold: number;
+  damage: number;
 }
 
 export interface FormattedMatch {
@@ -71,8 +74,11 @@ export interface FormattedMatch {
   queueName: string;
   win: boolean;
   participant: MatchParticipant;
-  blueTeam: TeamMember[];
-  redTeam: TeamMember[];
+  blueTeam: MatchParticipant[];
+  redTeam: MatchParticipant[];
+  blueTeamTotals?: TeamTotals;
+  redTeamTotals?: TeamTotals;
+  maxDamage?: number;
 }
 
 export interface ChampionStatSummary {
@@ -111,4 +117,53 @@ export interface RecentSearchItem {
   region: string;
   profileIconId?: number;
   timestamp: number;
+}
+
+// Live Game Types
+export interface LiveGameParticipant {
+  puuid: string;
+  riotId: string;
+  summonerName: string;
+  teamId: number;
+  championId: number;
+  championName: string;
+  spell1Id: number;
+  spell2Id: number;
+  profileIconId: number;
+  primaryRune: number | null;
+  secondaryStyle: number | null;
+  rank?: {
+    tier: string;
+    rank: string;
+    leaguePoints: number;
+    wins: number;
+    losses: number;
+    winrate: number;
+  } | null;
+}
+
+export interface BannedChampion {
+  championId: number;
+  championName: string;
+  teamId: number;
+  pickTurn: number;
+}
+
+export interface LiveGameData {
+  gameId: number;
+  gameStartTime: number;
+  gameLength: number;
+  mapId: number;
+  queueId: number;
+  queueName: string;
+  gameMode: string;
+  blueTeam: LiveGameParticipant[];
+  redTeam: LiveGameParticipant[];
+  bans: BannedChampion[];
+}
+
+export interface LiveGameResponse {
+  inGame: boolean;
+  game?: LiveGameData;
+  message?: string;
 }

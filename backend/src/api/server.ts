@@ -6,6 +6,7 @@ import { healthRoutes } from './routes/health';
 import { summonerRoutes } from './routes/summoners';
 import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
+import { liveGameRoutes } from './routes/liveGame';
 import { disconnectPrisma } from '../db/prisma';
 
 export async function buildServer() {
@@ -33,6 +34,7 @@ export async function buildServer() {
       await apiScope.register(summonerRoutes);
       await apiScope.register(matchRoutes);
       await apiScope.register(searchRoutes);
+      await apiScope.register(liveGameRoutes);
     },
     { prefix: '/api' }
   );

@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { TeamMember } from '@/types';
+import { MatchParticipant } from '@/types';
 import { getChampionIconUrl } from '@/lib/ddragon';
 
 interface ParticipantListProps {
   region: string;
   currentPuuid: string;
-  blueTeam: TeamMember[];
-  redTeam: TeamMember[];
+  blueTeam: MatchParticipant[];
+  redTeam: MatchParticipant[];
 }
 
 export default function ParticipantList({
@@ -16,7 +16,7 @@ export default function ParticipantList({
   blueTeam,
   redTeam,
 }: ParticipantListProps) {
-  const renderTeam = (team: TeamMember[], isBlue: boolean) => (
+  const renderTeam = (team: MatchParticipant[], isBlue: boolean) => (
     <div className="flex flex-col gap-1 w-full sm:w-[130px]">
       {team.map((p) => {
         const isCurrent = p.puuid === currentPuuid;

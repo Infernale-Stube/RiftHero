@@ -3,14 +3,13 @@ import {
   FormattedMatch,
   ChampionStatSummary,
   RecentSummoner,
+  LiveGameResponse,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
-    // Server-side (running inside Docker frontend container)
     return process.env.INTERNAL_API_URL || 'http://api:4000/api';
   }
-  // Client-side (running in browser via Caddy reverse proxy)
   return process.env.NEXT_PUBLIC_API_URL || '/api';
 }
 
@@ -107,5 +106,23 @@ export async function fetchRecentSummoners(limit = 10): Promise<RecentSummoner[]
     return await res.json();
   } catch {
     return [];
+  }
+}
+
+export async function fetchLiveGame(
+  region: string,
+  tag: string
+): Promise<LiveGameResponse> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/live-game`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return { inGame: false, message: 'Spieler ist nicht im Spiel oder Live-Service offline.' };
+    }
+    return await res.json();
+  } catch {
+    return { inGame: false, message: 'Fehler beim Abrufen des Live-Spiels.' };
   }
 }

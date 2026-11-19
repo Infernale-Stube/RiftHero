@@ -21,11 +21,22 @@ export interface FormattedMatchParticipant {
   cs: number;
   csPerMinute: number;
   visionScore: number;
+  wardsPlaced: number;
+  wardsKilled: number;
+  controlWards: number;
   goldEarned: number;
   items: number[];
   spells: number[];
   primaryRune: number | null;
   secondaryStyle: number | null;
+}
+
+export interface TeamTotals {
+  kills: number;
+  deaths: number;
+  assists: number;
+  gold: number;
+  damage: number;
 }
 
 export interface FormattedMatch {
@@ -36,20 +47,47 @@ export interface FormattedMatch {
   queueName: string;
   win: boolean;
   participant: FormattedMatchParticipant;
-  blueTeam: Array<{
-    puuid: string;
-    riotIdGameName: string;
-    riotIdTagline: string;
-    championId: number;
-    championName: string;
-  }>;
-  redTeam: Array<{
-    puuid: string;
-    riotIdGameName: string;
-    riotIdTagline: string;
-    championId: number;
-    championName: string;
-  }>;
+  blueTeam: FormattedMatchParticipant[];
+  redTeam: FormattedMatchParticipant[];
+  blueTeamTotals: TeamTotals;
+  redTeamTotals: TeamTotals;
+  maxDamage: number;
+}
+
+function formatParticipant(p: any, durationMinutes: number): FormattedMatchParticipant {
+  const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
+  const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
+  const kdaCalc = p.deaths === 0 ? p.kills + p.assists : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
+
+  return {
+    puuid: p.puuid,
+    riotIdGameName: p.riotIdGameName,
+    riotIdTagline: p.riotIdTagline,
+    championId: p.championId,
+    championName: p.championName,
+    champLevel: p.champLevel || 1,
+    teamId: p.teamId,
+    win: p.win,
+    role: p.role,
+    lane: p.lane,
+    kills: p.kills,
+    deaths: p.deaths,
+    assists: p.assists,
+    kda: kdaCalc,
+    totalDamageDealtToChampions: p.totalDamageDealtToChampions,
+    totalDamageTaken: p.totalDamageTaken,
+    cs,
+    csPerMinute,
+    visionScore: p.visionScore,
+    wardsPlaced: p.wardsPlaced,
+    wardsKilled: p.wardsKilled,
+    controlWards: p.visionWardsBoughtInGame || 0,
+    goldEarned: p.goldEarned,
+    items: [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6],
+    spells: [p.summoner1Id, p.summoner2Id],
+    primaryRune: p.primaryRune,
+    secondaryStyle: p.secondaryStyle,
+  };
 }
 
 export async function getSummonerMatches(
@@ -84,16 +122,7 @@ export async function getSummonerMatches(
       include: {
         match: {
           include: {
-            participants: {
-              select: {
-                puuid: true,
-                riotIdGameName: true,
-                riotIdTagline: true,
-                championId: true,
-                championName: true,
-                teamId: true,
-              },
-            },
+            participants: true,
           },
         },
       },
@@ -110,30 +139,34 @@ export async function getSummonerMatches(
   const matches: FormattedMatch[] = userParticipations.map((up) => {
     const m = up.match;
     const durationMinutes = m.gameDuration / 60;
-    const cs = up.totalMinionsKilled + up.neutralMinionsKilled;
-    const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
-    const kdaCalc = up.deaths === 0 ? up.kills + up.assists : Number(((up.kills + up.assists) / up.deaths).toFixed(2));
-
     const allParticipants = m.participants || [];
-    const blueTeam = allParticipants
-      .filter((p) => p.teamId === 100)
-      .map((p) => ({
-        puuid: p.puuid,
-        riotIdGameName: p.riotIdGameName,
-        riotIdTagline: p.riotIdTagline,
-        championId: p.championId,
-        championName: p.championName,
-      }));
 
-    const redTeam = allParticipants
-      .filter((p) => p.teamId === 200)
-      .map((p) => ({
-        puuid: p.puuid,
-        riotIdGameName: p.riotIdGameName,
-        riotIdTagline: p.riotIdTagline,
-        championId: p.championId,
-        championName: p.championName,
-      }));
+    const formattedParticipants = allParticipants.map((p) => formatParticipant(p, durationMinutes));
+    const blueTeam = formattedParticipants.filter((p) => p.teamId === 100);
+    const redTeam = formattedParticipants.filter((p) => p.teamId === 200);
+
+    const blueTeamTotals: TeamTotals = {
+      kills: blueTeam.reduce((acc, p) => acc + p.kills, 0),
+      deaths: blueTeam.reduce((acc, p) => acc + p.deaths, 0),
+      assists: blueTeam.reduce((acc, p) => acc + p.assists, 0),
+      gold: blueTeam.reduce((acc, p) => acc + p.goldEarned, 0),
+      damage: blueTeam.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
+    };
+
+    const redTeamTotals: TeamTotals = {
+      kills: redTeam.reduce((acc, p) => acc + p.kills, 0),
+      deaths: redTeam.reduce((acc, p) => acc + p.deaths, 0),
+      assists: redTeam.reduce((acc, p) => acc + p.assists, 0),
+      gold: redTeam.reduce((acc, p) => acc + p.goldEarned, 0),
+      damage: redTeam.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
+    };
+
+    const maxDamage = Math.max(
+      ...formattedParticipants.map((p) => p.totalDamageDealtToChampions),
+      1
+    );
+
+    const currentFormatted = formatParticipant(up, durationMinutes);
 
     return {
       matchId: m.id,
@@ -142,34 +175,12 @@ export async function getSummonerMatches(
       queueId: m.queueId,
       queueName: getQueueName(m.queueId),
       win: up.win,
-      participant: {
-        puuid: up.puuid,
-        riotIdGameName: up.riotIdGameName,
-        riotIdTagline: up.riotIdTagline,
-        championId: up.championId,
-        championName: up.championName,
-        champLevel: up.champLevel,
-        teamId: up.teamId,
-        win: up.win,
-        role: up.role,
-        lane: up.lane,
-        kills: up.kills,
-        deaths: up.deaths,
-        assists: up.assists,
-        kda: kdaCalc,
-        totalDamageDealtToChampions: up.totalDamageDealtToChampions,
-        totalDamageTaken: up.totalDamageTaken,
-        cs,
-        csPerMinute,
-        visionScore: up.visionScore,
-        goldEarned: up.goldEarned,
-        items: [up.item0, up.item1, up.item2, up.item3, up.item4, up.item5, up.item6],
-        spells: [up.summoner1Id, up.summoner2Id],
-        primaryRune: up.primaryRune,
-        secondaryStyle: up.secondaryStyle,
-      },
+      participant: currentFormatted,
       blueTeam,
       redTeam,
+      blueTeamTotals,
+      redTeamTotals,
+      maxDamage,
     };
   });
 
