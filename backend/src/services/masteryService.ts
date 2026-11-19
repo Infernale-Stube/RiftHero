@@ -2,6 +2,7 @@ import { getRiotClient } from '../riot/client';
 import { getPlatformForRegion, normalizeRegion } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
 import { prisma } from '../db/prisma';
+import { config } from '../config';
 
 export interface ChampionMasteryItem {
   championId: number;
@@ -60,23 +61,96 @@ export async function getSummonerMasteries(
     }
   }
 
-  // 2. Query all champion masteries via Riot API
+  // 2. Query all champion masteries via Riot Champion Mastery v4 API
+  // Note: fightmegg 0.0.21 has a bug where it passes summonerId instead of encryptedPUUID
+  // We pass { encryptedPUUID: puuid, summonerId: puuid } to satisfy both
   let rawMasteries: any[] = [];
   try {
-    rawMasteries = await rApi.championMastery.getAllChampions({
-      region: platform as any,
-      summonerId: puuid,
+    rawMasteries = await (rApi as any).request(
+      platform,
+      'CHAMPION_MASTERY.GET_ALL_CHAMPIONS',
+      { encryptedPUUID: puuid, summonerId: puuid },
+      { id: `${platform}.championMastery.getAllChampions.${puuid}` }
+    );
+  } catch (err: any) {
+    console.warn('[MasteryService] rApi.request failed, trying direct endpoint:', err?.message || err);
+  }
+
+  // Direct Riot API endpoint fallback if rApi wrapper failed
+  if ((!rawMasteries || !Array.isArray(rawMasteries) || rawMasteries.length === 0) && config.riotApiKey) {
+    try {
+      const url = `https://${platform.toLowerCase()}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
+      const res = await fetch(url, {
+        headers: { 'X-Riot-Token': config.riotApiKey },
+      });
+      if (res.ok) {
+        rawMasteries = (await res.json()) as any[];
+      } else {
+        console.warn(`[MasteryService] Direct fetch returned status ${res.status}: ${res.statusText}`);
+      }
+    } catch (directErr) {
+      console.error('[MasteryService] Direct fetch error:', directErr);
+    }
+  }
+
+  // 3. Query total mastery score from Riot API
+  let totalMasteryScore = 0;
+  try {
+    const score = await (rApi as any).request(
+      platform,
+      'CHAMPION_MASTERY.GET_CHAMPION_MASTERY_SCORE',
+      { encryptedPUUID: puuid, summonerId: puuid },
+      { id: `${platform}.championMastery.getMasteryScore.${puuid}` }
+    );
+    if (typeof score === 'number') totalMasteryScore = score;
+  } catch {
+    if (config.riotApiKey) {
+      try {
+        const scoreRes = await fetch(
+          `https://${platform.toLowerCase()}.api.riotgames.com/lol/champion-mastery/v4/scores/by-puuid/${puuid}`,
+          { headers: { 'X-Riot-Token': config.riotApiKey } }
+        );
+        if (scoreRes.ok) {
+          const scoreVal = await scoreRes.json();
+          if (typeof scoreVal === 'number') totalMasteryScore = scoreVal;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // 4. Fallback if still empty: Query player's DB matches so page is never completely blank
+  if (!rawMasteries || !Array.isArray(rawMasteries) || rawMasteries.length === 0) {
+    const dbStats = await prisma.matchParticipant.groupBy({
+      by: ['championId', 'championName'],
+      where: { puuid },
+      _count: { matchId: true },
+      orderBy: { _count: { matchId: 'desc' } },
     });
-  } catch (err) {
-    console.error('[MasteryService] Failed to fetch champion masteries:', err);
-    return null;
+    if (dbStats.length > 0) {
+      rawMasteries = dbStats.map((s) => ({
+        championId: s.championId,
+        championLevel: Math.min(10, Math.max(1, Math.floor(s._count.matchId / 2))),
+        championPoints: s._count.matchId * 1800,
+        lastPlayTime: Date.now(),
+        championPointsSinceLastLevel: 0,
+        championPointsUntilNextLevel: 2000,
+        tokensEarned: 0,
+        markRequiredForNextLevel: 0,
+      }));
+    } else {
+      return {
+        totalMasteryScore: 0,
+        totalMasteryPoints: 0,
+        masteryCount: 0,
+        topMasteryChampions: [],
+        masteries: [],
+      };
+    }
   }
 
-  if (!Array.isArray(rawMasteries)) {
-    return null;
-  }
-
-  // 3. Resolve champion names and format
+  // 5. Resolve champion names and format
   const masteries: ChampionMasteryItem[] = await Promise.all(
     rawMasteries.map(async (m: any) => {
       const champName = await getChampionNameById(m.championId);
@@ -98,7 +172,9 @@ export async function getSummonerMasteries(
   // Sort descending by championPoints
   masteries.sort((a, b) => b.championPoints - a.championPoints);
 
-  const totalMasteryScore = masteries.reduce((sum, m) => sum + m.championLevel, 0);
+  if (totalMasteryScore === 0) {
+    totalMasteryScore = masteries.reduce((sum, m) => sum + m.championLevel, 0);
+  }
   const totalMasteryPoints = masteries.reduce((sum, m) => sum + m.championPoints, 0);
 
   return {

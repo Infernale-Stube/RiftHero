@@ -131,10 +131,24 @@ export async function getSummonerProfile(
   if (!backgroundUrl) {
     try {
       const rApi = getRiotClient();
-      const masteries = await rApi.championMastery.getTopChampions({
-        region: platform as any,
-        summonerId: summoner.puuid,
-      });
+      let masteries: any[] | null = null;
+      try {
+        masteries = await (rApi as any).request(
+          platform,
+          'CHAMPION_MASTERY.GET_TOP_CHAMPIONS',
+          { encryptedPUUID: summoner.puuid, summonerId: summoner.puuid },
+          { id: `${platform}.championMastery.getTopChampions.${summoner.puuid}` }
+        );
+      } catch {
+        if (config.riotApiKey) {
+          const res = await fetch(
+            `https://${platform.toLowerCase()}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${summoner.puuid}/top?count=1`,
+            { headers: { 'X-Riot-Token': config.riotApiKey } }
+          );
+          if (res.ok) masteries = (await res.json()) as any[];
+        }
+      }
+
       if (masteries && masteries.length > 0) {
         const champName = await getChampionNameById(masteries[0].championId);
         if (champName) {
