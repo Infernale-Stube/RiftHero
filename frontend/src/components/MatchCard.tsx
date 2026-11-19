@@ -564,7 +564,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                         alt={pos}
                         width={12}
                         height={12}
-                        className="h-3 w-3 object-contain invert opacity-45 hover:opacity-100 transition-opacity"
+                        className="h-3.5 w-3.5 object-contain opacity-70 hover:opacity-100 transition-opacity"
                         unoptimized
                       />
                     ) : (

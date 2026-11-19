@@ -289,7 +289,7 @@ export default function LiveGameView({
                               alt={pos}
                               width={12}
                               height={12}
-                              className="h-3 w-3 object-contain invert opacity-80"
+                              className="h-3 w-3 object-contain opacity-75"
                               unoptimized
                             />
                             <span>{pos}</span>
