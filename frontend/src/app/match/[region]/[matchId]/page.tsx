@@ -11,6 +11,7 @@ import {
   Shield,
   Eye,
   Award,
+  Trophy,
   Zap,
   Target,
   Flame,
@@ -38,6 +39,7 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
+import ScoreTimelineChart from '@/components/ScoreTimelineChart';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function MatchDetailPage() {
@@ -117,6 +119,7 @@ export default function MatchDetailPage() {
     participants,
     maxDamage,
     goldAdvantageTimeline,
+    scoreTimeline,
   } = matchData;
 
   const durationMinutes = gameDuration / 60;
@@ -382,6 +385,21 @@ export default function MatchDetailPage() {
                             }`}
                           >
                             {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                          </span>
+                        )}
+                        {p.score && (
+                          <span
+                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 ${
+                              p.score.isMvp
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                                : p.score.isAce
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                                : 'bg-white/[0.08] text-zinc-300 border border-white/10'
+                            }`}
+                          >
+                            {p.score.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
+                            {p.score.isAce && <Award className="h-3 w-3 text-purple-400" />}
+                            <span>{p.score.isMvp ? 'MVP' : p.score.isAce ? 'ACE' : 'Score'} {p.score.score.toFixed(1)}</span>
                           </span>
                         )}
                       </div>
@@ -766,7 +784,16 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* 5. GOLD-VORTEIL GRAPH (Interaktives Timeline-Diagramm) */}
+      {/* 5. DEEPLOL AI-SCORE PROGRESSION GRAPH */}
+      {scoreTimeline && scoreTimeline.length > 1 && (
+        <ScoreTimelineChart
+          scoreTimeline={scoreTimeline}
+          participants={participants}
+          blueWon={blueTeam.win}
+        />
+      )}
+
+      {/* 6. GOLD-VORTEIL GRAPH (Interaktives Timeline-Diagramm) */}
       <GoldAdvantageChart
         timeline={goldAdvantageTimeline}
         blueWon={blueTeam.win}

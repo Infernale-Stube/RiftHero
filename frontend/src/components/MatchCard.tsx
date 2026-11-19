@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Coins, ExternalLink, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Coins, ExternalLink, Zap, Trophy, Award } from 'lucide-react';
 import { FormattedMatch, MatchParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -181,6 +181,19 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                         }`}
                       >
                         {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                      </span>
+                    )}
+                    {p.score && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[9px] font-black shrink-0 flex items-center gap-0.5 ${
+                          p.score.isMvp
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : p.score.isAce
+                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                            : 'bg-white/[0.06] text-zinc-400 border border-white/[0.08]'
+                        }`}
+                      >
+                        {p.score.isMvp ? 'MVP' : p.score.isAce ? 'ACE' : 'Score'} {p.score.score.toFixed(1)}
                       </span>
                     )}
                   </div>
@@ -459,9 +472,24 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           </div>
         </div>
 
-        {/* LoLDB Signature Badges (Double Kill, Most Dmg, etc.) */}
-        {(isMostDmg || isMostGold || isMostCs) && (
+        {/* LoLDB & DeepLoL Signature Badges (MVP, ACE, Score, Most Dmg, etc.) */}
+        {(participant.score || isMostDmg || isMostGold || isMostCs) && (
           <div className="flex xl:flex-col gap-1 items-start justify-center shrink-0">
+            {participant.score && (
+              <span
+                className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase flex items-center gap-1 ${
+                  participant.score.isMvp
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                    : participant.score.isAce
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                    : 'bg-white/[0.08] text-zinc-300 border border-white/10'
+                }`}
+              >
+                {participant.score.isMvp && <Trophy className="h-2.5 w-2.5 text-amber-400" />}
+                {participant.score.isAce && <Award className="h-2.5 w-2.5 text-purple-400" />}
+                <span>{participant.score.isMvp ? 'MVP' : participant.score.isAce ? 'ACE' : 'Score'} {participant.score.score.toFixed(1)}</span>
+              </span>
+            )}
             {isMostDmg && (
               <span className="rounded bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-300">
                 Most Dmg

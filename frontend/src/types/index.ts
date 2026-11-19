@@ -105,7 +105,24 @@ export interface MatchParticipant {
   damageShare?: number;
   totalHeal?: number;
   goldSpent?: number;
+  score?: DeepLolScore;
   lpChange?: MatchLpChange | null;
+}
+
+export interface DeepLolScore {
+  score: number;
+  rank: number;
+  isMvp: boolean;
+  isAce: boolean;
+  tierRating: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
+}
+
+export interface ScoreTimelinePoint {
+  minute: number;
+  blueScore: number;
+  redScore: number;
+  diff: number;
+  playerScores: Record<string, number>;
 }
 
 export interface TeamTotals {
@@ -325,5 +342,6 @@ export interface MatchDetailResponse {
     redGold: number;
     diff: number;
   }>;
+  scoreTimeline?: ScoreTimelinePoint[];
   lpChange?: MatchLpChange | null;
 }

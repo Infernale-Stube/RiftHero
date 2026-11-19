@@ -1,6 +1,7 @@
 import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
+import { calculateMatchScores, DeepLolScore } from './scoreService';
 
 export interface FormattedMatchParticipant {
   puuid: string;
@@ -33,6 +34,7 @@ export interface FormattedMatchParticipant {
   secondaryStyle: number | null;
   killParticipation?: number;
   damageShare?: number;
+  score?: DeepLolScore;
   lpChange?: MatchLpChange | null;
 }
 
@@ -201,14 +203,18 @@ export async function getSummonerMatches(
     const blueTotalDmg = allParticipants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
     const redTotalDmg = allParticipants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
+    const matchScores = calculateMatchScores(allParticipants, m.gameDuration);
+
     const formattedParticipants = allParticipants.map((p) => {
       const isBlue = p.teamId === 100;
-      return formatParticipant(
+      const formatted = formatParticipant(
         p,
         durationMinutes,
         isBlue ? blueTotalKills : redTotalKills,
         isBlue ? blueTotalDmg : redTotalDmg
       );
+      formatted.score = matchScores.get(p.puuid);
+      return formatted;
     });
     const blueTeam = formattedParticipants
       .filter((p) => p.teamId === 100)
@@ -248,6 +254,7 @@ export async function getSummonerMatches(
 
     const matchLpChange = lpMap.get(m.id) || null;
     currentFormatted.lpChange = matchLpChange;
+    currentFormatted.score = matchScores.get(up.puuid);
 
     return {
       matchId: m.id,

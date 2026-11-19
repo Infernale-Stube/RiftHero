@@ -4,6 +4,7 @@ import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../rio
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
+import { calculateMatchScores, calculateScoreTimeline, DeepLolScore, ScoreTimelinePoint } from './scoreService';
 
 export interface ObjectiveDetail {
   first: boolean;
@@ -50,6 +51,7 @@ export interface MatchDetailResponse {
     redGold: number;
     diff: number; // positive = blue lead, negative = red lead
   }>;
+  scoreTimeline?: ScoreTimelinePoint[];
   lpChange?: MatchLpChange | null;
 }
 
@@ -222,6 +224,8 @@ export async function getMatchDetails(
     );
   }
 
+  const matchScores = calculateMatchScores(participants, match.gameDuration);
+
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
       const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
@@ -233,6 +237,7 @@ export async function getMatchDetails(
       const damageShare = teamDmg > 0 ? Math.round((p.totalDamageDealtToChampions / teamDmg) * 100) : 0;
 
       const lpChange: MatchLpChange | null = lpChangeMap.get(p.puuid) || null;
+      const score = matchScores.get(p.puuid);
 
       return {
         id: p.id,
@@ -273,6 +278,7 @@ export async function getMatchDetails(
         primaryStyle: p.primaryStyle,
         secondaryStyle: p.secondaryStyle,
         lpChange,
+        score,
       };
     })
   );
@@ -398,6 +404,9 @@ export async function getMatchDetails(
   const maxDamage = Math.max(...formattedParticipants.map((p) => p.totalDamageDealtToChampions), 1);
   const maxDamageTaken = Math.max(...formattedParticipants.map((p) => p.totalDamageTaken), 1);
 
+  // Compute minute-by-minute score progression timeline (DeepLoL style)
+  const scoreTimeline = calculateScoreTimeline(timeline, participants, matchScores);
+
   // Default overall match LP change from first participant with LP or first participant
   const matchOverallLpChange = formattedParticipants.find((p) => p.lpChange)?.lpChange || null;
 
@@ -416,6 +425,7 @@ export async function getMatchDetails(
     maxDamage,
     maxDamageTaken,
     goldAdvantageTimeline,
+    scoreTimeline,
     lpChange: matchOverallLpChange,
   };
 }
