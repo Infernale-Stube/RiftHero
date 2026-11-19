@@ -170,3 +170,21 @@ docker compose exec mailserver setup email add postmaster@rifthero.gg meinPasswo
 ```bash
 docker compose exec postgres psql -U rifthero -d rifthero
 ```
+
+---
+
+## 🤖 Automatisches Deployment (GitHub Actions)
+
+Die Datei `.github/workflows/deploy.yml` deployt jeden Push auf `master` / `main` vollautomatisch via SSH auf deinen Server (analog zu `sparbro_backend`).
+
+### Benötigte GitHub Repository Secrets:
+Hinterlege folgende Secrets in deinem GitHub-Repository unter **Settings > Secrets and variables > Actions**:
+
+| Secret Name | Beispiel-Wert | Beschreibung |
+| :--- | :--- | :--- |
+| `SSH_HOST` | `123.45.67.89` | Öffentliche IP-Adresse des Servers |
+| `SSH_USER` | `root` | SSH-Benutzername |
+| `SSH_PRIVATE_KEY` | `-----BEGIN OPENSSH PRIVATE KEY-----...` | Privater SSH-Key für Serverzugriff |
+| `SSH_PORT` | `22` | SSH-Port (Standard: `22`) |
+| `DEPLOY_PATH` | `/opt/rifthero` | Pfad zur Plattform auf dem Server |
+

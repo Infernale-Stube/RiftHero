@@ -1,0 +1,97 @@
+name: Deploy RiftHero Production
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+
+# Prevent concurrent deployments
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Production Server
+    # Only run on push, manual trigger, or merged PRs (ignore closed without merge)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine Settings
+        id: setup
+        run: |
+          DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+          if [ -z "$DEPLOY_PATH" ]; then
+            echo "❌ Error: GitHub secret DEPLOY_PATH is not set!"
+            exit 1
+          fi
+
+          echo "path=$DEPLOY_PATH" >> $GITHUB_OUTPUT
+          echo "📁 Target Path:       $DEPLOY_PATH"
+          echo "🌿 Target Git Branch: ${{ github.ref_name }}"
+
+      - name: Execute Deployment via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ steps.setup.outputs.path }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: DEPLOY_PATH,TARGET_BRANCH
+          script_stop: true
+          script: |
+            set -e
+
+            echo "=================================================="
+            echo "⚔️ RiftHero Continuous Deployment"
+            echo "Target Directory   : $DEPLOY_PATH"
+            echo "Git Branch         : $TARGET_BRANCH"
+            echo "Timestamp          : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "=================================================="
+
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "❌ Error: Target directory '$DEPLOY_PATH' does not exist on the server!"
+              exit 1
+            fi
+
+            cd "$DEPLOY_PATH"
+
+            echo "📥 [1/4] Fetching latest changes from branch '$TARGET_BRANCH'..."
+            git fetch origin "$TARGET_BRANCH"
+            git checkout "$TARGET_BRANCH"
+            git reset --hard "origin/$TARGET_BRANCH"
+
+            echo "📦 [2/4] Verifying environment configuration..."
+            if [ ! -f .env ]; then
+              echo "❌ Error: .env file not found in '$DEPLOY_PATH'!"
+              exit 1
+            fi
+
+            echo "🐳 [3/4] Rebuilding and launching Docker containers..."
+            docker compose up -d --build --remove-orphans
+
+            # Reload Caddy reverse proxy routes
+            if docker compose ps --status running --services 2>/dev/null | grep -qx "caddy"; then
+              echo "🔄 Reloading Caddy reverse proxy routes..."
+              docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+            fi
+
+            echo "🧹 [4/4] Pruning dangling Docker images to free disk space..."
+            docker image prune -f
+
+            echo "=================================================="
+            echo "✅ Deployment successful!"
+            echo "=================================================="
+            docker compose ps
