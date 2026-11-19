@@ -32,6 +32,9 @@ import {
   getObjectiveIconUrl,
   getDragonSubtypeIconUrl,
   getDragonSubtypeName,
+  getPositionIconUrl,
+  getParticipantPosition,
+  getParticipantPositionOrder,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
@@ -243,12 +246,15 @@ export default function MatchDetailPage() {
 
         {/* Players List Table */}
         <div className="divide-y divide-white/[0.04] flex flex-col flex-1">
-          {team.map((p, pIndex) => {
+          {[...team]
+            .sort((a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b))
+            .map((p, pIndex) => {
             const isHighlighted =
               activeHighlightPuuid === p.puuid ||
               activeHighlightPuuid === `participant${pIndex + (isBlue ? 1 : 6)}` ||
               activeHighlightPuuid === `participant${p.puuid}`;
 
+            const pos = getParticipantPosition(p);
             const targetTag = p.riotIdTagline || region.toUpperCase();
             const formattedTag = `${p.riotIdGameName}-${targetTag}`;
             const damagePct = p.damageShare ?? (teamDetail.totalDamage > 0
@@ -354,9 +360,17 @@ export default function MatchDetailPage() {
                         >
                           {p.riotIdGameName}
                         </Link>
-                        {p.lane && (
-                          <span className="rounded bg-white/[0.06] px-1.5 py-0.2 text-[9px] font-bold uppercase text-slate-400">
-                            {p.lane}
+                        {pos && (
+                          <span className="flex items-center gap-1 rounded bg-white/[0.08] border border-white/10 px-1.5 py-0.5 text-[9px] font-black text-amber-300 shrink-0">
+                            <Image
+                              src={getPositionIconUrl(pos)}
+                              alt={pos}
+                              width={11}
+                              height={11}
+                              className="object-contain"
+                              unoptimized
+                            />
+                            <span>{pos}</span>
                           </span>
                         )}
                         {p.lpChange && (

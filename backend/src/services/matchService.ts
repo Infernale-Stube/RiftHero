@@ -13,6 +13,7 @@ export interface FormattedMatchParticipant {
   win: boolean;
   role: string | null;
   lane: string | null;
+  teamPosition: string | null;
   kills: number;
   deaths: number;
   assists: number;
@@ -59,6 +60,34 @@ export interface FormattedMatch {
   lpChange?: MatchLpChange | null;
 }
 
+export function getPositionSortOrder(p: {
+  teamPosition?: string | null;
+  lane?: string | null;
+  role?: string | null;
+}): number {
+  const pos = (p.teamPosition || '').toUpperCase();
+  if (pos === 'TOP') return 1;
+  if (pos === 'JUNGLE') return 2;
+  if (pos === 'MIDDLE' || pos === 'MID') return 3;
+  if (pos === 'BOTTOM' || pos === 'BOT') return 4;
+  if (pos === 'UTILITY' || pos === 'SUPPORT') return 5;
+
+  const lane = (p.lane || '').toUpperCase();
+  const role = (p.role || '').toUpperCase();
+
+  if (lane === 'TOP') return 1;
+  if (lane === 'JUNGLE') return 2;
+  if (lane === 'MIDDLE' || lane === 'MID') return 3;
+  if (lane === 'BOTTOM' || lane === 'BOT') {
+    if (role === 'DUO_SUPPORT' || role === 'SUPPORT') return 5;
+    return 4;
+  }
+  if (role === 'DUO_SUPPORT' || role === 'SUPPORT') return 5;
+  if (role === 'DUO_CARRY') return 4;
+
+  return 6;
+}
+
 function formatParticipant(
   p: any,
   durationMinutes: number,
@@ -82,6 +111,7 @@ function formatParticipant(
     win: p.win,
     role: p.role,
     lane: p.lane,
+    teamPosition: p.teamPosition || null,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
@@ -180,8 +210,12 @@ export async function getSummonerMatches(
         isBlue ? blueTotalDmg : redTotalDmg
       );
     });
-    const blueTeam = formattedParticipants.filter((p) => p.teamId === 100);
-    const redTeam = formattedParticipants.filter((p) => p.teamId === 200);
+    const blueTeam = formattedParticipants
+      .filter((p) => p.teamId === 100)
+      .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
+    const redTeam = formattedParticipants
+      .filter((p) => p.teamId === 200)
+      .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
 
     const blueTeamTotals: TeamTotals = {
       kills: blueTotalKills,

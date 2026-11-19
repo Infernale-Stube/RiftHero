@@ -148,3 +148,72 @@ export function getDragonSubtypeName(subType: string): string {
   if (clean.includes('ELDER')) return 'Elder Dragon';
   return 'Drake';
 }
+
+// Player Positions: TOP, JUNGLE, MID, ADC, SUPPORT
+export type PositionKey = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+
+export const POSITION_ICONS: Record<PositionKey, string> = {
+  TOP: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png',
+  JUNGLE: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png',
+  MID: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png',
+  ADC: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png',
+  SUPPORT: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png',
+};
+
+export const POSITION_ORDER_MAP: Record<PositionKey, number> = {
+  TOP: 1,
+  JUNGLE: 2,
+  MID: 3,
+  ADC: 4,
+  SUPPORT: 5,
+};
+
+export function normalizePosition(
+  teamPosition?: string | null,
+  lane?: string | null,
+  role?: string | null
+): PositionKey | null {
+  const pos = (teamPosition || '').toUpperCase().trim();
+  if (pos === 'TOP') return 'TOP';
+  if (pos === 'JUNGLE') return 'JUNGLE';
+  if (pos === 'MIDDLE' || pos === 'MID') return 'MID';
+  if (pos === 'BOTTOM' || pos === 'BOT') return 'ADC';
+  if (pos === 'UTILITY' || pos === 'SUPPORT') return 'SUPPORT';
+
+  const l = (lane || '').toUpperCase().trim();
+  const r = (role || '').toUpperCase().trim();
+
+  if (l === 'TOP') return 'TOP';
+  if (l === 'JUNGLE') return 'JUNGLE';
+  if (l === 'MIDDLE' || l === 'MID') return 'MID';
+  if (l === 'BOTTOM' || l === 'BOT') {
+    if (r === 'DUO_SUPPORT' || r === 'SUPPORT') return 'SUPPORT';
+    return 'ADC';
+  }
+  if (r === 'DUO_SUPPORT' || r === 'SUPPORT') return 'SUPPORT';
+  if (r === 'DUO_CARRY') return 'ADC';
+
+  return null;
+}
+
+export function getPositionIconUrl(positionKey: PositionKey): string {
+  return POSITION_ICONS[positionKey];
+}
+
+export function getParticipantPosition(p: {
+  teamPosition?: string | null;
+  lane?: string | null;
+  role?: string | null;
+}): PositionKey | null {
+  return normalizePosition(p.teamPosition, p.lane, p.role);
+}
+
+export function getParticipantPositionOrder(p: {
+  teamPosition?: string | null;
+  lane?: string | null;
+  role?: string | null;
+}): number {
+  const pos = getParticipantPosition(p);
+  return pos ? POSITION_ORDER_MAP[pos] : 6;
+}
+

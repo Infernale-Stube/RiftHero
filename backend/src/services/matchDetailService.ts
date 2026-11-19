@@ -3,6 +3,7 @@ import { getRiotClient } from '../riot/client';
 import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
+import { getPositionSortOrder } from './matchService';
 
 export interface ObjectiveDetail {
   first: boolean;
@@ -276,8 +277,12 @@ export async function getMatchDetails(
     })
   );
 
-  const blueParticipants = formattedParticipants.filter((p) => p.teamId === 100);
-  const redParticipants = formattedParticipants.filter((p) => p.teamId === 200);
+  const blueParticipants = formattedParticipants
+    .filter((p) => p.teamId === 100)
+    .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
+  const redParticipants = formattedParticipants
+    .filter((p) => p.teamId === 200)
+    .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
 
   const formatBans = async (rawBans: any[] = []) => {
     const bans = [];

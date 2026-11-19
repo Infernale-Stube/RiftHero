@@ -11,6 +11,9 @@ import {
   getSpellIconUrl,
   getRuneIconUrl,
   getStyleIconUrl,
+  getPositionIconUrl,
+  getParticipantPosition,
+  getParticipantPositionOrder,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -40,6 +43,17 @@ export default function MatchCard({ match, region }: MatchCardProps) {
   const runeKeystoneUrl = getRuneIconUrl(participant.primaryRune);
   const runeStyleUrl = getStyleIconUrl(participant.secondaryStyle);
 
+  // Position of current player
+  const playerPos = getParticipantPosition(participant);
+
+  // Sort teams by standard position order: TOP -> JUNGLE -> MID -> ADC -> SUPPORT
+  const sortedBlueTeam = [...blueTeam].sort(
+    (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
+  );
+  const sortedRedTeam = [...redTeam].sort(
+    (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
+  );
+
   // Compute LoLDB signature badges
   const allParticipants = [...blueTeam, ...redTeam];
   const maxGameDamage = Math.max(...allParticipants.map((p) => p.totalDamageDealtToChampions), 1);
@@ -57,6 +71,10 @@ export default function MatchCard({ match, region }: MatchCardProps) {
     teamWon: boolean,
     totals?: { kills: number; deaths: number; assists: number; gold: number; damage: number }
   ) => {
+    const sortedTeam = [...team].sort(
+      (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
+    );
+
     return (
       <div className="flex flex-col rounded-xl border border-white/[0.06] bg-black/40 overflow-hidden">
         {/* Team Header */}
@@ -92,10 +110,11 @@ export default function MatchCard({ match, region }: MatchCardProps) {
 
         {/* Players List */}
         <div className="divide-y divide-white/[0.04]">
-          {team.map((p) => {
+          {sortedTeam.map((p) => {
             const isTarget = p.puuid === participant.puuid;
             const targetTag = p.riotIdTagline || region.toUpperCase();
             const formattedTag = `${p.riotIdGameName}-${targetTag}`;
+            const pos = getParticipantPosition(p);
             const damageBarWidth = Math.min(
               100,
               Math.max(4, Math.round((p.totalDamageDealtToChampions / maxDamage) * 100))
@@ -108,8 +127,28 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                   isTarget ? 'bg-white/[0.07] font-semibold' : 'hover:bg-white/[0.02]'
                 }`}
               >
-                {/* Champ + Spells + Name */}
-                <div className="flex items-center gap-2.5 min-w-[170px]">
+                {/* Position + Champ + Spells + Name */}
+                <div className="flex items-center gap-2 min-w-[210px]">
+                  {/* Position Badge */}
+                  {pos ? (
+                    <div
+                      className="flex items-center gap-1 rounded bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 text-[9px] font-black text-zinc-300 shrink-0 min-w-[50px] justify-center"
+                      title={pos}
+                    >
+                      <Image
+                        src={getPositionIconUrl(pos)}
+                        alt={pos}
+                        width={11}
+                        height={11}
+                        className="object-contain"
+                        unoptimized
+                      />
+                      <span>{pos}</span>
+                    </div>
+                  ) : (
+                    <div className="w-[50px] shrink-0" />
+                  )}
+
                   <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-white/10">
                     <Image
                       src={getChampionIconUrl(p.championName)}
@@ -312,9 +351,22 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                 </span>
               )}
             </div>
-            <span className="text-[11px] font-medium text-zinc-400 truncate">
-              {queueName}
-            </span>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 truncate mt-0.5">
+              {playerPos && (
+                <span className="flex items-center gap-1 rounded bg-white/[0.08] border border-white/10 px-1.5 py-0.5 text-[10px] font-black text-amber-300 shrink-0">
+                  <Image
+                    src={getPositionIconUrl(playerPos)}
+                    alt={playerPos}
+                    width={11}
+                    height={11}
+                    className="object-contain"
+                    unoptimized
+                  />
+                  <span>{playerPos}</span>
+                </span>
+              )}
+              <span className="truncate">{queueName}</span>
+            </div>
             <span className="text-[10px] text-zinc-500">
               {formatDuration(gameDuration)} · {formatTimeAgo(gameCreation)}
             </span>
@@ -428,17 +480,32 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           </div>
         )}
 
-        {/* Right Side: 2 Columns of 5 Teammates (LoLDB Style) */}
+        {/* Right Side: 2 Columns of 5 Teammates (LoLDB Style - Ordered TOP, JUNGLE, MID, ADC, SUPPORT) */}
         <div className="flex items-center gap-4 shrink-0 pt-2 xl:pt-0 border-t xl:border-t-0 xl:border-l border-white/[0.06] xl:pl-4">
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-1 text-[10px]">
             {/* Blue Team (5 rows) */}
             <div className="flex flex-col gap-1">
-              {blueTeam.map((p) => {
+              {sortedBlueTeam.map((p) => {
                 const isCurrent = p.puuid === participant.puuid;
                 const formatted = `${p.riotIdGameName}-${p.riotIdTagline || region.toUpperCase()}`;
+                const pos = getParticipantPosition(p);
 
                 return (
-                  <div key={p.puuid} className="flex items-center gap-1.5 max-w-[105px]">
+                  <div key={p.puuid} className="flex items-center gap-1.5 max-w-[125px]">
+                    {pos ? (
+                      <span className="flex items-center justify-center h-3.5 w-3.5 shrink-0 opacity-75" title={pos}>
+                        <Image
+                          src={getPositionIconUrl(pos)}
+                          alt={pos}
+                          width={11}
+                          height={11}
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </span>
+                    ) : (
+                      <span className="w-3.5 shrink-0" />
+                    )}
                     <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
                       <Image
                         src={getChampionIconUrl(p.championName)}
@@ -464,12 +531,27 @@ export default function MatchCard({ match, region }: MatchCardProps) {
 
             {/* Red Team (5 rows) */}
             <div className="flex flex-col gap-1">
-              {redTeam.map((p) => {
+              {sortedRedTeam.map((p) => {
                 const isCurrent = p.puuid === participant.puuid;
                 const formatted = `${p.riotIdGameName}-${p.riotIdTagline || region.toUpperCase()}`;
+                const pos = getParticipantPosition(p);
 
                 return (
-                  <div key={p.puuid} className="flex items-center gap-1.5 max-w-[105px]">
+                  <div key={p.puuid} className="flex items-center gap-1.5 max-w-[125px]">
+                    {pos ? (
+                      <span className="flex items-center justify-center h-3.5 w-3.5 shrink-0 opacity-75" title={pos}>
+                        <Image
+                          src={getPositionIconUrl(pos)}
+                          alt={pos}
+                          width={11}
+                          height={11}
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </span>
+                    ) : (
+                      <span className="w-3.5 shrink-0" />
+                    )}
                     <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
                       <Image
                         src={getChampionIconUrl(p.championName)}
