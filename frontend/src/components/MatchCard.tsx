@@ -12,11 +12,6 @@ import {
   ExternalLink,
   Trophy,
   Award,
-  Swords,
-  Shield,
-  Flame,
-  Crown,
-  Eye,
 } from 'lucide-react';
 import { FormattedMatch, MatchParticipant, DeepLolScore } from '@/types';
 import {
@@ -27,6 +22,7 @@ import {
   getRuneIconUrl,
   getStyleIconUrl,
   getPositionIconUrl,
+  getObjectiveIconUrl,
   getParticipantPosition,
   getParticipantPositionOrder,
 } from '@/lib/ddragon';
@@ -206,11 +202,12 @@ export default function MatchCard({ match, region }: MatchCardProps) {
       .filter((id: number) => id > 0);
     const obj = teamRawData?.objectives || {};
 
-    const sideKills = totals?.kills ?? team.reduce((acc, p) => acc + p.kills, 0);
     const sideTowers = obj.tower?.kills ?? 0;
-    const sideDragons = obj.dragon?.kills ?? 0;
+    const sideInhibitors = obj.inhibitor?.kills ?? 0;
     const sideBarons = obj.baron?.kills ?? 0;
-    const sideGrubs = obj.horde?.kills ?? obj.riftHerald?.kills ?? 0;
+    const sideDragons = obj.dragon?.kills ?? 0;
+    const sideHerald = obj.riftHerald?.kills ?? obj.horde?.kills ?? 0;
+    const teamSide = isBlue ? 'blue' : 'red';
 
     return (
       <div
@@ -253,25 +250,60 @@ export default function MatchCard({ match, region }: MatchCardProps) {
 
             {/* Objective icons + counts */}
             <div className="flex items-center gap-2.5 text-[11px] text-zinc-300 font-bold ml-1">
-              <span className="flex items-center gap-1" title="Kills">
-                <Swords className="h-3.5 w-3.5 text-zinc-400" />
-                <span>{sideKills}</span>
-              </span>
               <span className="flex items-center gap-1" title="Towers">
-                <Shield className="h-3.5 w-3.5 text-zinc-400" />
+                <Image
+                  src={getObjectiveIconUrl('tower', teamSide)}
+                  alt="Towers"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain shrink-0"
+                  unoptimized
+                />
                 <span>{sideTowers}</span>
               </span>
+              <span className="flex items-center gap-1" title="Inhibitors">
+                <Image
+                  src={getObjectiveIconUrl('inhibitor', teamSide)}
+                  alt="Inhibitors"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain shrink-0"
+                  unoptimized
+                />
+                <span>{sideInhibitors}</span>
+              </span>
               <span className="flex items-center gap-1" title="Dragons">
-                <Flame className="h-3.5 w-3.5 text-zinc-400" />
+                <Image
+                  src={getObjectiveIconUrl('dragon', teamSide)}
+                  alt="Dragons"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain shrink-0"
+                  unoptimized
+                />
                 <span>{sideDragons}</span>
               </span>
               <span className="flex items-center gap-1" title="Barons">
-                <Crown className="h-3.5 w-3.5 text-zinc-400" />
+                <Image
+                  src={getObjectiveIconUrl('baron', teamSide)}
+                  alt="Barons"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain shrink-0"
+                  unoptimized
+                />
                 <span>{sideBarons}</span>
               </span>
               <span className="flex items-center gap-1" title="Voidgrubs / Herald">
-                <Eye className="h-3.5 w-3.5 text-zinc-400" />
-                <span>{sideGrubs}</span>
+                <Image
+                  src={getObjectiveIconUrl('herald', teamSide)}
+                  alt="Herald"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain shrink-0"
+                  unoptimized
+                />
+                <span>{sideHerald}</span>
               </span>
             </div>
 
