@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Users } from 'lucide-react';
 import { PlayedWithTeammate } from '@/types';
-import { getProfileIconUrl } from '@/lib/ddragon';
+import { getProfileIconUrl, getChampionIconUrl } from '@/lib/ddragon';
 
 interface PlayedWithWidgetProps {
   teammates: PlayedWithTeammate[];
@@ -34,6 +34,14 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
           const formattedTag = `${t.gameName}-${t.tagLine || region.toUpperCase()}`;
           const isGoodWinrate = t.winrate >= 50;
 
+          // Resolve avatar: actual profile icon if available, else their champion avatar
+          const avatarUrl =
+            t.profileIconId && t.profileIconId > 0 && t.profileIconId !== 29
+              ? getProfileIconUrl(t.profileIconId)
+              : t.championName
+              ? getChampionIconUrl(t.championName)
+              : getProfileIconUrl(t.profileIconId || 29);
+
           return (
             <div
               key={t.puuid || t.gameName}
@@ -44,19 +52,26 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
                 href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                 className="flex items-center gap-2.5 min-w-0 group"
               >
-                <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/10">
+                <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/10 group-hover:border-white/30 transition-colors shadow-sm">
                   <Image
-                    src={getProfileIconUrl(t.profileIconId || 29)}
+                    src={avatarUrl}
                     alt={t.gameName}
-                    width={24}
-                    height={24}
+                    width={28}
+                    height={28}
                     className="h-full w-full object-cover"
                     unoptimized
                   />
                 </div>
-                <span className="truncate font-bold text-zinc-300 group-hover:text-white transition-colors">
-                  {t.gameName}
-                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate font-bold text-zinc-300 group-hover:text-white transition-colors">
+                    {t.gameName}
+                  </span>
+                  {t.championName && (
+                    <span className="text-[9px] text-zinc-500 truncate">
+                      mit {t.championName}
+                    </span>
+                  )}
+                </div>
               </Link>
 
               {/* Games & Winrate */}

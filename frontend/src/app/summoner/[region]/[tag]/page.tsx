@@ -221,7 +221,6 @@ export default function SummonerPage() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isLive={liveData?.inGame || false}
-          onRefresh={handleRefreshCompleted}
         />
       </div>
 
@@ -239,22 +238,7 @@ export default function SummonerPage() {
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* Main Column: Match History (LoLDB Left/Main) */}
-          <div className="flex-1 w-full min-w-0">
-            <MatchHistory
-              matches={matches}
-              region={region}
-              activeQueue={activeQueue}
-              onQueueChange={handleQueueChange}
-              isLoading={isLoadingMatches}
-              total={totalMatches}
-              hasMore={matches.length < totalMatches}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={handleLoadMore}
-            />
-          </div>
-
-          {/* Right Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
+          {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
           <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
             {/* Ranked Solo/Duo Card with LP History Graph */}
             <RankCard
@@ -280,6 +264,21 @@ export default function SummonerPage() {
             {/* Champion Stats */}
             <ChampionStats
               stats={champStats}
+            />
+          </div>
+
+          {/* Right Main Column: Match History (Breiter & spacious) */}
+          <div className="flex-1 w-full min-w-0">
+            <MatchHistory
+              matches={matches}
+              region={region}
+              activeQueue={activeQueue}
+              onQueueChange={handleQueueChange}
+              isLoading={isLoadingMatches}
+              total={totalMatches}
+              hasMore={matches.length < totalMatches}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={handleLoadMore}
             />
           </div>
         </div>

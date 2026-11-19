@@ -202,10 +202,10 @@ export default function MatchCard({ match, region }: MatchCardProps) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] transition-all overflow-hidden ${
+      className={`group relative flex flex-col rounded-xl border border-white/[0.06] transition-all overflow-hidden shadow-lg ${
         win
-          ? 'border-l-4 border-l-emerald-500 hover:border-white/10'
-          : 'border-l-4 border-l-rose-500 hover:border-white/10'
+          ? 'bg-[#0d1716]/90 border-l-4 border-l-emerald-500 hover:border-emerald-500/40 hover:bg-[#0e1b1a]'
+          : 'bg-[#181114]/90 border-l-4 border-l-rose-500 hover:border-rose-500/40 hover:bg-[#1d1318]'
       }`}
     >
       {/* Main LoLDB Match Row */}

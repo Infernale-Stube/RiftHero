@@ -57,6 +57,7 @@ export interface PlayedWithTeammate {
   gameName: string;
   tagLine: string;
   profileIconId?: number;
+  championName?: string;
   games: number;
   wins: number;
   losses: number;

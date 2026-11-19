@@ -316,6 +316,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               role: p.role || null,
               lane: p.lane || null,
               teamPosition: p.teamPosition || null,
+              profileIcon: (p as any).profileIcon || 29,
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,

@@ -275,6 +275,7 @@ export interface PlayedWithTeammate {
   gameName: string;
   tagLine: string;
   profileIconId?: number;
+  championName?: string;
   games: number;
   wins: number;
   losses: number;
@@ -293,7 +294,7 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       teamId: true,
       win: true,
     },
-    take: 40,
+    take: 50,
     orderBy: {
       match: { gameCreation: 'desc' },
     },
@@ -319,6 +320,12 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       teamId: true,
       win: true,
       championName: true,
+      profileIcon: true,
+      summoner: {
+        select: {
+          profileIconId: true,
+        },
+      },
     },
   });
 
@@ -329,6 +336,8 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       puuid: string;
       gameName: string;
       tagLine: string;
+      profileIconId?: number;
+      championCounts: Map<string, number>;
       games: number;
       wins: number;
       losses: number;
@@ -343,14 +352,20 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
     const cleanName = fp.riotIdGameName || 'Player';
     const cleanTag = fp.riotIdTagline || '';
 
-    const existing = teammateStats.get(key) || {
-      puuid: fp.puuid,
-      gameName: cleanName,
-      tagLine: cleanTag,
-      games: 0,
-      wins: 0,
-      losses: 0,
-    };
+    let existing = teammateStats.get(key);
+    if (!existing) {
+      existing = {
+        puuid: fp.puuid,
+        gameName: cleanName,
+        tagLine: cleanTag,
+        profileIconId: fp.profileIcon || fp.summoner?.profileIconId || 29,
+        championCounts: new Map<string, number>(),
+        games: 0,
+        wins: 0,
+        losses: 0,
+      };
+      teammateStats.set(key, existing);
+    }
 
     existing.games++;
     if (fp.win) {
@@ -359,7 +374,16 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       existing.losses++;
     }
 
-    teammateStats.set(key, existing);
+    if (fp.profileIcon && fp.profileIcon > 0 && fp.profileIcon !== 29) {
+      existing.profileIconId = fp.profileIcon;
+    } else if (fp.summoner?.profileIconId) {
+      existing.profileIconId = fp.summoner.profileIconId;
+    }
+
+    if (fp.championName) {
+      const c = (existing.championCounts.get(fp.championName) || 0) + 1;
+      existing.championCounts.set(fp.championName, c);
+    }
   }
 
   // Sort by games played descending, then winrate
@@ -367,15 +391,28 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
     .filter((t) => t.games >= 2 && t.gameName !== 'Unknown') // At least 2 games
     .sort((a, b) => b.games - a.games || b.wins - a.wins)
     .slice(0, limit)
-    .map((t) => ({
-      puuid: t.puuid,
-      gameName: t.gameName,
-      tagLine: t.tagLine,
-      games: t.games,
-      wins: t.wins,
-      losses: t.losses,
-      winrate: Math.round((t.wins / t.games) * 100),
-    }));
+    .map((t) => {
+      let topChamp = '';
+      let maxCount = 0;
+      t.championCounts.forEach((cnt, name) => {
+        if (cnt > maxCount) {
+          maxCount = cnt;
+          topChamp = name;
+        }
+      });
+
+      return {
+        puuid: t.puuid,
+        gameName: t.gameName,
+        tagLine: t.tagLine,
+        profileIconId: t.profileIconId,
+        championName: topChamp,
+        games: t.games,
+        wins: t.wins,
+        losses: t.losses,
+        winrate: Math.round((t.wins / t.games) * 100),
+      };
+    });
 
   return sorted;
 }

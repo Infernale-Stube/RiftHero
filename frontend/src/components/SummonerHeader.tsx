@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Loader2, RefreshCw, Radio, ChevronRight, Globe, ChevronLeft } from 'lucide-react';
+import { Loader2, Radio, ChevronRight, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank } from '@/types';
 import { getProfileIconUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
@@ -15,7 +15,6 @@ interface SummonerHeaderProps {
   activeTab: 'matches' | 'live';
   onTabChange: (tab: 'matches' | 'live') => void;
   isLive?: boolean;
-  onRefresh?: () => void;
 }
 
 export default function SummonerHeader({
@@ -25,7 +24,6 @@ export default function SummonerHeader({
   activeTab,
   onTabChange,
   isLive = false,
-  onRefresh,
 }: SummonerHeaderProps) {
   const soloRank = ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
@@ -153,21 +151,18 @@ export default function SummonerHeader({
             </div>
           </div>
 
-          {/* Right Block: Update Button & Status */}
-          <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isUpdating}
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-bold text-zinc-200 hover:bg-white/[0.12] hover:text-white transition-all disabled:opacity-50 shadow-md active:scale-98"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin text-orange-400' : 'text-zinc-400'}`} />
-              <span>{isUpdating ? 'Aktualisiere...' : 'Update'}</span>
-            </button>
+          {/* Right Block: Silent Status Indicator (No manual button) */}
+          <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
+            {isUpdating && (
+              <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-300 animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin text-orange-400" />
+                <span>Hintergrund-Sync läuft...</span>
+              </div>
+            )}
 
-            {summoner.lastFetchedAt && (
+            {summoner.lastFetchedAt && !isUpdating && (
               <span className="text-[11px] text-zinc-500">
-                Gecached · {formatTimeAgo(summoner.lastFetchedAt)}
+                Gecached · vor {formatTimeAgo(summoner.lastFetchedAt)}
               </span>
             )}
           </div>

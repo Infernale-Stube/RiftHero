@@ -115,6 +115,7 @@ model MatchParticipant {
   role                           String?
   lane                           String?
   teamPosition                   String?   // TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
+  profileIcon                    Int?      @default(29)
 
   // Combat Stats
   kills                          Int       @default(0)
