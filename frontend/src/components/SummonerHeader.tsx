@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Globe, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Radio, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
@@ -210,45 +210,29 @@ export default function SummonerHeader({
             </div>
           </div>
 
-          {/* Right Block: Live Game Info or Cached Time */}
+          {/* Right Block: Subtle Live Game Pill or Cached Time */}
           <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
             {liveData?.inGame && liveData.game ? (
-              <div className="flex items-center gap-3 bg-gradient-to-r from-rose-950/80 via-black/80 to-black/90 border border-rose-500/40 rounded-xl px-4 py-2.5 shadow-xl backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-                  </span>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                        {t('live.gameActive')}
-                      </span>
-                      <span className="text-zinc-600 text-xs">•</span>
-                      <span className="text-xs font-bold text-white">{liveData.game.queueName}</span>
-                    </div>
-                    <span className="text-[11px] text-zinc-400 font-medium">
-                      {t('live.gameMode', { mode: liveData.game.gameMode })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pl-3 border-l border-white/10">
-                  <div className="font-mono text-sm sm:text-base font-black text-amber-300 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 shadow-inner">
-                    {formatTimer(elapsedSeconds)}
-                  </div>
-                  {onRefreshLive && (
-                    <button
-                      onClick={onRefreshLive}
-                      disabled={isLoadingLive}
-                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-white/10 bg-white/[0.06] text-zinc-300 hover:text-white hover:bg-white/[0.12] transition-colors disabled:opacity-50"
-                      title={t('live.refreshTitle')}
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 ${isLoadingLive ? 'animate-spin text-orange-400' : ''}`} />
-                    </button>
-                  )}
-                </div>
-              </div>
+              <Link
+                href={`${basePath}/live`}
+                className="flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-950/25 px-3 py-1 text-xs text-zinc-300 hover:border-rose-500/50 hover:bg-rose-950/40 transition-all backdrop-blur-sm"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+                </span>
+                <span className="font-black text-rose-400 uppercase tracking-wider text-[11px]">
+                  Live
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="font-semibold text-zinc-200 text-xs">
+                  {liveData.game.queueName}
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="font-mono font-bold text-amber-300 text-xs">
+                  {formatTimer(elapsedSeconds)}
+                </span>
+              </Link>
             ) : summoner.lastFetchedAt ? (
               <span className="text-[11px] text-zinc-500 font-medium">
                 {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
