@@ -171,10 +171,6 @@ export default function MatchCard({ match, region }: MatchCardProps) {
   const maxGameGold = Math.max(...allParticipants.map((p) => p.goldEarned), 1);
   const maxGameCs = Math.max(...allParticipants.map((p) => p.cs), 1);
 
-  const isMostDmg = participant.totalDamageDealtToChampions === maxGameDamage;
-  const isMostGold = participant.goldEarned === maxGameGold;
-  const isMostCs = participant.cs === maxGameCs;
-  const multiKill = getMultiKillText(participant);
 
   // Sort all 10 players by score descending to assign overall rank (1st to 10th)
   const allPlayersRanked = [...allParticipants].sort((a, b) => {
@@ -770,54 +766,26 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           </div>
         </div>
 
-        {/* Badges Block: Multi-kill, Score (0-100), Most Dmg/Gold */}
-        <div className="flex flex-col items-center justify-center gap-1.5 shrink-0 min-w-[95px]">
-          {multiKill && (
-            <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/25 px-3 py-1 shadow-sm">
-              <div className="h-4 w-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
-                <Swords className="h-2.5 w-2.5 text-black fill-black" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                {multiKill}
+        {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
+        {participant.score && (
+          <div className="flex flex-col items-center justify-center shrink-0 min-w-[85px]">
+            {participant.score.isMvp ? (
+              <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-3 py-1.5 text-sm font-black shadow-md tracking-tight">
+                <Trophy className="h-4 w-4 text-black fill-black" />
+                <span>MVP {formatScore(participant.score)}</span>
               </span>
-            </div>
-          )}
-
-          {participant.score && (
-            <div className="flex items-center gap-1">
-              {participant.score.isMvp ? (
-                <span className="flex items-center gap-1 rounded bg-amber-400 text-black border border-amber-300 px-2 py-0.5 text-xs font-black shadow-sm">
-                  <Trophy className="h-3 w-3 text-black fill-black" />
-                  <span>MVP {formatScore(participant.score)}</span>
-                </span>
-              ) : participant.score.isAce ? (
-                <span className="flex items-center gap-1 rounded bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-xs font-black text-emerald-300 shadow-sm">
-                  <Award className="h-3 w-3 text-emerald-400" />
-                  <span>ACE {formatScore(participant.score)}</span>
-                </span>
-              ) : (
-                <span className="rounded bg-white/[0.06] border border-white/10 px-2 py-0.5 text-xs font-bold text-zinc-300">
-                  Score {formatScore(participant.score)}
-                </span>
-              )}
-            </div>
-          )}
-
-          {(isMostDmg || isMostGold) && (
-            <div className="flex items-center gap-1">
-              {isMostDmg && (
-                <span className="rounded bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-300">
-                  Most Dmg
-                </span>
-              )}
-              {isMostGold && (
-                <span className="rounded bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-300">
-                  Most Gold
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+            ) : participant.score.isAce ? (
+              <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 text-sm font-black text-emerald-300 shadow-md tracking-tight">
+                <Award className="h-4 w-4 text-emerald-400" />
+                <span>ACE {formatScore(participant.score)}</span>
+              </span>
+            ) : (
+              <span className="rounded-lg bg-white/[0.08] border border-white/15 px-3 py-1.5 text-sm font-black text-zinc-100 shadow-sm tracking-tight">
+                Score {formatScore(participant.score)}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Right Side: 5 Matchups with centered Role Icon Separator + Expand Button */}
         <div className="flex items-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-white/[0.06]">
