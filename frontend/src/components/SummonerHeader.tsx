@@ -14,8 +14,8 @@ interface SummonerHeaderProps {
   summoner: SummonerData;
   ranks: SummonerRank[];
   isUpdating?: boolean;
-  activeTab?: 'matches' | 'champions' | 'challenges' | 'live';
-  onTabChange?: (tab: 'matches' | 'champions' | 'challenges' | 'live') => void;
+  activeTab?: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live';
+  onTabChange?: (tab: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live') => void;
   isLive?: boolean;
 }
 
@@ -36,6 +36,8 @@ export default function SummonerHeader({
     controlledTab ||
     (cleanPath.endsWith('/champions')
       ? 'champions'
+      : cleanPath.endsWith('/masteries')
+      ? 'masteries'
       : cleanPath.endsWith('/challenges')
       ? 'challenges'
       : cleanPath.endsWith('/live')
@@ -212,6 +214,18 @@ export default function SummonerHeader({
             }`}
           >
             {t('summoner.tabChampions')}
+          </Link>
+
+          <Link
+            href={`${basePath}/masteries`}
+            onClick={() => onTabChange?.('masteries')}
+            className={`relative pb-2 transition-colors ${
+              currentTab === 'masteries'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            {t('summoner.tabMasteries')}
           </Link>
 
           <Link

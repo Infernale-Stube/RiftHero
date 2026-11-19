@@ -43,6 +43,7 @@ export interface TranslationDictionary {
     cachedAgo: string;
     tabMatches: string;
     tabChampions: string;
+    tabMasteries: string;
     tabChallenges: string;
     tabLive: string;
     soloRank: string;
@@ -126,6 +127,29 @@ export interface TranslationDictionary {
     loading: string;
     emptyTitle: string;
     emptyDesc: string;
+  };
+  masteries: {
+    title: string;
+    totalScore: string;
+    totalPoints: string;
+    championsPlayed: string;
+    searchPlaceholder: string;
+    sortBy: string;
+    sortByPoints: string;
+    sortByLevel: string;
+    sortByRecent: string;
+    sortByName: string;
+    filterAll: string;
+    filterLevel7: string;
+    filterLevel10: string;
+    level: string;
+    points: string;
+    nextLevel: string;
+    maxLevel: string;
+    lastPlayed: string;
+    milestone: string;
+    noResults: string;
+    loading: string;
   };
   matchDetail: {
     title: string;
@@ -245,6 +269,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       cachedAgo: 'Gecached · vor {time}',
       tabMatches: 'Match History',
       tabChampions: 'Champions',
+      tabMasteries: 'Masteries',
       tabChallenges: 'Challenges',
       tabLive: 'Live Game',
       soloRank: 'Ranked Solo/Duo',
@@ -328,6 +353,29 @@ export const translations: Record<Locale, TranslationDictionary> = {
       loading: 'Lade Challenges & Punkte...',
       emptyTitle: 'Keine Challenges gefunden',
       emptyDesc: 'Für diesen Beschwörer konnten noch keine Challenge-Daten abgerufen werden.',
+    },
+    masteries: {
+      title: 'Champion Masteries',
+      totalScore: 'Mastery-Score',
+      totalPoints: 'Gesamtpunkte',
+      championsPlayed: 'Gespielte Champions',
+      searchPlaceholder: 'Champion suchen...',
+      sortBy: 'Sortieren:',
+      sortByPoints: 'Meiste Punkte',
+      sortByLevel: 'Höchstes Level',
+      sortByRecent: 'Zuletzt gespielt',
+      sortByName: 'Name (A-Z)',
+      filterAll: 'Alle Level',
+      filterLevel7: 'Level 7+',
+      filterLevel10: 'Level 10+',
+      level: 'Level',
+      points: 'Punkte',
+      nextLevel: 'Nächstes Level',
+      maxLevel: 'Max Level',
+      lastPlayed: 'Zuletzt gespielt',
+      milestone: 'Meilenstein',
+      noResults: 'Keine Champion-Masteries gefunden.',
+      loading: 'Lade Champion-Masteries...',
     },
     matchDetail: {
       title: 'Match-Analyse',
@@ -445,6 +493,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       cachedAgo: 'Cached · {time} ago',
       tabMatches: 'Match History',
       tabChampions: 'Champions',
+      tabMasteries: 'Masteries',
       tabChallenges: 'Challenges',
       tabLive: 'Live Game',
       soloRank: 'Ranked Solo/Duo',
@@ -528,6 +577,29 @@ export const translations: Record<Locale, TranslationDictionary> = {
       loading: 'Loading challenges & points...',
       emptyTitle: 'No Challenges Found',
       emptyDesc: 'No challenge data could be retrieved for this summoner yet.',
+    },
+    masteries: {
+      title: 'Champion Masteries',
+      totalScore: 'Mastery Score',
+      totalPoints: 'Total Points',
+      championsPlayed: 'Champions Played',
+      searchPlaceholder: 'Search champion...',
+      sortBy: 'Sort by:',
+      sortByPoints: 'Most Points',
+      sortByLevel: 'Highest Level',
+      sortByRecent: 'Recently Played',
+      sortByName: 'Name (A-Z)',
+      filterAll: 'All Levels',
+      filterLevel7: 'Level 7+',
+      filterLevel10: 'Level 10+',
+      level: 'Level',
+      points: 'Points',
+      nextLevel: 'Next Level',
+      maxLevel: 'Max Level',
+      lastPlayed: 'Last Played',
+      milestone: 'Milestone',
+      noResults: 'No champion masteries found.',
+      loading: 'Loading champion masteries...',
     },
     matchDetail: {
       title: 'Match Analysis',

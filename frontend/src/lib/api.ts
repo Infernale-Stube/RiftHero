@@ -8,6 +8,7 @@ import {
   LpHistorySummary,
   PlayedWithTeammate,
   FormattedPlayerChallenges,
+  SummonerMasteriesResponse,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -198,6 +199,24 @@ export async function fetchSummonerChallenges(
     return await res.json();
   } catch (err) {
     console.error('Failed to fetch challenges:', err);
+    return null;
+  }
+}
+
+export async function fetchSummonerMasteries(
+  region: string,
+  tag: string
+): Promise<SummonerMasteriesResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(
+      `${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/masteries`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch masteries:', err);
     return null;
   }
 }

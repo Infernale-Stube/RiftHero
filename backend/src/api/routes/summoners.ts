@@ -8,6 +8,7 @@ import { normalizeRegion } from '../../riot/regions';
 import { prisma } from '../../db/prisma';
 import { getSummonerLpHistory, getPlayedWithStats } from '../../services/lpService';
 import { getSummonerChallenges } from '../../services/challengeService';
+import { getSummonerMasteries } from '../../services/masteryService';
 
 export function parseRiotIdTag(tagParam: string): { gameName: string; tagLine: string } {
   const decoded = decodeURIComponent(tagParam);
@@ -167,6 +168,31 @@ export async function summonerRoutes(fastify: FastifyInstance) {
 
       const challenges = await getSummonerChallenges(region, summoner.puuid);
       return challenges;
+    }
+  );
+
+  // Champion masteries page
+  fastify.get(
+    '/summoners/:region/:tag/masteries',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      if (!gameName || !tagLine) {
+        return reply.status(400).send({ error: 'Invalid Riot ID format' });
+      }
+
+      const masteries = await getSummonerMasteries(region, gameName, tagLine);
+      if (!masteries) {
+        return reply.status(404).send({ error: 'Masteries not found' });
+      }
+
+      return masteries;
     }
   );
 }

@@ -247,6 +247,28 @@ export interface RecentSearchItem {
   timestamp: number;
 }
 
+// Champion Mastery Types
+export interface ChampionMasteryItem {
+  championId: number;
+  championName: string;
+  championLevel: number;
+  championPoints: number;
+  lastPlayTime: number;
+  championPointsSinceLastLevel: number;
+  championPointsUntilNextLevel: number;
+  tokensEarned: number;
+  markRequiredForNextLevel: number;
+  championSeasonMilestone?: number;
+}
+
+export interface SummonerMasteriesResponse {
+  totalMasteryScore: number;
+  totalMasteryPoints: number;
+  masteryCount: number;
+  topMasteryChampions: ChampionMasteryItem[];
+  masteries: ChampionMasteryItem[];
+}
+
 // Live Game Types
 export interface LiveGameParticipant {
   puuid: string;
