@@ -186,6 +186,11 @@ export interface TranslationDictionary {
     bans: string;
     blueBans: string;
     redBans: string;
+    championWinrate: string;
+    rankedWinrate: string;
+    noData: string;
+    draftBans: string;
+    you: string;
   };
   footer: {
     copyright: string;
@@ -381,8 +386,13 @@ export const translations: Record<Locale, TranslationDictionary> = {
       blueTeam: 'Blaues Team',
       redTeam: 'Rotes Team',
       bans: 'Bans:',
-      blueBans: 'Blau:',
-      redBans: 'Rot:',
+      blueBans: 'Blaues Team',
+      redBans: 'Rotes Team',
+      championWinrate: 'Champ Winrate',
+      rankedWinrate: 'Ranked Winrate',
+      noData: 'Keine Daten',
+      draftBans: 'Gebannte Champions',
+      you: 'DU',
     },
     footer: {
       copyright: '© {year} RiftHero. Nicht affiliiert mit Riot Games. League of Legends und Riot Games sind Warenzeichen von Riot Games, Inc.',
@@ -576,8 +586,13 @@ export const translations: Record<Locale, TranslationDictionary> = {
       blueTeam: 'Blue Team',
       redTeam: 'Red Team',
       bans: 'Bans:',
-      blueBans: 'Blue:',
-      redBans: 'Red:',
+      blueBans: 'Blue Team',
+      redBans: 'Red Team',
+      championWinrate: 'Champ Winrate',
+      rankedWinrate: 'Ranked Winrate',
+      noData: 'No Data',
+      draftBans: 'Champion Bans',
+      you: 'YOU',
     },
     footer: {
       copyright: '© {year} RiftHero. Not affiliated with Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.',

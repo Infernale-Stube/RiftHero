@@ -20,14 +20,14 @@ export default function RootLayout({
         {/* Global Atmospheric Background Wallpaper */}
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
           <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.14] filter blur-[0.5px] scale-105"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.25] saturate-125 contrast-105 scale-100"
             style={{
               backgroundImage: `url('https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/background.jpg')`,
             }}
           />
           {/* Dark gradient overlay & subtle ambient glow */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#07090c]/70 via-[#07090c]/85 to-[#07090c]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(249,115,22,0.06),transparent_70%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#07090c]/55 via-[#07090c]/75 to-[#07090c]/95" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(249,115,22,0.08),transparent_70%)]" />
         </div>
 
         <LanguageProvider>

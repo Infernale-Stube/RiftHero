@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Radio, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank } from '@/types';
-import { getProfileIconUrl } from '@/lib/ddragon';
+import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -82,21 +82,19 @@ export default function SummonerHeader({
       {/* Main Profile Header Card with Splash Background */}
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1116] p-6 shadow-2xl backdrop-blur-md">
         {/* Profile Background Image (Most Played / Top Mastery Champion Splash Art) */}
-        {summoner.backgroundUrl ? (
-          <div className="absolute inset-y-0 right-0 w-full sm:w-4/5 md:w-3/4 lg:w-2/3 pointer-events-none select-none overflow-hidden">
-            <Image
-              src={summoner.backgroundUrl}
-              alt={summoner.gameName}
-              fill
-              className="object-cover object-[right_top] opacity-55 saturate-125"
-              priority
-              unoptimized
-            />
-            {/* Smooth gradient fade into #0d1116 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0d1116] via-[#0d1116]/75 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0d1116] via-transparent to-[#0d1116]/40" />
-          </div>
-        ) : null}
+        <div className="absolute inset-y-0 right-0 w-full sm:w-4/5 md:w-3/4 lg:w-2/3 pointer-events-none select-none overflow-hidden">
+          <Image
+            src={summoner.backgroundUrl || getChampionSplashUrl('Briar')}
+            alt={summoner.gameName}
+            fill
+            className="object-cover object-[right_center] opacity-80 saturate-[1.4] contrast-110"
+            priority
+            unoptimized
+          />
+          {/* Smooth gradient fade into #0d1116 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0d1116] via-[#0d1116]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1116] via-transparent to-[#0d1116]/30" />
+        </div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           {/* Left Block: Avatar + Name + Pills + Ranks */}

@@ -2,6 +2,8 @@ import { prisma } from '../db/prisma';
 import { normalizeRegion, getPlatformForRegion } from '../riot/regions';
 import { enqueueHighPrioritySummoner, getSummonerJobStatus } from '../queue/bullmq';
 import { config } from '../config';
+import { getRiotClient } from '../riot/client';
+import { getChampionNameById } from '../riot/ddragon';
 
 export interface SummonerProfileResponse {
   summoner: {
@@ -123,6 +125,25 @@ export async function getSummonerProfile(
     }
   } catch (err) {
     // fallback
+  }
+
+  // If topChamp wasn't found from matches, query top champion mastery from Riot API
+  if (!backgroundUrl) {
+    try {
+      const rApi = getRiotClient();
+      const masteries = await rApi.championMastery.getTopChampions({
+        region: platform as any,
+        summonerId: summoner.puuid,
+      });
+      if (masteries && masteries.length > 0) {
+        const champName = await getChampionNameById(masteries[0].championId);
+        if (champName) {
+          backgroundUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg`;
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
 
   return {

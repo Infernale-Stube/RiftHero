@@ -27,6 +27,12 @@ export interface LiveGameParticipant {
     losses: number;
     winrate: number;
   } | null;
+  championStats?: {
+    games: number;
+    wins: number;
+    losses: number;
+    winrate: number;
+  } | null;
 }
 
 export interface BannedChampion {
@@ -126,6 +132,57 @@ export async function getLiveGame(
     summonerMap.set(s.puuid, s);
   }
 
+  // 3b. Query participant match history from DB for champion winrates
+  const participantMatches = await prisma.matchParticipant.findMany({
+    where: { puuid: { in: participantPuuids } },
+    select: { puuid: true, championId: true, win: true },
+  });
+
+  const champStatsMap = new Map<string, { games: number; wins: number; losses: number; winrate: number }>();
+  for (const m of participantMatches) {
+    const key = `${m.puuid}_${m.championId}`;
+    const entry = champStatsMap.get(key) || { games: 0, wins: 0, losses: 0, winrate: 0 };
+    entry.games += 1;
+    if (m.win) entry.wins += 1;
+    else entry.losses += 1;
+    entry.winrate = Math.round((entry.wins / entry.games) * 100);
+    champStatsMap.set(key, entry);
+  }
+
+  // 3c. For participants missing soloRank in DB, fetch live from Riot League API
+  const missingRankPuuids = participantPuuids.filter((puuid) => {
+    const dbEntry = summonerMap.get(puuid);
+    return !dbEntry?.ranks?.some((r: any) => r.queueType === 'RANKED_SOLO_5x5');
+  });
+
+  const liveRankMap = new Map<string, any>();
+  if (missingRankPuuids.length > 0) {
+    await Promise.allSettled(
+      missingRankPuuids.map(async (puuid) => {
+        try {
+          const entries = await rApi.league.getEntriesByPUUID({
+            region: platform as any,
+            puuid,
+          });
+          const solo = entries.find((e: any) => e.queueType === 'RANKED_SOLO_5x5');
+          if (solo) {
+            const total = solo.wins + solo.losses;
+            liveRankMap.set(puuid, {
+              tier: solo.tier,
+              rank: solo.rank,
+              leaguePoints: solo.leaguePoints,
+              wins: solo.wins,
+              losses: solo.losses,
+              winrate: total > 0 ? Math.round((solo.wins / total) * 100) : 0,
+            });
+          }
+        } catch {
+          // Gracefully fallback for unranked or private
+        }
+      })
+    );
+  }
+
   const blueTeam: LiveGameParticipant[] = [];
   const redTeam: LiveGameParticipant[] = [];
 
@@ -146,7 +203,11 @@ export async function getLiveGame(
         losses: soloRank.losses,
         winrate,
       };
+    } else if (liveRankMap.has(p.puuid)) {
+      rankFormatted = liveRankMap.get(p.puuid);
     }
+
+    const champStats = champStatsMap.get(`${p.puuid}_${p.championId}`) || null;
 
     const primaryRune = p.perks?.perkIds?.[0] || null;
     const secondaryStyle = p.perks?.perkSubStyle || null;
@@ -164,6 +225,7 @@ export async function getLiveGame(
       primaryRune,
       secondaryStyle,
       rank: rankFormatted,
+      championStats: champStats,
     };
 
     if (p.teamId === 100) {

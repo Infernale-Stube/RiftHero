@@ -1,14 +1,42 @@
 const DDRAGON_VERSION = '14.23.1';
 
+export function normalizeChampionNameForDDragon(championName?: string | null): string {
+  if (!championName) return 'Aatrox';
+  const mapping: Record<string, string> = {
+    Wukong: 'MonkeyKing',
+    FiddleSticks: 'Fiddlesticks',
+    LeBlanc: 'Leblanc',
+    "Cho'Gath": 'Chogath',
+    "Kai'Sa": 'Kaisa',
+    "Kha'Zix": 'Khazix',
+    "Vel'Koz": 'Velkoz',
+    "Bel'Veth": 'Belveth',
+    "K'Sante": 'KSante',
+    'Renata Glasc': 'Renata',
+    RenataGlasc: 'Renata',
+    'Nunu & Willump': 'Nunu',
+  };
+  return mapping[championName] || championName;
+}
+
 export function getProfileIconUrl(iconId: number, version = DDRAGON_VERSION): string {
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${iconId}.png`;
 }
 
 export function getChampionIconUrl(championName: string, version = DDRAGON_VERSION): string {
   if (!championName) return '';
-  let clean = championName;
-  if (clean === 'FiddleSticks') clean = 'Fiddlesticks';
+  const clean = normalizeChampionNameForDDragon(championName);
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${clean}.png`;
+}
+
+export function getChampionSplashUrl(championName?: string | null): string {
+  const clean = normalizeChampionNameForDDragon(championName);
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${clean}_0.jpg`;
+}
+
+export function getChampionLoadingUrl(championName?: string | null): string {
+  const clean = normalizeChampionNameForDDragon(championName);
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_0.jpg`;
 }
 
 export function getItemIconUrl(itemId: number, version = DDRAGON_VERSION): string {

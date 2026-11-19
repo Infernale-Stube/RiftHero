@@ -268,6 +268,12 @@ export interface LiveGameParticipant {
     losses: number;
     winrate: number;
   } | null;
+  championStats?: {
+    games: number;
+    wins: number;
+    losses: number;
+    winrate: number;
+  } | null;
 }
 
 export interface BannedChampion {
