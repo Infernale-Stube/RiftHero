@@ -274,6 +274,7 @@ export interface LiveGameParticipant {
   puuid: string;
   riotId: string;
   summonerName: string;
+  summonerLevel?: number;
   teamId: number;
   championId: number;
   championName: string;

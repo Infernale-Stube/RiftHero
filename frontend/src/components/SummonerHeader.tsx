@@ -131,7 +131,7 @@ export default function SummonerHeader({
         <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           {/* Left Block: Avatar + Name + Pills + Ranks */}
           <div className="flex items-start gap-5">
-            {/* Circular Avatar */}
+            {/* Circular Avatar with Account Level Badge */}
             <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 shadow-xl">
               <Image
                 src={getProfileIconUrl(summoner.profileIconId)}
@@ -141,6 +141,9 @@ export default function SummonerHeader({
                 className="h-full w-full object-cover"
                 unoptimized
               />
+              <div className="absolute bottom-0 inset-x-0 bg-black/85 py-0.5 text-center text-[10px] font-black text-amber-300 border-t border-white/10">
+                {summoner.summonerLevel}
+              </div>
             </div>
 
             {/* Info Block */}

@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma';
 import { getRiotClient } from '../riot/client';
+import { config } from '../config';
 import {
   normalizeRegion,
   getPlatformForRegion,
@@ -81,6 +82,7 @@ export interface LiveGameParticipant {
   puuid: string;
   riotId: string;
   summonerName: string;
+  summonerLevel?: number;
   teamId: number;
   championId: number;
   championName: string;
@@ -147,7 +149,7 @@ export async function getLiveGame(
       gameName: { equals: gameName, mode: 'insensitive' },
       tagLine: { equals: tagLine, mode: 'insensitive' },
     },
-    select: { puuid: true, id: true },
+    select: { puuid: true, id: true, summonerLevel: true },
   });
 
   const rApi = getRiotClient();
@@ -254,6 +256,46 @@ export async function getLiveGame(
     );
   }
 
+  // 3d. Resolve summonerLevel for participants missing in DB
+  const missingLevelPuuids = participantPuuids.filter((puuid) => {
+    const dbEntry = summonerMap.get(puuid);
+    return !dbEntry?.summonerLevel;
+  });
+
+  const liveLevelMap = new Map<string, number>();
+  if (missingLevelPuuids.length > 0) {
+    await Promise.allSettled(
+      missingLevelPuuids.map(async (puuid) => {
+        try {
+          const sumDto = await rApi.summoner.getByPUUID({
+            region: platform as any,
+            puuid,
+          });
+          if (sumDto && typeof sumDto.summonerLevel === 'number') {
+            liveLevelMap.set(puuid, sumDto.summonerLevel);
+          }
+        } catch {
+          if (config.riotApiKey) {
+            try {
+              const res = await fetch(
+                `https://${platform.toLowerCase()}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+                { headers: { 'X-Riot-Token': config.riotApiKey } }
+              );
+              if (res.ok) {
+                const data = (await res.json()) as any;
+                if (data && typeof data.summonerLevel === 'number') {
+                  liveLevelMap.set(puuid, data.summonerLevel);
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      })
+    );
+  }
+
   const blueTeam: LiveGameParticipant[] = [];
   const redTeam: LiveGameParticipant[] = [];
 
@@ -284,10 +326,16 @@ export async function getLiveGame(
     const primaryRune = p.perks?.perkIds?.[0] || null;
     const secondaryStyle = p.perks?.perkSubStyle || null;
 
+    const summonerLevel =
+      dbEntry?.summonerLevel ||
+      liveLevelMap.get(p.puuid) ||
+      (p.puuid === summoner?.puuid ? summoner?.summonerLevel : undefined);
+
     const formatted: LiveGameParticipant = {
       puuid: p.puuid,
       riotId: p.riotId || (p.summonerName ? `${p.summonerName}` : 'Unknown'),
       summonerName: p.summonerName || '',
+      summonerLevel,
       teamId: p.teamId,
       championId: p.championId,
       championName: champName,

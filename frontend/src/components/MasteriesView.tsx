@@ -210,7 +210,7 @@ export default function MasteriesView({
                 />
                 <div className="absolute bottom-0 right-0 rounded-tl-lg bg-black/90 border-t border-l border-amber-500/40 px-2 py-0.5 shadow-md">
                   <span className="text-[10px] font-black text-amber-300">
-                    Lvl {topChampion.championLevel}
+                    {topChampion.championLevel}
                   </span>
                 </div>
               </div>
@@ -369,7 +369,7 @@ export default function MasteriesView({
                       className="h-full w-full object-cover"
                       unoptimized
                     />
-                    {/* Level Badge in corner */}
+                    {/* Level Badge in corner (without 'Level' prefix) */}
                     <div
                       className={`absolute bottom-0 right-0 rounded-tl-md px-1.5 py-0.5 text-[9px] font-black shadow-md border-t border-l ${
                         isHighLevel
@@ -379,7 +379,7 @@ export default function MasteriesView({
                           : 'bg-black/90 text-zinc-300 border-white/20'
                       }`}
                     >
-                      Lvl {m.championLevel}
+                      {m.championLevel}
                     </div>
                   </div>
 

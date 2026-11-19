@@ -190,7 +190,7 @@ export default function LiveGameView({
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-3">
                   {/* Left Section: Champ Icon, Spells/Runes, Name + Tag, Champion + Position */}
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* Champion Icon */}
+                    {/* Champion Icon with Account Level Badge */}
                     <div
                       className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border-2 shadow-md ${
                         isBlue ? 'border-blue-500/40' : 'border-rose-500/40'
@@ -204,6 +204,14 @@ export default function LiveGameView({
                         className="h-full w-full object-cover"
                         unoptimized
                       />
+                      {p.summonerLevel != null && p.summonerLevel > 0 && (
+                        <div
+                          className="absolute bottom-0 right-0 rounded-tl-md bg-black/90 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20 shadow-sm"
+                          title={`Account Level: ${p.summonerLevel}`}
+                        >
+                          {p.summonerLevel}
+                        </div>
+                      )}
                     </div>
 
                     {/* Spells & Runes (2x2 Grid) */}
