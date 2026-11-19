@@ -8,7 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-COPY ../prisma ./prisma/
+COPY prisma ./prisma/
 
 RUN npm ci
 
@@ -36,7 +36,7 @@ ENV NODE_ENV=production
 ENV PORT=4000
 
 COPY package*.json ./
-COPY ../prisma ./prisma/
+COPY prisma ./prisma/
 
 RUN npm ci --omit=dev && npm cache clean --force
 

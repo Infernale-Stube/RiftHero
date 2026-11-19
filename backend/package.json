@@ -5,8 +5,8 @@
   "main": "dist/api/server.js",
   "scripts": {
     "build": "tsc",
-    "prisma:generate": "prisma generate --schema=../prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=../prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema=./prisma/schema.prisma",
     "start:api": "node dist/api/server.js",
     "start:worker": "node dist/worker/index.js",
     "dev:api": "tsx watch src/api/server.ts",
