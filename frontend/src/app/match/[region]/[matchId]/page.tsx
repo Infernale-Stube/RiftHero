@@ -341,7 +341,7 @@ export default function MatchDetailPage() {
                       </div>
                     </div>
 
-                    {/* Player Name, Tag, Role */}
+                    {/* Player Name, Tag, Role & LP */}
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5 truncate">
                         <Link
@@ -357,10 +357,26 @@ export default function MatchDetailPage() {
                             {p.lane}
                           </span>
                         )}
+                        {p.lpChange && (
+                          <span
+                            className={`rounded px-1.5 py-0.2 text-[10px] font-black tracking-tight shrink-0 ${
+                              p.lpChange.delta > 0
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            }`}
+                          >
+                            {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[10px] text-slate-500 truncate">
-                        #{targetTag}
-                      </span>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500 truncate">
+                        <span>#{targetTag}</span>
+                        {p.lpChange?.tier && (
+                          <span className="text-zinc-400 font-medium">
+                            {p.lpChange.tier} {p.lpChange.rank} · {p.lpChange.leaguePoints} LP
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -504,13 +520,31 @@ export default function MatchDetailPage() {
           </button>
 
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-black text-white">
                 Match-Analyse
               </h1>
               <span className="rounded bg-white/[0.08] px-2 py-0.5 text-xs font-bold uppercase text-amber-300">
                 {queueName}
               </span>
+              {matchData.lpChange && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <span
+                    className={`rounded-lg px-2 py-0.5 text-xs font-black tracking-tight ${
+                      matchData.lpChange.delta > 0
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                    }`}
+                  >
+                    {matchData.lpChange.delta > 0 ? `+${matchData.lpChange.delta}` : matchData.lpChange.delta} LP
+                  </span>
+                  {matchData.lpChange.tier && (
+                    <span className="text-xs text-zinc-400 font-semibold">
+                      {matchData.lpChange.tier} {matchData.lpChange.rank} · {matchData.lpChange.leaguePoints} LP
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <span className="text-xs text-slate-400 mt-0.5">
               Dauer: {formatDuration(gameDuration)} • Gespielt {formatTimeAgo(gameCreation)} • Patch {gameVersion.slice(0, 5)}

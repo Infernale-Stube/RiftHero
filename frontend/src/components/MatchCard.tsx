@@ -122,14 +122,27 @@ export default function MatchCard({ match, region }: MatchCardProps) {
                     </div>
                   </div>
 
-                  <Link
-                    href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
-                    className={`truncate text-xs hover:text-white transition-colors ${
-                      isTarget ? 'text-orange-400 font-black' : 'text-zinc-300'
-                    }`}
-                  >
-                    {p.riotIdGameName}
-                  </Link>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Link
+                      href={`/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                      className={`truncate text-xs hover:text-white transition-colors ${
+                        isTarget ? 'text-orange-400 font-black' : 'text-zinc-300'
+                      }`}
+                    >
+                      {p.riotIdGameName}
+                    </Link>
+                    {p.lpChange && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[9px] font-black shrink-0 ${
+                          p.lpChange.delta > 0
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        }`}
+                      >
+                        {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* KDA */}
@@ -275,21 +288,39 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             </div>
           </div>
 
-          {/* Outcome, Queue, Duration */}
-          <div className="flex flex-col min-w-[110px]">
-            <span
-              className={`text-xs font-black uppercase tracking-wider ${
-                win ? 'text-emerald-400' : 'text-rose-400'
-              }`}
-            >
-              {win ? 'Victory' : 'Defeat'}
-            </span>
+          {/* Outcome, LP Delta, Queue, Duration, Current Rank/LP */}
+          <div className="flex flex-col min-w-[125px]">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-black uppercase tracking-wider ${
+                  win ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {win ? 'Victory' : 'Defeat'}
+              </span>
+              {match.lpChange && (
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[11px] font-black tracking-tight ${
+                    match.lpChange.delta > 0
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                  }`}
+                >
+                  {match.lpChange.delta > 0 ? `+${match.lpChange.delta}` : match.lpChange.delta} LP
+                </span>
+              )}
+            </div>
             <span className="text-[11px] font-medium text-zinc-400 truncate">
               {queueName}
             </span>
             <span className="text-[10px] text-zinc-500">
               {formatDuration(gameDuration)} · {formatTimeAgo(gameCreation)}
             </span>
+            {match.lpChange?.tier && (
+              <span className="text-[10px] font-semibold text-zinc-400 mt-0.5">
+                {match.lpChange.tier} {match.lpChange.rank} · {match.lpChange.leaguePoints} LP
+              </span>
+            )}
           </div>
         </div>
 

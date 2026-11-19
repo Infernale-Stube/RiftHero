@@ -64,6 +64,13 @@ export interface PlayedWithTeammate {
   winrate: number;
 }
 
+export interface MatchLpChange {
+  delta: number;
+  tier?: string;
+  rank?: string;
+  leaguePoints?: number;
+}
+
 export interface MatchParticipant {
   puuid: string;
   riotIdGameName: string;
@@ -97,6 +104,7 @@ export interface MatchParticipant {
   damageShare?: number;
   totalHeal?: number;
   goldSpent?: number;
+  lpChange?: MatchLpChange | null;
 }
 
 export interface TeamTotals {
@@ -120,6 +128,7 @@ export interface FormattedMatch {
   blueTeamTotals?: TeamTotals;
   redTeamTotals?: TeamTotals;
   maxDamage?: number;
+  lpChange?: MatchLpChange | null;
 }
 
 export interface ChampionStatSummary {
@@ -315,4 +324,5 @@ export interface MatchDetailResponse {
     redGold: number;
     diff: number;
   }>;
+  lpChange?: MatchLpChange | null;
 }

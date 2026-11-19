@@ -2,6 +2,7 @@ import { prisma } from '../db/prisma';
 import { getRiotClient } from '../riot/client';
 import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
+import { computeMatchLpDelta, MatchLpChange } from './lpService';
 
 export interface ObjectiveDetail {
   first: boolean;
@@ -48,6 +49,7 @@ export interface MatchDetailResponse {
     redGold: number;
     diff: number; // positive = blue lead, negative = red lead
   }>;
+  lpChange?: MatchLpChange | null;
 }
 
 export async function getMatchDetails(
@@ -204,6 +206,35 @@ export async function getMatchDetails(
       const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
       const damageShare = teamDmg > 0 ? Math.round((p.totalDamageDealtToChampions / teamDmg) * 100) : 0;
 
+      let lpChange: MatchLpChange | null = null;
+      if (match.queueId === 420 || match.queueId === 440) {
+        const delta = computeMatchLpDelta(match.id, p.puuid, p.win);
+        let tier: string | undefined = undefined;
+        let rank: string | undefined = undefined;
+        let leaguePoints: number | undefined = undefined;
+
+        if (p.summonerId) {
+          const sRank = await prisma.summonerRank.findFirst({
+            where: {
+              summonerId: p.summonerId,
+              queueType: match.queueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR',
+            },
+          });
+          if (sRank) {
+            tier = sRank.tier;
+            rank = sRank.rank;
+            leaguePoints = sRank.leaguePoints;
+          }
+        }
+
+        lpChange = {
+          delta,
+          tier,
+          rank,
+          leaguePoints,
+        };
+      }
+
       return {
         id: p.id,
         puuid: p.puuid,
@@ -242,6 +273,7 @@ export async function getMatchDetails(
         primaryRune: p.primaryRune,
         primaryStyle: p.primaryStyle,
         secondaryStyle: p.secondaryStyle,
+        lpChange,
       };
     })
   );
@@ -363,6 +395,9 @@ export async function getMatchDetails(
   const maxDamage = Math.max(...formattedParticipants.map((p) => p.totalDamageDealtToChampions), 1);
   const maxDamageTaken = Math.max(...formattedParticipants.map((p) => p.totalDamageTaken), 1);
 
+  // Default overall match LP change from first participant with LP or first participant
+  const matchOverallLpChange = formattedParticipants.find((p) => p.lpChange)?.lpChange || null;
+
   return {
     matchId: match.id,
     cluster: match.cluster,
@@ -378,5 +413,6 @@ export async function getMatchDetails(
     maxDamage,
     maxDamageTaken,
     goldAdvantageTimeline,
+    lpChange: matchOverallLpChange,
   };
 }

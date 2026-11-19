@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
+import { getMatchesLpChanges, MatchLpChange } from './lpService';
 
 export interface FormattedMatchParticipant {
   puuid: string;
@@ -31,6 +32,7 @@ export interface FormattedMatchParticipant {
   secondaryStyle: number | null;
   killParticipation?: number;
   damageShare?: number;
+  lpChange?: MatchLpChange | null;
 }
 
 export interface TeamTotals {
@@ -54,6 +56,7 @@ export interface FormattedMatch {
   blueTeamTotals: TeamTotals;
   redTeamTotals: TeamTotals;
   maxDamage: number;
+  lpChange?: MatchLpChange | null;
 }
 
 function formatParticipant(
@@ -147,6 +150,17 @@ export async function getSummonerMatches(
     }),
   ]);
 
+  // Resolve LP Changes for target summoner's matches
+  const lpMap = await getMatchesLpChanges(
+    puuid,
+    userParticipations.map((up) => ({
+      id: up.match.id,
+      queueId: up.match.queueId,
+      gameCreation: up.match.gameCreation,
+      win: up.win,
+    }))
+  );
+
   const matches: FormattedMatch[] = userParticipations.map((up) => {
     const m = up.match;
     const durationMinutes = m.gameDuration / 60;
@@ -198,6 +212,9 @@ export async function getSummonerMatches(
       isCurrentBlue ? blueTotalDmg : redTotalDmg
     );
 
+    const matchLpChange = lpMap.get(m.id) || null;
+    currentFormatted.lpChange = matchLpChange;
+
     return {
       matchId: m.id,
       gameDuration: m.gameDuration,
@@ -211,6 +228,7 @@ export async function getSummonerMatches(
       blueTeamTotals,
       redTeamTotals,
       maxDamage,
+      lpChange: matchLpChange,
     };
   });
 
