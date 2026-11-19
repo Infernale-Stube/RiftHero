@@ -74,8 +74,6 @@ export default function SummonerHeader({
           <span>Homepage</span>
         </Link>
         <span className="text-zinc-600">/</span>
-        <span className="text-zinc-400">Rank Tracker</span>
-        <span className="text-zinc-600">/</span>
         <span className="font-bold text-orange-400">
           {summoner.gameName}#{summoner.tagLine}
         </span>
@@ -85,18 +83,18 @@ export default function SummonerHeader({
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1116] p-6 shadow-2xl backdrop-blur-md">
         {/* Profile Background Image (Most Played / Top Mastery Champion Splash Art) */}
         {summoner.backgroundUrl ? (
-          <div className="absolute inset-y-0 right-0 w-full sm:w-3/4 md:w-3/5 pointer-events-none select-none overflow-hidden">
+          <div className="absolute inset-y-0 right-0 w-full sm:w-4/5 md:w-3/4 lg:w-2/3 pointer-events-none select-none overflow-hidden">
             <Image
               src={summoner.backgroundUrl}
               alt={summoner.gameName}
               fill
-              className="object-cover object-[right_top] opacity-25"
+              className="object-cover object-[right_top] opacity-55 saturate-125"
               priority
               unoptimized
             />
             {/* Smooth gradient fade into #0d1116 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0d1116] via-[#0d1116]/85 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0d1116] via-transparent to-[#0d1116]/30" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0d1116] via-[#0d1116]/75 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d1116] via-transparent to-[#0d1116]/40" />
           </div>
         ) : null}
 
