@@ -26,7 +26,6 @@ export default function SummonerLayout({
 
   const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
-  const [manualUpdating, setManualUpdating] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!region || !tag) return;
@@ -59,7 +58,6 @@ export default function SummonerLayout({
   }, [loadProfile, loadLiveGame]);
 
   const handleRefreshCompleted = () => {
-    setManualUpdating(false);
     loadProfile();
   };
 
@@ -130,7 +128,7 @@ export default function SummonerLayout({
         <AutoRefreshWatcher
           region={region}
           tag={tag}
-          isUpdating={manualUpdating || Boolean(profileData.isUpdating)}
+          isUpdating={Boolean(profileData.isUpdating)}
           onRefreshCompleted={handleRefreshCompleted}
         />
 
@@ -138,8 +136,7 @@ export default function SummonerLayout({
           <SummonerHeader
             summoner={profileData.summoner}
             ranks={profileData.ranks}
-            isUpdating={manualUpdating || Boolean(profileData.isUpdating)}
-            onManualRefresh={() => setManualUpdating(true)}
+            isUpdating={Boolean(profileData.isUpdating)}
             isLive={liveData?.inGame || false}
             liveData={liveData}
             isLoadingLive={isLoadingLive}

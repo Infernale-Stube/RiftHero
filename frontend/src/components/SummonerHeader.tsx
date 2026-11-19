@@ -4,19 +4,17 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Globe, ChevronLeft, RotateCw } from 'lucide-react';
+import { Radio, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { triggerSummonerRefresh } from '@/lib/api';
 
 interface SummonerHeaderProps {
   summoner: SummonerData;
   ranks: SummonerRank[];
   isUpdating?: boolean;
-  onManualRefresh?: () => void;
   activeTab?: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live';
   onTabChange?: (tab: 'matches' | 'champions' | 'masteries' | 'challenges' | 'live') => void;
   isLive?: boolean;
@@ -29,7 +27,6 @@ export default function SummonerHeader({
   summoner,
   ranks,
   isUpdating = false,
-  onManualRefresh,
   activeTab: controlledTab,
   onTabChange,
   isLive = false,
@@ -40,28 +37,6 @@ export default function SummonerHeader({
   const { t, locale } = useTranslation();
   const pathname = usePathname();
   const cleanPath = (pathname || '').replace(/\/$/, '');
-
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
-
-  const handleManualRefresh = async () => {
-    if (isRefreshing || isUpdating) return;
-    setIsRefreshing(true);
-    setRefreshMsg(null);
-    try {
-      const res = await triggerSummonerRefresh(summoner.region, formattedTag);
-      if (res.status === 'cooldown' && res.message) {
-        setRefreshMsg(res.message);
-        setTimeout(() => setRefreshMsg(null), 3500);
-      }
-      onManualRefresh?.();
-    } catch (err: any) {
-      setRefreshMsg(err?.message || 'Fehler beim Starten');
-      setTimeout(() => setRefreshMsg(null), 3500);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   // Live Timer for active match
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -261,38 +236,20 @@ export default function SummonerHeader({
                   {formatTimer(elapsedSeconds)}
                 </span>
               </Link>
-            ) : (
-              <div className="flex flex-col items-start md:items-end gap-1.5">
-                <div className="flex items-center gap-2.5">
-                  {summoner.lastFetchedAt && (
-                    <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline">
-                      {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleManualRefresh}
-                    disabled={isRefreshing || isUpdating}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all border shadow-sm ${
-                      isRefreshing || isUpdating
-                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 cursor-not-allowed'
-                        : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-zinc-200 hover:text-white hover:border-white/20'
-                    }`}
-                    title={isRefreshing || isUpdating ? t('summoner.updating') : t('summoner.updateProfile')}
-                  >
-                    <RotateCw
-                      className={`h-3 w-3 ${isRefreshing || isUpdating ? 'animate-spin text-orange-400' : 'text-zinc-400'}`}
-                    />
-                    <span>{isRefreshing || isUpdating ? t('summoner.updating') : t('summoner.updateProfile')}</span>
-                  </button>
-                </div>
-                {refreshMsg && (
-                  <span className="text-[10px] font-semibold text-amber-400">
-                    {refreshMsg}
+            ) : summoner.lastFetchedAt ? (
+              <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                {isUpdating ? (
+                  <span className="flex items-center gap-1.5 text-orange-400 font-semibold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+                    <span>{t('summoner.bgSync')}</span>
+                  </span>
+                ) : (
+                  <span className="text-zinc-500">
+                    {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
                   </span>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 

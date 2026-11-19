@@ -26,6 +26,6 @@ export const config = {
   seasonStartEpoch: parseInt(process.env.SEASON_START_EPOCH || '0', 10), // 0 = fetch ALL matches across all history
   maxSeasonMatches: parseInt(process.env.MAX_SEASON_MATCHES || '5000', 10),
 
-  // Profile Stale Check (minutes)
-  profileStaleMinutes: parseInt(process.env.PROFILE_STALE_MINUTES || '2', 10),
+  // Profile Stale Check (minutes) - Profiles older than 1 minute auto-refresh on visit
+  profileStaleMinutes: parseInt(process.env.PROFILE_STALE_MINUTES || '1', 10),
 };

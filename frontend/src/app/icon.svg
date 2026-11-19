@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="rh-gold-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF2A3" />
+      <stop offset="30%" stop-color="#F59E0B" />
+      <stop offset="70%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#92400E" />
+    </linearGradient>
+
+    <linearGradient id="rh-gold-light" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FEF9C3" />
+      <stop offset="50%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <linearGradient id="rh-gold-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B45309" />
+      <stop offset="60%" stop-color="#78350F" />
+      <stop offset="100%" stop-color="#451A03" />
+    </linearGradient>
+
+    <linearGradient id="rh-rift-core" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="25%" stop-color="#FEF08A" />
+      <stop offset="60%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+
+    <radialGradient id="rh-obsidian" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1E232F" />
+      <stop offset="65%" stop-color="#0E121B" />
+      <stop offset="100%" stop-color="#05070B" />
+    </radialGradient>
+
+    <radialGradient id="rh-aura-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.5" />
+      <stop offset="60%" stop-color="#EA580C" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#F97316" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Aura Glow -->
+  <circle cx="50" cy="50" r="46" fill="url(#rh-aura-glow)" />
+
+  <!-- Outer Crest Silhouette -->
+  <path
+    d="M50 8 L74 18 L84 32 L79 48 L85 64 L70 80 L50 94 L30 80 L15 64 L21 48 L16 32 L26 18 Z"
+    fill="url(#rh-obsidian)"
+    stroke="url(#rh-gold-dark)"
+    stroke-width="1.5"
+  />
+
+  <!-- Wing Armor Left -->
+  <path
+    d="M50 11 L28 20 L20 32 L24 46 L17 62 L32 77 L50 90 L50 84 L36 72 L25 58 L28 46 L23 35 L33 24 L50 16 Z"
+    fill="url(#rh-gold-dark)"
+  />
+
+  <!-- Wing Armor Right -->
+  <path
+    d="M50 11 L72 20 L80 32 L76 46 L83 62 L68 77 L50 90 L50 84 L64 72 L75 58 L72 46 L77 35 L67 24 L50 16 Z"
+    fill="url(#rh-gold-primary)"
+  />
+
+  <!-- Top Crown Spire -->
+  <path d="M50 8 L60 17 L50 25 L40 17 Z" fill="url(#rh-gold-light)" />
+  <path d="M50 8 L50 25 L40 17 Z" fill="url(#rh-gold-primary)" />
+
+  <!-- Wing Flanges -->
+  <path d="M28 20 L38 27 L33 36 L20 32 Z" fill="url(#rh-gold-primary)" />
+  <path d="M72 20 L62 27 L67 36 L80 32 Z" fill="url(#rh-gold-light)" />
+  <path d="M24 46 L36 49 L32 64 L17 62 Z" fill="url(#rh-gold-dark)" />
+  <path d="M76 46 L64 49 L68 64 L83 62 Z" fill="url(#rh-gold-primary)" />
+
+  <!-- Inner Crest Frame -->
+  <path
+    d="M50 26 L66 38 L62 60 L50 78 L38 60 L34 38 Z"
+    fill="#090D15"
+    stroke="url(#rh-gold-primary)"
+    stroke-width="1.75"
+  />
+  <path d="M50 27 L35 39 L39 59 L50 76 Z" fill="#000000" fill-opacity="0.4" />
+
+  <!-- Central Rift Shard Core -->
+  <polygon points="50,31 41,49 50,70" fill="#F97316" />
+  <polygon points="50,31 59,49 50,70" fill="url(#rh-rift-core)" />
+  <polygon points="50,36 55,49 50,62 45,49" fill="#FFFBEB" opacity="0.9" />
+
+  <!-- Rift Fracture -->
+  <path
+    d="M50 33 L49 43 L52 48 L48 56 L51 61 L50 67"
+    stroke="#FFFFFF"
+    stroke-width="1.25"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Bottom Apex Finial -->
+  <polygon points="50,75 56,84 50,91 44,84" fill="url(#rh-gold-light)" />
+  <polygon points="50,75 44,84 50,91" fill="url(#rh-gold-dark)" />
+
+  <!-- Top Crown Gem -->
+  <circle cx="50" cy="17" r="2.5" fill="#FFFBEB" />
+  <circle cx="50" cy="17" r="1.2" fill="#F97316" />
+</svg>

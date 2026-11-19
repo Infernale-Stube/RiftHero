@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield } from 'lucide-react';
+import RiftHeroIcon from './RiftHeroIcon';
 import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -17,9 +17,9 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <Link href={`/${locale}`} className="flex items-center gap-2.5 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 p-0.5 shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105">
-            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0d12]">
-              <Shield className="h-5 w-5 text-orange-400 transition-colors group-hover:text-amber-300" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/80 via-orange-500/60 to-yellow-600/40 p-0.5 shadow-lg shadow-orange-500/25 transition-transform group-hover:scale-105">
+            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0d14]/90 backdrop-blur-sm">
+              <RiftHeroIcon className="h-6 w-6 transition-all duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
             </div>
           </div>
           <div className="flex flex-col">

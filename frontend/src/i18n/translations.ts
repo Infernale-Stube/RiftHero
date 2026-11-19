@@ -44,8 +44,6 @@ export interface TranslationDictionary {
     highPrioritySync: string;
     bgSync: string;
     cachedAgo: string;
-    updateProfile: string;
-    updating: string;
     tabMatches: string;
     tabChampions: string;
     tabMasteries: string;
@@ -275,8 +273,6 @@ export const translations: Record<Locale, TranslationDictionary> = {
       highPrioritySync: 'High-Priority Ingestion läuft...',
       bgSync: 'Hintergrund-Sync läuft...',
       cachedAgo: 'Gecached · vor {time}',
-      updateProfile: 'Aktualisieren',
-      updating: 'Wird aktualisiert...',
       tabMatches: 'Match History',
       tabChampions: 'Champions',
       tabMasteries: 'Masteries',
@@ -504,8 +500,6 @@ export const translations: Record<Locale, TranslationDictionary> = {
       highPrioritySync: 'High-priority ingestion in progress...',
       bgSync: 'Background sync in progress...',
       cachedAgo: 'Cached · {time} ago',
-      updateProfile: 'Update',
-      updating: 'Updating...',
       tabMatches: 'Match History',
       tabChampions: 'Champions',
       tabMasteries: 'Masteries',

@@ -32,13 +32,14 @@ export default function AutoRefreshWatcher({
     }
 
     let checks = 0;
+    let notFoundCount = 0;
     const maxChecks = 40; // 40 * 2.5s = 100 seconds timeout
 
     pollIntervalRef.current = setInterval(async () => {
       checks++;
       try {
         const { status } = await fetchSummonerStatus(region, tag);
-        if (status === 'completed' || status === 'not_found' || checks >= maxChecks) {
+        if (status === 'completed') {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           setUpdating(false);
 
@@ -47,6 +48,32 @@ export default function AutoRefreshWatcher({
           } else {
             router.refresh();
           }
+          return;
+        }
+
+        if (status === 'failed') {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          setUpdating(false);
+          return;
+        }
+
+        if (status === 'not_found') {
+          notFoundCount++;
+          // Only abort after multiple consecutive not_found responses (12.5s)
+          if (notFoundCount >= 5) {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setUpdating(false);
+            if (onRefreshCompleted) onRefreshCompleted();
+          }
+          return;
+        }
+
+        notFoundCount = 0;
+
+        if (checks >= maxChecks) {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          setUpdating(false);
+          if (onRefreshCompleted) onRefreshCompleted();
         }
       } catch (e) {
         // network retry
