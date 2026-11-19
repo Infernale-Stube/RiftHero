@@ -31,6 +31,8 @@ export interface TranslationDictionary {
     recentSearchesTitle: string;
     recentSummonersTitle: string;
     noRecentSummoners: string;
+    metaTitle: string;
+    metaSubtitle: string;
   };
   summoner: {
     loadingProfile: string;
@@ -242,20 +244,22 @@ export const translations: Record<Locale, TranslationDictionary> = {
       apiOnline: 'Riot API Online',
     },
     home: {
-      heroBadge: 'High-Capacity Production Analytics',
-      heroTitle1: 'Dominieren Sie die',
-      heroTitleHighlight: 'Kluft',
+      heroBadge: 'League of Legends Scouting & Stats',
+      heroTitle1: 'Finde jeden Spieler. Analysiere',
+      heroTitleHighlight: 'jedes Match.',
       heroSubtitle:
-        'Echtzeit-Statistiken, detaillierte Match-Historien und automatische Profil-Aktualisierung – blitzschnell gecacht in PostgreSQL und optimiert gegen Rate-Limits.',
-      feature1Title: 'Stilles Auto-Refresh',
-      feature1Desc: 'Automatische Hintergrund-Updates ohne manuellen Button',
-      feature2Title: '10-Spieler-Schneeballsystem',
-      feature2Desc: 'Mitspieler werden im Hintergrund vorberechnet',
-      feature3Title: 'PostgreSQL Cache',
-      feature3Desc: 'Sub-10ms Ladezeiten für bereits erfasste Profile',
-      recentSearchesTitle: 'Kürzliche Suchen',
+        'Echtzeit Live-Game Scouting, detaillierte Match-Historien, DeepLoL Performance Ratings und Champion-Masteries auf einen Blick.',
+      feature1Title: 'Live Game Tracker',
+      feature1Desc: 'Gegner-Ränge, Champion-Erfahrung und Matchups vor Spielbeginn scouten',
+      feature2Title: '0–100 DeepLoL Scores',
+      feature2Desc: 'Objektives MVP & ACE Rating basierend auf KDA, Damage-Share und Vision',
+      feature3Title: 'Match History & LP Tracker',
+      feature3Desc: 'Detaillierte Timeline-Analysen, Item-Builds und exakte LP-Verläufe',
+      recentSearchesTitle: 'Zuletzt gesucht',
       recentSummonersTitle: 'Zuletzt aufgerufene Beschwörer',
       noRecentSummoners: 'Noch keine Spieler aufgerufen.',
+      metaTitle: 'Patch 14.23 Meta Picks',
+      metaSubtitle: 'Die stärksten Champions nach Rolle auf der aktuellen Kluft',
     },
     summoner: {
       loadingProfile: 'Profil wird geladen...',
@@ -466,20 +470,22 @@ export const translations: Record<Locale, TranslationDictionary> = {
       apiOnline: 'Riot API Online',
     },
     home: {
-      heroBadge: 'High-Capacity Production Analytics',
-      heroTitle1: 'Dominate the',
+      heroBadge: 'League of Legends Scouting & Stats',
+      heroTitle1: 'Scout Every Player. Dominate the',
       heroTitleHighlight: 'Rift',
       heroSubtitle:
-        'Real-time stats, detailed match histories, and automatic background profile updates – ultra-fast caching in PostgreSQL and optimized against rate limits.',
-      feature1Title: 'Silent Auto-Refresh',
-      feature1Desc: 'Automated background ingestion with no manual refresh button needed',
-      feature2Title: '10-Player Snowball',
-      feature2Desc: 'Lobby teammates are queued and pre-fetched automatically',
-      feature3Title: 'PostgreSQL Cache',
-      feature3Desc: 'Sub-10ms response times for previously indexed summoners',
+        'Real-time live game scouting, detailed match breakdowns, DeepLoL performance ratings, and champion masteries at a glance.',
+      feature1Title: 'Live Game Tracker',
+      feature1Desc: 'Scout opponent ranks, champion mastery, and matchups before game start',
+      feature2Title: '0–100 DeepLoL Scores',
+      feature2Desc: 'Objective MVP & ACE ratings based on KDA, damage share, and vision impact',
+      feature3Title: 'Match History & LP Tracker',
+      feature3Desc: 'In-depth timeline analysis, item builds, and exact LP progression',
       recentSearchesTitle: 'Recent Searches',
       recentSummonersTitle: 'Recently Viewed Summoners',
       noRecentSummoners: 'No summoners viewed yet.',
+      metaTitle: 'Patch 14.23 Meta Picks',
+      metaSubtitle: 'Top tier champion picks by lane on Summoner\'s Rift',
     },
     summoner: {
       loadingProfile: 'Loading profile...',

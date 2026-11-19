@@ -1,10 +1,7 @@
-import { fetchRecentSummoners } from '@/lib/api';
 import HomeView from '@/components/HomeView';
 
-export const revalidate = 0; // live data
+export const revalidate = 300; // cache page
 
-export default async function HomePage() {
-  const recentSummoners = await fetchRecentSummoners(9);
-
-  return <HomeView recentSummoners={recentSummoners} />;
+export default function HomePage() {
+  return <HomeView />;
 }
