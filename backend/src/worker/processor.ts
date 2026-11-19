@@ -149,23 +149,52 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
   }
 
   // 6. Match-v5 (Regional routing: europe, americas, asia)
-  const targetMatchCount = matchCount || config.initialMatchCount;
   let matchIds: string[] = [];
   try {
-    matchIds = await rApi.matchV5.getIdsByPuuid({
-      cluster: cluster as any,
-      puuid,
-      params: {
-        start: 0,
-        count: targetMatchCount,
-      },
-    });
+    if (isSnowball) {
+      // Snowball crawling uses limited depth (e.g. 20) to preserve rate limits
+      const targetCount = matchCount || config.snowballMatchDepth;
+      matchIds = await rApi.matchV5.getIdsByPuuid({
+        cluster: cluster as any,
+        puuid,
+        params: {
+          start: 0,
+          count: targetCount,
+        },
+      });
+    } else {
+      // Active user profile: Paginate to fetch ALL matches of the current season!
+      let start = 0;
+      const batchSize = 100;
+      const seasonStart = config.seasonStartEpoch;
+
+      while (start < config.maxSeasonMatches) {
+        const batch = await rApi.matchV5.getIdsByPuuid({
+          cluster: cluster as any,
+          puuid,
+          params: {
+            start,
+            count: batchSize,
+            startTime: seasonStart,
+          },
+        });
+
+        if (!batch || batch.length === 0) break;
+        matchIds.push(...batch);
+        start += batch.length;
+
+        job.log(`[Worker] Season Match Crawler: Found ${matchIds.length} match IDs so far...`);
+
+        // Reached end of history
+        if (batch.length < batchSize) break;
+      }
+    }
   } catch (err: any) {
     job.log(`[Worker] Error fetching match IDs for ${puuid}: ${err.message}`);
     return;
   }
 
-  job.log(`[Worker] Found ${matchIds.length} matches for ${cleanGameName}#${cleanTagLine}. Ingesting...`);
+  job.log(`[Worker] Ingesting total of ${matchIds.length} matches for ${cleanGameName}#${cleanTagLine}...`);
 
   const snowballCandidates: Array<{ gameName: string; tagLine: string; region: string }> = [];
 
@@ -218,10 +247,12 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
           queueId: info.queueId,
           tournamentCode: info.tournamentCode || null,
           endOfGameResult: info.endOfGameResult || null,
+          teamsJson: info.teams as any || null,
         },
         update: {
           gameDuration: info.gameDuration,
           queueId: info.queueId,
+          teamsJson: info.teams as any || null,
         },
       });
 

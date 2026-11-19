@@ -167,3 +167,51 @@ export interface LiveGameResponse {
   game?: LiveGameData;
   message?: string;
 }
+
+// Dedicated Match Page Types (League of Graphs style)
+export interface ObjectiveDetail {
+  first: boolean;
+  kills: number;
+}
+
+export interface TeamMatchDetail {
+  teamId: number;
+  win: boolean;
+  totalKills: number;
+  totalDeaths: number;
+  totalAssists: number;
+  totalGold: number;
+  totalDamage: number;
+  bans: Array<{ championId: number; championName: string; pickTurn: number }>;
+  objectives: {
+    baron: ObjectiveDetail;
+    dragon: ObjectiveDetail;
+    riftHerald: ObjectiveDetail;
+    horde: ObjectiveDetail; // voidgrubs
+    tower: ObjectiveDetail;
+    inhibitor: ObjectiveDetail;
+  };
+  dragonTypes?: string[];
+}
+
+export interface MatchDetailResponse {
+  matchId: string;
+  cluster: string;
+  gameDuration: number;
+  gameCreation: number;
+  gameMode: string;
+  gameVersion: string;
+  queueId: number;
+  queueName: string;
+  blueTeam: TeamMatchDetail;
+  redTeam: TeamMatchDetail;
+  participants: MatchParticipant[];
+  maxDamage: number;
+  maxDamageTaken: number;
+  goldAdvantageTimeline: Array<{
+    minute: number;
+    blueGold: number;
+    redGold: number;
+    diff: number;
+  }>;
+}

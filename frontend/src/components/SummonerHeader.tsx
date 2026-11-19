@@ -100,34 +100,39 @@ export default function SummonerHeader({
           </div>
         </div>
 
-        {/* Section Navigation Tabs (Match History & Live Game) */}
-        <div className="mt-6 pt-4 border-t border-white/[0.08] flex items-center gap-2">
-          <button
-            onClick={() => onTabChange('matches')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'matches'
-                ? 'bg-gradient-to-r from-blue-600 to-hextech-blue text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-            }`}
-          >
-            <Swords className="h-4 w-4" />
-            <span>Match-Historie</span>
-          </button>
+        {/* Section Navigation Tabs (Match History & Live Game only if active) */}
+        <div className="mt-6 pt-4 border-t border-white/[0.08] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onTabChange('matches')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'matches'
+                  ? 'bg-gradient-to-r from-blue-600 to-hextech-blue text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Swords className="h-4 w-4" />
+              <span>Match-Historie</span>
+            </button>
 
-          <button
-            onClick={() => onTabChange('live')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'live'
-                ? 'bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-            }`}
-          >
-            <Radio className="h-4 w-4 text-rose-400" />
-            <span>Live-Spiel</span>
+            {/* ONLY display Live Game tab if the player is genuinely in an active match! */}
             {isLive && (
-              <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+              <button
+                onClick={() => onTabChange('live')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all animate-pulse ${
+                  activeTab === 'live'
+                    ? 'bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-md'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                }`}
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                </span>
+                <span>🔴 JETZT IM SPIEL (Live)</span>
+              </button>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </div>

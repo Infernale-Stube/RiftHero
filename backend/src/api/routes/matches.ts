@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../db/prisma';
 import { getSummonerMatches, getSummonerChampionStats } from '../../services/matchService';
+import { getMatchDetails } from '../../services/matchDetailService';
 import { parseRiotIdTag } from './summoners';
 import { normalizeRegion } from '../../riot/regions';
 
@@ -77,6 +78,29 @@ export async function matchRoutes(fastify: FastifyInstance) {
 
       const stats = await getSummonerChampionStats(summoner.puuid, queue);
       return stats;
+    }
+  );
+
+  // Get single full match details (dedicated match page)
+  fastify.get(
+    '/matches/:region/:matchId',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; matchId: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, matchId } = request.params;
+      const details = await getMatchDetails(region, matchId);
+
+      if (!details) {
+        return reply.status(404).send({
+          error: 'Not Found',
+          message: `Match ${matchId} not found`,
+        });
+      }
+
+      return details;
     }
   );
 }

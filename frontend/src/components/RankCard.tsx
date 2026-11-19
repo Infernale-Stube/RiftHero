@@ -10,13 +10,13 @@ interface RankCardProps {
 export default function RankCard({ title, rankData }: RankCardProps) {
   if (!rankData) {
     return (
-      <div className="flex items-center gap-4 rounded-xl border border-rift-700/60 bg-rift-900/60 p-4">
-        <RankBadge tier="UNRANKED" size="md" />
+      <div className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-black/40 p-4">
+        <RankBadge tier="UNRANKED" size="lg" />
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
             {title}
           </span>
-          <div className="text-base font-bold text-slate-300">Unranked</div>
+          <div className="text-base font-black text-slate-400 mt-0.5">Unranked</div>
           <div className="text-xs text-slate-500">Keine Spiele erfasst</div>
         </div>
       </div>
@@ -28,18 +28,18 @@ export default function RankCard({ title, rankData }: RankCardProps) {
   const theme = TIER_COLORS[tier.toUpperCase()] || TIER_COLORS.UNRANKED;
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-rift-700/60 bg-rift-900/70 p-4 shadow-md transition-all hover:border-rift-600">
-      <RankBadge tier={tier} size="md" />
+    <div className="flex items-center gap-4 rounded-xl border border-white/[0.08] bg-black/40 p-4 shadow-md transition-all hover:border-white/20">
+      <RankBadge tier={tier} size="lg" showGlow />
 
       <div className="flex-1 min-w-0">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
           {title}
         </span>
-        <div className="flex items-baseline gap-2">
-          <span className={`text-base font-black tracking-tight ${theme.text}`}>
+        <div className="flex items-baseline gap-2 mt-0.5">
+          <span className={`text-lg font-black tracking-tight ${theme.text}`}>
             {tier} {rank}
           </span>
-          <span className="text-xs font-bold text-hextech-lightGold">
+          <span className="text-xs font-bold text-amber-300">
             {leaguePoints} LP
           </span>
         </div>

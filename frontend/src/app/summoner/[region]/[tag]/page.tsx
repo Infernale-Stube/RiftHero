@@ -110,7 +110,8 @@ export default function SummonerPage() {
 
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+    loadLiveGame(); // Check silently if live game is currently ongoing
+  }, [loadProfile, loadLiveGame]);
 
   useEffect(() => {
     if (profileData?.summoner) {

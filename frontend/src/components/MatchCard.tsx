@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Eye, Shield, Swords, Coins } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, Shield, Swords, Coins, ExternalLink } from 'lucide-react';
 import { FormattedMatch, MatchParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -457,11 +457,17 @@ export default function MatchCard({ match, region }: MatchCardProps) {
       {/* Expanded Details Scorecard */}
       {isExpanded && (
         <div className="p-4 pt-0 border-t border-white/[0.06] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between text-xs text-slate-400 pt-3">
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-3 flex-wrap gap-2">
             <span className="font-semibold uppercase tracking-wider text-slate-300">
               Detaillierte Spielübersicht
             </span>
-            <span>Klicke auf Spieler, um deren Profile zu öffnen</span>
+            <Link
+              href={`/match/${region}/${match.matchId}#participant${participant.puuid}`}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-colors"
+            >
+              <span>Vollständige Match-Seite (Drakes & Grafiken)</span>
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
 
           {/* Blue Team Scorecard */}

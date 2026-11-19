@@ -4,6 +4,7 @@ import {
   ChampionStatSummary,
   RecentSummoner,
   LiveGameResponse,
+  MatchDetailResponse,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -124,5 +125,22 @@ export async function fetchLiveGame(
     return await res.json();
   } catch {
     return { inGame: false, message: 'Fehler beim Abrufen des Live-Spiels.' };
+  }
+}
+
+export async function fetchMatchDetails(
+  region: string,
+  matchId: string
+): Promise<MatchDetailResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/matches/${region}/${encodeURIComponent(matchId)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error(`Failed to fetch match details for ${matchId}:`, err);
+    return null;
   }
 }

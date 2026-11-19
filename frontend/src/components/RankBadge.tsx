@@ -1,53 +1,86 @@
-import { Shield } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface RankBadgeProps {
   tier?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  showGlow?: boolean;
 }
 
-export const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  CHALLENGER: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-400/50' },
-  GRANDMASTER: { bg: 'bg-rose-600/20', text: 'text-rose-400', border: 'border-rose-500/50' },
-  MASTER: { bg: 'bg-purple-600/20', text: 'text-purple-300', border: 'border-purple-400/50' },
-  DIAMOND: { bg: 'bg-sky-500/20', text: 'text-sky-300', border: 'border-sky-400/50' },
-  EMERALD: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-400/50' },
-  PLATINUM: { bg: 'bg-teal-500/20', text: 'text-teal-300', border: 'border-teal-400/50' },
-  GOLD: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-400/50' },
-  SILVER: { bg: 'bg-slate-400/20', text: 'text-slate-300', border: 'border-slate-400/50' },
-  BRONZE: { bg: 'bg-amber-800/20', text: 'text-amber-600', border: 'border-amber-700/50' },
-  IRON: { bg: 'bg-zinc-600/20', text: 'text-zinc-400', border: 'border-zinc-500/50' },
-  UNRANKED: { bg: 'bg-slate-800/40', text: 'text-slate-400', border: 'border-slate-700' },
+export const TIER_COLORS: Record<string, { text: string; border: string; glow: string }> = {
+  CHALLENGER: { text: 'text-amber-300', border: 'border-amber-400/50', glow: 'shadow-amber-500/20' },
+  GRANDMASTER: { text: 'text-rose-400', border: 'border-rose-500/50', glow: 'shadow-rose-500/20' },
+  MASTER: { text: 'text-purple-300', border: 'border-purple-400/50', glow: 'shadow-purple-500/20' },
+  DIAMOND: { text: 'text-sky-300', border: 'border-sky-400/50', glow: 'shadow-sky-500/20' },
+  EMERALD: { text: 'text-emerald-300', border: 'border-emerald-400/50', glow: 'shadow-emerald-500/20' },
+  PLATINUM: { text: 'text-teal-300', border: 'border-teal-400/50', glow: 'shadow-teal-500/20' },
+  GOLD: { text: 'text-yellow-400', border: 'border-yellow-400/50', glow: 'shadow-yellow-500/20' },
+  SILVER: { text: 'text-slate-300', border: 'border-slate-400/50', glow: 'shadow-slate-400/20' },
+  BRONZE: { text: 'text-amber-600', border: 'border-amber-700/50', glow: 'shadow-amber-700/20' },
+  IRON: { text: 'text-zinc-400', border: 'border-zinc-500/50', glow: 'shadow-zinc-500/20' },
+  UNRANKED: { text: 'text-slate-500', border: 'border-slate-800', glow: 'shadow-none' },
 };
 
-export default function RankBadge({ tier = 'UNRANKED', size = 'md', className }: RankBadgeProps) {
+export function getRankEmblemUrl(tier = 'UNRANKED'): string {
+  const clean = tier.toLowerCase();
+  const validTiers = [
+    'iron',
+    'bronze',
+    'silver',
+    'gold',
+    'platinum',
+    'emerald',
+    'diamond',
+    'master',
+    'grandmaster',
+    'challenger',
+  ];
+  const target = validTiers.includes(clean) ? clean : 'unranked';
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/${target}.png`;
+}
+
+export default function RankBadge({
+  tier = 'UNRANKED',
+  size = 'md',
+  className,
+  showGlow = false,
+}: RankBadgeProps) {
   const upper = tier.toUpperCase();
   const theme = TIER_COLORS[upper] || TIER_COLORS.UNRANKED;
 
   const sizeClasses = {
-    sm: 'h-6 w-6 text-xs',
-    md: 'h-10 w-10 text-sm',
-    lg: 'h-16 w-16 text-base',
+    sm: 'h-6 w-6',
+    md: 'h-10 w-10',
+    lg: 'h-16 w-16',
+    xl: 'h-24 w-24',
   }[size];
 
-  const iconSizes = {
-    sm: 'h-3.5 w-3.5',
-    md: 'h-5 w-5',
-    lg: 'h-8 w-8',
+  const imageDimensions = {
+    sm: 24,
+    md: 40,
+    lg: 64,
+    xl: 96,
   }[size];
 
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-xl border transition-all shadow-sm',
+        'relative shrink-0 flex items-center justify-center select-none',
         sizeClasses,
-        theme.bg,
-        theme.border,
+        showGlow && `drop-shadow-[0_0_12px_${theme.glow}]`,
         className
       )}
+      title={tier}
     >
-      <Shield className={cn(iconSizes, theme.text)} />
+      <Image
+        src={getRankEmblemUrl(tier)}
+        alt={tier}
+        width={imageDimensions}
+        height={imageDimensions}
+        className="h-full w-full object-contain filter drop-shadow-md"
+        unoptimized
+      />
     </div>
   );
 }

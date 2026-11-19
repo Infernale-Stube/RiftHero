@@ -69,6 +69,8 @@ model Match {
   queueId          Int      // 420: Solo, 440: Flex, 450: ARAM, 400: Normal Draft
   tournamentCode   String?
   endOfGameResult  String?
+  teamsJson        Json?    // Full team objectives (Drakes, Barons, Towers, Grubs, Bans)
+  timelineJson     Json?    // Timeline frames for gold diff graphs & objective timeline
   createdAt        DateTime @default(now())
 
   participants     MatchParticipant[]
