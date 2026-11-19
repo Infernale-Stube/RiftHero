@@ -32,11 +32,11 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
   return (
     <div className="w-full">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="h-4 w-4 text-hextech-blue" />
+        <Sparkles className="h-4 w-4 text-orange-400" />
         <h2 className="text-base font-bold text-white uppercase tracking-wider">
           {locale === 'de' ? 'Zuletzt aktualisierte Profile' : 'Recently Updated Profiles'}
         </h2>
-        <span className="ml-auto text-xs text-slate-500 font-medium">
+        <span className="ml-auto text-xs text-zinc-500 font-medium">
           {locale === 'de' ? 'Live aus PostgreSQL' : 'Live from PostgreSQL'}
         </span>
       </div>
@@ -48,11 +48,11 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
             <Link
               key={s.id}
               href={`/summoner/${s.region}/${encodeURIComponent(formattedTag)}`}
-              className="group flex items-center justify-between rounded-xl border border-rift-700/60 bg-rift-900/60 p-3.5 transition-all hover:border-hextech-blue/40 hover:bg-rift-850/80 hover:shadow-lg hover:shadow-hextech-blue/5"
+              className="group flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#0c1017]/80 p-3.5 transition-all hover:border-orange-500/40 hover:bg-[#121722] hover:shadow-xl hover:shadow-orange-500/5 shadow-md"
             >
               <div className="flex items-center gap-3">
                 {/* Profile Icon */}
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-rift-600 group-hover:border-hextech-lightGold transition-colors">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-orange-500/60 transition-colors">
                   <Image
                     src={getProfileIconUrl(s.profileIconId)}
                     alt={s.gameName}
@@ -61,7 +61,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     className="h-full w-full object-cover"
                     unoptimized
                   />
-                  <div className="absolute bottom-0 right-0 rounded-tl bg-rift-950/90 px-1 text-[9px] font-bold text-hextech-lightGold">
+                  <div className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[9px] font-black text-orange-400">
                     {s.summonerLevel}
                   </div>
                 </div>
@@ -72,15 +72,15 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     <span className="truncate font-bold text-slate-100 group-hover:text-white transition-colors">
                       {s.gameName}
                     </span>
-                    <span className="text-xs text-slate-500 shrink-0">#{s.tagLine}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">#{s.tagLine}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="rounded bg-rift-800 px-1.5 py-0.5 text-[9px] font-bold uppercase text-hextech-blue">
+                    <span className="rounded bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-orange-400">
                       {s.region}
                     </span>
                     {s.lastFetchedAt && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <Clock className="h-3 w-3 text-slate-500" />
+                      <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+                        <Clock className="h-3 w-3 text-zinc-500" />
                         {formatTimeAgo(s.lastFetchedAt)}
                       </span>
                     )}
@@ -94,14 +94,14 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                   <div className="flex flex-col items-end">
                     <div className="flex items-center gap-1">
                       <RankBadge tier={s.soloRank.tier} size="sm" />
-                      <span className="text-xs font-bold text-hextech-lightGold">
+                      <span className="text-xs font-bold text-sky-400 uppercase">
                         {s.soloRank.tier} {s.soloRank.rank}
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-400">{s.soloRank.leaguePoints} LP</span>
+                    <span className="text-[11px] text-zinc-400">{s.soloRank.leaguePoints} LP</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-500 font-medium">Unranked</span>
+                  <span className="text-xs text-zinc-500 font-medium">Unranked</span>
                 )}
               </div>
             </Link>

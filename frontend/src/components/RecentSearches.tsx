@@ -56,13 +56,13 @@ export default function RecentSearches() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          <History className="h-3.5 w-3.5 text-hextech-blue" />
+        <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+          <History className="h-3.5 w-3.5 text-orange-400" />
           <span>{locale === 'de' ? 'Zuletzt gesucht' : 'Recent Searches'}</span>
         </div>
         <button
           onClick={clearHistory}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-xs font-semibold text-zinc-500 hover:text-rose-400 transition-colors"
         >
           {locale === 'de' ? 'Verlauf leeren' : 'Clear history'}
         </button>
@@ -75,18 +75,18 @@ export default function RecentSearches() {
             <Link
               key={`${item.region}-${item.gameName}-${item.tagLine}`}
               href={`/summoner/${item.region}/${encodeURIComponent(formattedTag)}`}
-              className="group flex items-center gap-2 rounded-lg border border-rift-700/80 bg-rift-900/60 px-3 py-1.5 text-sm transition-all hover:border-hextech-blue/50 hover:bg-rift-850"
+              className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-orange-500/50 hover:bg-[#131924] shadow-sm"
             >
-              <span className="rounded bg-rift-800 px-1.5 py-0.5 text-[10px] font-bold uppercase text-hextech-lightGold">
+              <span className="rounded bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-orange-400">
                 {item.region}
               </span>
-              <span className="font-semibold text-slate-200 group-hover:text-white transition-colors">
+              <span className="font-bold text-zinc-200 group-hover:text-white transition-colors">
                 {item.gameName}
               </span>
-              <span className="text-xs text-slate-500">#{item.tagLine}</span>
+              <span className="text-xs text-zinc-500">#{item.tagLine}</span>
               <button
                 onClick={(e) => removeSearch(e, item)}
-                className="ml-1 text-slate-600 hover:text-rose-400 transition-colors"
+                className="ml-1 text-zinc-500 hover:text-rose-400 transition-colors"
                 title={locale === 'de' ? 'Aus Verlauf entfernen' : 'Remove from history'}
               >
                 <X className="h-3 w-3" />
