@@ -36,6 +36,11 @@ export interface FormattedMatchParticipant {
   damageShare?: number;
   score?: DeepLolScore;
   lpChange?: MatchLpChange | null;
+  largestMultiKill?: number;
+  doubleKills?: number;
+  tripleKills?: number;
+  quadraKills?: number;
+  pentaKills?: number;
 }
 
 export interface TeamTotals {
@@ -133,6 +138,16 @@ function formatParticipant(
     spells: [p.summoner1Id, p.summoner2Id],
     primaryRune: p.primaryRune,
     secondaryStyle: p.secondaryStyle,
+    largestMultiKill: (p.challengesJson as any)?.largestMultiKill ?? (
+      (p.challengesJson as any)?.pentaKills > 0 ? 5 :
+      (p.challengesJson as any)?.quadraKills > 0 ? 4 :
+      (p.challengesJson as any)?.tripleKills > 0 ? 3 :
+      (p.challengesJson as any)?.doubleKills > 0 ? 2 : undefined
+    ),
+    doubleKills: (p.challengesJson as any)?.doubleKills || 0,
+    tripleKills: (p.challengesJson as any)?.tripleKills || 0,
+    quadraKills: (p.challengesJson as any)?.quadraKills || 0,
+    pentaKills: (p.challengesJson as any)?.pentaKills || 0,
   };
 }
 

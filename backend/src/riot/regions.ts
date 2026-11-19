@@ -96,6 +96,8 @@ export function mapQueueFilterToId(filter?: string): number[] | undefined {
       return [440];
     case 'aram':
       return [450];
+    case 'arena':
+      return [1700];
     case 'normals':
       return [400, 430, 490];
     default:

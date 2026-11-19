@@ -107,6 +107,11 @@ export interface MatchParticipant {
   goldSpent?: number;
   score?: DeepLolScore;
   lpChange?: MatchLpChange | null;
+  largestMultiKill?: number;
+  doubleKills?: number;
+  tripleKills?: number;
+  quadraKills?: number;
+  pentaKills?: number;
 }
 
 export interface DeepLolScore {

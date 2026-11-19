@@ -23,6 +23,7 @@ const QUEUE_TABS = [
   { id: 'ranked_solo', label: 'Solo' },
   { id: 'ranked_flex', label: 'Flex' },
   { id: 'aram', label: 'ARAM' },
+  { id: 'arena', label: 'Arena' },
 ];
 
 export default function MatchHistory({
@@ -43,6 +44,7 @@ export default function MatchHistory({
     { id: 'ranked_solo', label: 'Solo' },
     { id: 'ranked_flex', label: 'Flex' },
     { id: 'aram', label: 'ARAM' },
+    { id: 'arena', label: 'Arena' },
   ];
 
   // Group matches by day like LoLDB (e.g. "Today 2W 1L", "Yesterday 3W 0L", "Nov 17 6W 1L")
@@ -104,42 +106,54 @@ export default function MatchHistory({
   }, [matches, locale]);
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Queue Filter Bar (Exact LoLDB pill styling with orange indicator) */}
-      <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04]">
-          {queueTabs.map((tab) => {
-            const isActive = activeQueue === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onQueueChange(tab.id)}
-                className={`relative rounded-[7px] px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-white/[0.07] text-white after:absolute after:inset-x-[30%] after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-orange-400'
-                    : 'text-zinc-500 hover:text-zinc-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {total > 0 && (
-          <span className="text-xs text-zinc-500 font-medium">
-            {matches.length} {locale === 'de' ? 'von' : 'of'} {total} Matches
-          </span>
+    <div className="flex flex-col gap-4">
+      {/* Top Filter & Header Bar */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        {groupedMatches.length > 0 ? (
+          <div className="flex items-center gap-2 text-sm font-black px-1">
+            <span className="text-white text-base tracking-tight">{groupedMatches[0].dateLabel}</span>
+            <span className="text-emerald-400 font-bold text-xs">{groupedMatches[0].wins}W</span>
+            <span className="text-rose-400 font-bold text-xs">{groupedMatches[0].losses}L</span>
+          </div>
+        ) : (
+          <div />
         )}
+
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04]">
+            {queueTabs.map((tab) => {
+              const isActive = activeQueue === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onQueueChange(tab.id)}
+                  className={`relative rounded-[7px] px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-white/[0.07] text-white after:absolute after:inset-x-[30%] after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-orange-400'
+                      : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {total > 0 && (
+            <span className="text-xs text-zinc-500 font-medium hidden sm:inline">
+              {matches.length} {locale === 'de' ? 'von' : 'of'} {total}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Match Cards List grouped by day */}
+      {/* Match Cards List */}
       {isLoading ? (
         <div className="flex flex-col gap-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-24 rounded-xl border border-white/[0.06] bg-[#0d1116] animate-pulse"
+              className="h-24 rounded-2xl border border-white/[0.06] bg-[#0d1116] animate-pulse"
             />
           ))}
         </div>
@@ -157,16 +171,21 @@ export default function MatchHistory({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {groupedMatches.map((group) => (
-            <div key={group.dateLabel} className="flex flex-col gap-2.5">
-              {/* Date Group Header: e.g. "Yesterday 3W 0L" */}
-              <div className="flex items-center gap-2 text-xs font-bold px-1">
-                <span className="text-zinc-300 font-black">{group.dateLabel}</span>
-                <span className="text-emerald-400">{group.wins}W</span>
-                <span className="text-rose-400">{group.losses}L</span>
-              </div>
+          {/* First Day's Matches (Header rendered in top bar) */}
+          <div className="flex flex-col gap-2.5">
+            {groupedMatches[0].matches.map((match) => (
+              <MatchCard key={match.matchId} match={match} region={region} />
+            ))}
+          </div>
 
-              {/* Day's Matches */}
+          {/* Subsequent Days */}
+          {groupedMatches.slice(1).map((group) => (
+            <div key={group.dateLabel} className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2 text-sm font-black px-1 mt-2">
+                <span className="text-white text-base tracking-tight">{group.dateLabel}</span>
+                <span className="text-emerald-400 font-bold text-xs">{group.wins}W</span>
+                <span className="text-rose-400 font-bold text-xs">{group.losses}L</span>
+              </div>
               <div className="flex flex-col gap-2.5">
                 {group.matches.map((match) => (
                   <MatchCard key={match.matchId} match={match} region={region} />
