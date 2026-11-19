@@ -3,9 +3,10 @@ import {
   getSummonerProfile,
   getRecentSummoners,
 } from '../../services/summonerService';
-import { getSummonerJobStatus } from '../../queue/bullmq';
+import { getSummonerJobStatus, enqueueHighPrioritySummoner } from '../../queue/bullmq';
 import { normalizeRegion } from '../../riot/regions';
 import { prisma } from '../../db/prisma';
+import { config } from '../../config';
 import { getSummonerLpHistory, getPlayedWithStats } from '../../services/lpService';
 import { getSummonerChallenges } from '../../services/challengeService';
 import { getSummonerMasteries } from '../../services/masteryService';
@@ -84,6 +85,69 @@ export async function summonerRoutes(fastify: FastifyInstance) {
 
       const status = await getSummonerJobStatus(normalizeRegion(region), gameName, tagLine);
       return { status };
+    }
+  );
+
+  // Explicit manual refresh trigger with cooldown check
+  fastify.post(
+    '/summoners/:region/:tag/refresh',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      if (!gameName || !tagLine) {
+        return reply.status(400).send({
+          error: 'Bad Request',
+          message: 'Invalid Riot ID format.',
+        });
+      }
+
+      const normalizedReg = normalizeRegion(region);
+
+      // Check current job status
+      const currentStatus = await getSummonerJobStatus(normalizedReg, gameName, tagLine);
+      if (currentStatus === 'active' || currentStatus === 'waiting') {
+        return {
+          status: currentStatus,
+          message: 'Aktualisierung läuft bereits im Hintergrund.',
+        };
+      }
+
+      // Check summoner in DB for cooldown (minimum 15s between refreshes to protect Riot API)
+      const summoner = await prisma.summoner.findFirst({
+        where: {
+          region: normalizedReg,
+          gameName: { equals: gameName, mode: 'insensitive' },
+          tagLine: { equals: tagLine, mode: 'insensitive' },
+        },
+      });
+
+      if (summoner && summoner.lastFetchedAt) {
+        const secondsSinceLast = (Date.now() - summoner.lastFetchedAt.getTime()) / 1000;
+        if (secondsSinceLast < 15) {
+          return {
+            status: 'cooldown',
+            message: `Bitte warte noch ${Math.ceil(15 - secondsSinceLast)} Sekunden vor dem nächsten Update.`,
+          };
+        }
+      }
+
+      await enqueueHighPrioritySummoner({
+        gameName: summoner?.gameName || gameName,
+        tagLine: summoner?.tagLine || tagLine,
+        region: normalizedReg,
+        matchCount: config.initialMatchCount,
+      });
+
+      return {
+        status: 'queued',
+        message: 'Profilaktualisierung gestartet.',
+      };
     }
   );
 

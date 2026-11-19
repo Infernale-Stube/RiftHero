@@ -64,7 +64,7 @@ export async function getSummonerProfile(
 
   // 2. Check BullMQ job status
   const jobStatus = await getSummonerJobStatus(region, gameName, tagLine);
-  const isUpdating = jobStatus === 'active' || jobStatus === 'waiting';
+  let isUpdating = jobStatus === 'active' || jobStatus === 'waiting';
 
   // 3. Silent Auto-Refresh: If stale and not currently queued, auto-trigger high-priority job!
   if (isStale && !isUpdating) {
@@ -75,6 +75,7 @@ export async function getSummonerProfile(
         region,
         matchCount: config.initialMatchCount,
       });
+      isUpdating = true;
     } catch (err) {
       console.error('[SummonerService] Failed to enqueue high priority refresh:', err);
     }

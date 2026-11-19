@@ -32,11 +32,11 @@ export const highPriorityQueue = new Queue<SummonerJobData>(HIGH_PRIORITY_QUEUE_
       delay: 2000,
     },
     removeOnComplete: {
-      age: 3600, // keep completed for 1 hour
+      age: 60, // keep completed for 60 seconds (enough for frontend watcher to observe completion)
       count: 1000,
     },
     removeOnFail: {
-      age: 86400, // keep failed for 24 hours
+      age: 120, // keep failed for 2 minutes, then clear so retries are possible
       count: 500,
     },
   },
@@ -51,11 +51,11 @@ export const lowPriorityQueue = new Queue<SummonerJobData>(LOW_PRIORITY_QUEUE_NA
       delay: 5000,
     },
     removeOnComplete: {
-      age: 1800,
+      age: 60,
       count: 2000,
     },
     removeOnFail: {
-      age: 3600,
+      age: 120,
       count: 500,
     },
   },
@@ -68,12 +68,31 @@ export function generateJobId(region: string, gameName: string, tagLine: string)
 export async function enqueueHighPrioritySummoner(data: SummonerJobData): Promise<Job<SummonerJobData>> {
   const jobId = generateJobId(data.region, data.gameName, data.tagLine);
   
-  // Check if job already active in high queue
+  // 1. Check if job already active or waiting in high queue
   const existingJob = await highPriorityQueue.getJob(jobId);
   if (existingJob) {
     const state = await existingJob.getState();
     if (state === 'active' || state === 'waiting' || state === 'delayed') {
       return existingJob;
+    }
+    // Completed or failed job: MUST be removed so BullMQ permits adding a fresh job with this jobId!
+    try {
+      await existingJob.remove();
+    } catch {
+      // Ignore remove error
+    }
+  }
+
+  // 2. Clear from low queue if present and not actively running
+  const inLow = await lowPriorityQueue.getJob(jobId);
+  if (inLow) {
+    const lowState = await inLow.getState();
+    if (lowState !== 'active') {
+      try {
+        await inLow.remove();
+      } catch {
+        // Ignore remove error
+      }
     }
   }
 
@@ -107,6 +126,11 @@ export async function enqueueLowPrioritySummoner(data: SummonerJobData): Promise
     if (state === 'active' || state === 'waiting' || state === 'delayed') {
       return existingJob;
     }
+    try {
+      await existingJob.remove();
+    } catch {
+      // Ignore remove error
+    }
   }
 
   return await lowPriorityQueue.add(
@@ -123,7 +147,11 @@ export async function enqueueLowPrioritySummoner(data: SummonerJobData): Promise
   );
 }
 
-export async function getSummonerJobStatus(region: string, gameName: string, tagLine: string): Promise<'active' | 'waiting' | 'completed' | 'failed' | 'not_found'> {
+export async function getSummonerJobStatus(
+  region: string,
+  gameName: string,
+  tagLine: string
+): Promise<'active' | 'waiting' | 'completed' | 'failed' | 'not_found'> {
   const jobId = generateJobId(region, gameName, tagLine);
   
   const highJob = await highPriorityQueue.getJob(jobId);
@@ -131,8 +159,27 @@ export async function getSummonerJobStatus(region: string, gameName: string, tag
     const state = await highJob.getState();
     if (state === 'active') return 'active';
     if (state === 'waiting' || state === 'delayed') return 'waiting';
-    if (state === 'completed') return 'completed';
-    if (state === 'failed') return 'failed';
+    if (state === 'completed') {
+      const finishedOn = highJob.finishedOn || 0;
+      // Treat as completed only if it finished in the last 45 seconds
+      if (Date.now() - finishedOn < 45000) {
+        return 'completed';
+      }
+      try {
+        await highJob.remove();
+      } catch {}
+      return 'not_found';
+    }
+    if (state === 'failed') {
+      const finishedOn = highJob.finishedOn || 0;
+      if (Date.now() - finishedOn < 45000) {
+        return 'failed';
+      }
+      try {
+        await highJob.remove();
+      } catch {}
+      return 'not_found';
+    }
   }
 
   const lowJob = await lowPriorityQueue.getJob(jobId);
@@ -140,8 +187,26 @@ export async function getSummonerJobStatus(region: string, gameName: string, tag
     const state = await lowJob.getState();
     if (state === 'active') return 'active';
     if (state === 'waiting' || state === 'delayed') return 'waiting';
-    if (state === 'completed') return 'completed';
-    if (state === 'failed') return 'failed';
+    if (state === 'completed') {
+      const finishedOn = lowJob.finishedOn || 0;
+      if (Date.now() - finishedOn < 45000) {
+        return 'completed';
+      }
+      try {
+        await lowJob.remove();
+      } catch {}
+      return 'not_found';
+    }
+    if (state === 'failed') {
+      const finishedOn = lowJob.finishedOn || 0;
+      if (Date.now() - finishedOn < 45000) {
+        return 'failed';
+      }
+      try {
+        await lowJob.remove();
+      } catch {}
+      return 'not_found';
+    }
   }
 
   return 'not_found';

@@ -55,6 +55,22 @@ export async function fetchSummonerStatus(
   return await res.json();
 }
 
+export async function triggerSummonerRefresh(
+  region: string,
+  tag: string
+): Promise<{ status: string; message?: string }> {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/refresh`, {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || 'Fehler beim Starten der Aktualisierung');
+  }
+  return await res.json();
+}
+
 export async function fetchSummonerMatches(
   region: string,
   tag: string,
