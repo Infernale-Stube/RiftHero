@@ -135,6 +135,66 @@ export interface ChampionStatSummary {
   kda: number;
   avgCs: number;
   avgCsPerMin: number;
+  avgDamage?: number;
+  avgDamageTaken?: number;
+  avgGold?: number;
+  avgVisionScore?: number;
+  doubleKills?: number;
+  tripleKills?: number;
+  quadraKills?: number;
+  pentaKills?: number;
+  maxKills?: number;
+  maxDeaths?: number;
+  roles?: Record<string, number>;
+  primaryRole?: string;
+}
+
+// Challenges Types
+export interface FormattedChallengeItem {
+  challengeId: number;
+  name: string;
+  description: string;
+  category: string;
+  level: string;
+  value: number;
+  percentile: number;
+  achievedTime?: number;
+  iconUrl: string;
+  isCapstone: boolean;
+  thresholds?: Record<string, number>;
+  nextThreshold?: {
+    tier: string;
+    value: number;
+  } | null;
+}
+
+export interface ChallengeCategoryProgress {
+  category: string;
+  name: string;
+  level: string;
+  current: number;
+  max: number;
+  percentile: number;
+  progressPercent: number;
+  iconUrl: string;
+}
+
+export interface FormattedPlayerChallenges {
+  totalPoints: {
+    level: string;
+    current: number;
+    max: number;
+    percentile: number;
+    progressPercent: number;
+    crystalIconUrl: string;
+  };
+  categoryPoints: Record<string, ChallengeCategoryProgress>;
+  challenges: FormattedChallengeItem[];
+  preferences?: {
+    title?: string;
+    bannerAccent?: string;
+    challengeIds?: number[];
+  };
 }
 
 export interface RecentSummoner {

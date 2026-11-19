@@ -12,8 +12,8 @@ interface SummonerHeaderProps {
   summoner: SummonerData;
   ranks: SummonerRank[];
   isUpdating: boolean;
-  activeTab: 'matches' | 'live';
-  onTabChange: (tab: 'matches' | 'live') => void;
+  activeTab: 'matches' | 'champions' | 'challenges' | 'live';
+  onTabChange: (tab: 'matches' | 'champions' | 'challenges' | 'live') => void;
   isLive?: boolean;
 }
 
@@ -180,6 +180,30 @@ export default function SummonerHeader({
             }`}
           >
             Match History
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onTabChange('champions')}
+            className={`relative pb-2 transition-colors ${
+              activeTab === 'champions'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Champions
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onTabChange('challenges')}
+            className={`relative pb-2 transition-colors ${
+              activeTab === 'challenges'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Challenges
           </button>
 
           {isLive && (

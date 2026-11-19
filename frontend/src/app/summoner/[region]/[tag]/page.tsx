@@ -10,6 +10,7 @@ import {
   fetchLiveGame,
   fetchLpHistory,
   fetchPlayedWith,
+  fetchSummonerChallenges,
 } from '@/lib/api';
 import {
   SummonerProfileResponse,
@@ -18,9 +19,12 @@ import {
   LiveGameResponse,
   LpHistorySummary,
   PlayedWithTeammate,
+  FormattedPlayerChallenges,
 } from '@/types';
 import SummonerHeader from '@/components/SummonerHeader';
 import ChampionStats from '@/components/ChampionStats';
+import ChampionStatsView from '@/components/ChampionStatsView';
+import ChallengesView from '@/components/ChallengesView';
 import MatchHistory from '@/components/MatchHistory';
 import LiveGameView from '@/components/LiveGameView';
 import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
@@ -35,8 +39,17 @@ export default function SummonerPage() {
   const region = (params?.region as string) || 'euw';
   const tag = (params?.tag as string) || '';
 
-  const initialTab = searchParams.get('tab') === 'live' ? 'live' : 'matches';
-  const [activeTab, setActiveTab] = useState<'matches' | 'live'>(initialTab);
+  const rawTab = searchParams.get('tab');
+  const initialTab =
+    rawTab === 'champions'
+      ? 'champions'
+      : rawTab === 'challenges'
+      ? 'challenges'
+      : rawTab === 'live'
+      ? 'live'
+      : 'matches';
+
+  const [activeTab, setActiveTab] = useState<'matches' | 'champions' | 'challenges' | 'live'>(initialTab);
 
   const [profileData, setProfileData] = useState<SummonerProfileResponse | null>(null);
   const [matches, setMatches] = useState<FormattedMatch[]>([]);
@@ -47,6 +60,10 @@ export default function SummonerPage() {
   // LP History & Teammates state
   const [lpHistory, setLpHistory] = useState<LpHistorySummary | null>(null);
   const [playedWith, setPlayedWith] = useState<PlayedWithTeammate[]>([]);
+
+  // Challenges state
+  const [challengesData, setChallengesData] = useState<FormattedPlayerChallenges | null>(null);
+  const [isLoadingChallenges, setIsLoadingChallenges] = useState<boolean>(false);
 
   // Live Game State
   const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
@@ -122,6 +139,20 @@ export default function SummonerPage() {
     }
   }, [region, tag]);
 
+  // Load Challenges
+  const loadChallenges = useCallback(async () => {
+    if (!region || !tag) return;
+    setIsLoadingChallenges(true);
+    try {
+      const data = await fetchSummonerChallenges(region, tag);
+      setChallengesData(data);
+    } catch (err) {
+      console.error('Failed to load challenges:', err);
+    } finally {
+      setIsLoadingChallenges(false);
+    }
+  }, [region, tag]);
+
   useEffect(() => {
     loadProfile();
     loadLiveGame();
@@ -136,8 +167,22 @@ export default function SummonerPage() {
   useEffect(() => {
     if (activeTab === 'live') {
       loadLiveGame();
+    } else if (activeTab === 'challenges' && !challengesData) {
+      loadChallenges();
     }
-  }, [activeTab, loadLiveGame]);
+  }, [activeTab, loadLiveGame, loadChallenges, challengesData]);
+
+  const handleTabChange = (newTab: 'matches' | 'champions' | 'challenges' | 'live') => {
+    setActiveTab(newTab);
+    const newParams = new URLSearchParams(searchParams ? searchParams.toString() : '');
+    if (newTab === 'matches') {
+      newParams.delete('tab');
+    } else {
+      newParams.set('tab', newTab);
+    }
+    const queryStr = newParams.toString() ? `?${newParams.toString()}` : '';
+    router.replace(`/summoner/${region}/${tag}${queryStr}`, { scroll: false });
+  };
 
   const handleQueueChange = (queue: string) => {
     setActiveQueue(queue);
@@ -146,6 +191,9 @@ export default function SummonerPage() {
   const handleRefreshCompleted = () => {
     loadProfile();
     loadMatchesAndStats(activeQueue);
+    if (activeTab === 'challenges') {
+      loadChallenges();
+    }
   };
 
   if (isLoadingProfile) {
@@ -219,7 +267,7 @@ export default function SummonerPage() {
           ranks={profileData.ranks}
           isUpdating={profileData.isUpdating}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           isLive={liveData?.inGame || false}
         />
       </div>
@@ -234,6 +282,22 @@ export default function SummonerPage() {
             liveData={liveData}
             isLoading={isLoadingLive}
             onRefresh={loadLiveGame}
+          />
+        </div>
+      ) : activeTab === 'champions' ? (
+        <div className="w-full">
+          <ChampionStatsView
+            stats={champStats}
+            activeQueue={activeQueue}
+            onQueueChange={handleQueueChange}
+            isLoading={isLoadingMatches}
+          />
+        </div>
+      ) : activeTab === 'challenges' ? (
+        <div className="w-full">
+          <ChallengesView
+            challengesData={challengesData}
+            isLoading={isLoadingChallenges}
           />
         </div>
       ) : (

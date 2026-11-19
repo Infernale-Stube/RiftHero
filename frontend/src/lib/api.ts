@@ -7,6 +7,7 @@ import {
   MatchDetailResponse,
   LpHistorySummary,
   PlayedWithTeammate,
+  FormattedPlayerChallenges,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -182,3 +183,22 @@ export async function fetchPlayedWith(
     return [];
   }
 }
+
+export async function fetchSummonerChallenges(
+  region: string,
+  tag: string
+): Promise<FormattedPlayerChallenges | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(
+      `${baseUrl}/summoners/${region}/${encodeURIComponent(tag)}/challenges`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch challenges:', err);
+    return null;
+  }
+}
+

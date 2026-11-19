@@ -7,6 +7,7 @@ import { getSummonerJobStatus } from '../../queue/bullmq';
 import { normalizeRegion } from '../../riot/regions';
 import { prisma } from '../../db/prisma';
 import { getSummonerLpHistory, getPlayedWithStats } from '../../services/lpService';
+import { getSummonerChallenges } from '../../services/challengeService';
 
 export function parseRiotIdTag(tagParam: string): { gameName: string; tagLine: string } {
   const decoded = decodeURIComponent(tagParam);
@@ -137,6 +138,35 @@ export async function summonerRoutes(fastify: FastifyInstance) {
 
       const take = limit ? Math.min(parseInt(limit, 10), 20) : 5;
       return await getPlayedWithStats(summoner.puuid, take);
+    }
+  );
+
+  // Challenges progress and tokens
+  fastify.get(
+    '/summoners/:region/:tag/challenges',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      const summoner = await prisma.summoner.findFirst({
+        where: {
+          region: normalizeRegion(region),
+          gameName: { equals: gameName, mode: 'insensitive' },
+          tagLine: { equals: tagLine, mode: 'insensitive' },
+        },
+      });
+
+      if (!summoner) {
+        return reply.status(404).send({ error: 'Summoner not found' });
+      }
+
+      const challenges = await getSummonerChallenges(region, summoner.puuid);
+      return challenges;
     }
   );
 }

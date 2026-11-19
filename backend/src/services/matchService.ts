@@ -230,6 +230,18 @@ export interface ChampionStatSummary {
   kda: number;
   avgCs: number;
   avgCsPerMin: number;
+  avgDamage: number;
+  avgDamageTaken: number;
+  avgGold: number;
+  avgVisionScore: number;
+  doubleKills: number;
+  tripleKills: number;
+  quadraKills: number;
+  pentaKills: number;
+  maxKills: number;
+  maxDeaths: number;
+  roles: Record<string, number>;
+  primaryRole: string;
 }
 
 export async function getSummonerChampionStats(
@@ -267,6 +279,17 @@ export async function getSummonerChampionStats(
     totalAssists: number;
     totalCs: number;
     totalDuration: number;
+    totalDamage: number;
+    totalDamageTaken: number;
+    totalGold: number;
+    totalVision: number;
+    maxKills: number;
+    maxDeaths: number;
+    doubleKills: number;
+    tripleKills: number;
+    quadraKills: number;
+    pentaKills: number;
+    roles: Record<string, number>;
   }>();
 
   for (const p of participations) {
@@ -281,6 +304,17 @@ export async function getSummonerChampionStats(
       totalAssists: 0,
       totalCs: 0,
       totalDuration: 0,
+      totalDamage: 0,
+      totalDamageTaken: 0,
+      totalGold: 0,
+      totalVision: 0,
+      maxKills: 0,
+      maxDeaths: 0,
+      doubleKills: 0,
+      tripleKills: 0,
+      quadraKills: 0,
+      pentaKills: 0,
+      roles: {},
     };
 
     existing.games += 1;
@@ -292,6 +326,26 @@ export async function getSummonerChampionStats(
     existing.totalAssists += p.assists;
     existing.totalCs += (p.totalMinionsKilled + p.neutralMinionsKilled);
     existing.totalDuration += p.match.gameDuration;
+    existing.totalDamage += p.totalDamageDealtToChampions || 0;
+    existing.totalDamageTaken += p.totalDamageTaken || 0;
+    existing.totalGold += p.goldEarned || 0;
+    existing.totalVision += p.visionScore || 0;
+
+    if (p.kills > existing.maxKills) existing.maxKills = p.kills;
+    if (p.deaths > existing.maxDeaths) existing.maxDeaths = p.deaths;
+
+    // Multi-kills from challengesJson
+    const ch = (p.challengesJson as any) || {};
+    existing.doubleKills += Number(ch.doubleKills || 0);
+    existing.tripleKills += Number(ch.tripleKills || 0);
+    existing.quadraKills += Number(ch.quadraKills || 0);
+    existing.pentaKills += Number(ch.pentaKills || 0);
+
+    // Track lane / role
+    const pos = p.teamPosition || p.lane || 'UNKNOWN';
+    if (pos && pos !== 'NONE' && pos !== 'UNKNOWN') {
+      existing.roles[pos] = (existing.roles[pos] || 0) + 1;
+    }
 
     map.set(p.championId, existing);
   }
@@ -308,6 +362,20 @@ export async function getSummonerChampionStats(
     const avgCs = Math.round(item.totalCs / item.games);
     const totalMinutes = item.totalDuration / 60;
     const avgCsPerMin = totalMinutes > 0 ? Number((item.totalCs / totalMinutes).toFixed(1)) : 0;
+    const avgDamage = Math.round(item.totalDamage / item.games);
+    const avgDamageTaken = Math.round(item.totalDamageTaken / item.games);
+    const avgGold = Math.round(item.totalGold / item.games);
+    const avgVisionScore = Number((item.totalVision / item.games).toFixed(1));
+
+    // Determine primary role
+    let primaryRole = 'UNKNOWN';
+    let maxRoleCount = 0;
+    for (const [role, count] of Object.entries(item.roles)) {
+      if (count > maxRoleCount) {
+        maxRoleCount = count;
+        primaryRole = role;
+      }
+    }
 
     summaries.push({
       championId: item.championId,
@@ -322,6 +390,18 @@ export async function getSummonerChampionStats(
       kda,
       avgCs,
       avgCsPerMin,
+      avgDamage,
+      avgDamageTaken,
+      avgGold,
+      avgVisionScore,
+      doubleKills: item.doubleKills,
+      tripleKills: item.tripleKills,
+      quadraKills: item.quadraKills,
+      pentaKills: item.pentaKills,
+      maxKills: item.maxKills,
+      maxDeaths: item.maxDeaths,
+      roles: item.roles,
+      primaryRole,
     });
   }
 
