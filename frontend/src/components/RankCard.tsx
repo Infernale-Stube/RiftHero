@@ -67,8 +67,10 @@ export default function RankCard({ title, rankData, lpHistory }: RankCardProps) 
         </div>
       </div>
 
-      {/* LP History Graph (LoLDB signature) */}
-      {lpHistory && <LpHistoryChart lpHistory={lpHistory} />}
+      {/* LP History Graph (LoLDB signature) - Only rendered when genuine recorded history (>= 2 points) exists */}
+      {lpHistory && lpHistory.points && lpHistory.points.length >= 2 && (
+        <LpHistoryChart lpHistory={lpHistory} />
+      )}
     </div>
   );
 }

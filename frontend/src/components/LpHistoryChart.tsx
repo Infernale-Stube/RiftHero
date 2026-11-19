@@ -46,7 +46,7 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
     longestWinStreak,
   } = lpHistory;
 
-  if (!points || points.length === 0) {
+  if (!points || points.length < 2) {
     return null;
   }
 

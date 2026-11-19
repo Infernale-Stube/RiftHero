@@ -102,7 +102,7 @@ export async function recordLpSnapshot(
     latest.wins !== wins ||
     latest.losses !== losses
   ) {
-    const delta = latest ? totalLp - latest.totalLp : 0;
+    const delta = latest ? totalLp - latest.totalLp : null;
 
     await prisma.summonerLpSnapshot.create({
       data: {
@@ -122,7 +122,8 @@ export async function recordLpSnapshot(
 }
 
 /**
- * Fetch LP history for a player, generating a realistic reconstructed timeline if history is new
+ * Fetch LP history for a player based strictly on verified recorded database snapshots.
+ * If fewer than 2 snapshots exist, returns null so no fabricated graph is displayed.
  */
 export async function getSummonerLpHistory(
   summonerId: string,
@@ -147,93 +148,41 @@ export async function getSummonerLpHistory(
   const snapshots = await prisma.summonerLpSnapshot.findMany({
     where: { summonerId, queueType },
     orderBy: { recordedAt: 'asc' },
-    take: 50,
+    take: 100,
   });
 
-  let points: LpPoint[] = [];
-
-  if (snapshots.length >= 5) {
-    // We have genuine recorded history!
-    points = snapshots.map((s) => ({
-      date: s.recordedAt.toISOString().slice(0, 10),
-      timestamp: s.recordedAt.getTime(),
-      tier: s.tier,
-      rank: s.rank,
-      leaguePoints: s.leaguePoints,
-      totalLp: s.totalLp,
-      delta: s.delta || 0,
-    }));
-  } else {
-    // Reconstruct realistic timeline from recent ranked matches
-    // Queue 420 = Ranked Solo/Duo, 440 = Ranked Flex
-    const targetQueueId = queueType === 'RANKED_FLEX_SR' ? 440 : 420;
-
-    const participations = await prisma.matchParticipant.findMany({
-      where: {
-        puuid,
-        match: { queueId: targetQueueId },
-      },
-      include: {
-        match: {
-          select: { gameCreation: true, id: true },
-        },
-      },
-      orderBy: {
-        match: { gameCreation: 'desc' },
-      },
-      take: 20,
-    });
-
-    if (participations.length > 0) {
-      // Walk backwards from currentTotalLp
-      let runningLp = currentTotalLp;
-      const revPoints: LpPoint[] = [];
-
-      for (let i = 0; i < participations.length; i++) {
-        const p = participations[i];
-        const matchInfo = getTierAndRankFromTotalLp(runningLp);
-        const isWin = p.win;
-
-        // Realistic LP delta: +20-25 for win, -17-21 for loss (deterministic by matchId)
-        const hash = p.match.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-        const winDelta = 20 + (hash % 6);
-        const lossDelta = -(17 + (hash % 5));
-        const delta = isWin ? winDelta : lossDelta;
-
-        revPoints.push({
-          date: new Date(Number(p.match.gameCreation)).toISOString().slice(0, 10),
-          timestamp: Number(p.match.gameCreation),
-          tier: matchInfo.tier,
-          rank: matchInfo.rank,
-          leaguePoints: matchInfo.lp,
-          totalLp: runningLp,
-          delta,
-          win: isWin,
-        });
-
-        // Previous game's LP before this game
-        runningLp = Math.max(0, runningLp - delta);
-      }
-
-      // Reverse so it's chronological (oldest to newest)
-      points = revPoints.reverse();
-    } else {
-      // Single fallback point
-      points = [
-        {
-          date: new Date().toISOString().slice(0, 10),
-          timestamp: Date.now(),
-          tier: rankEntry.tier,
-          rank: rankEntry.rank,
-          leaguePoints: rankEntry.leaguePoints,
-          totalLp: currentTotalLp,
-          delta: 0,
-        },
-      ];
-    }
+  // If no snapshots exist yet, record initial baseline snapshot
+  if (snapshots.length === 0) {
+    await recordLpSnapshot(
+      summonerId,
+      queueType,
+      rankEntry.tier,
+      rankEntry.rank,
+      rankEntry.leaguePoints,
+      rankEntry.wins,
+      rankEntry.losses
+    );
+    return null;
   }
 
-  // Calculate Peak and Longest Win Streak
+  // Without at least 2 real snapshots over time, do not show a curve
+  if (snapshots.length < 2) {
+    return null;
+  }
+
+  // Map only genuine recorded snapshots
+  const points: LpPoint[] = snapshots.map((s) => ({
+    date: s.recordedAt.toISOString().slice(0, 10),
+    timestamp: s.recordedAt.getTime(),
+    tier: s.tier,
+    rank: s.rank,
+    leaguePoints: s.leaguePoints,
+    totalLp: s.totalLp,
+    delta: s.delta || 0,
+    win: s.delta !== null && s.delta !== undefined ? s.delta > 0 : undefined,
+  }));
+
+  // Calculate Peak and Longest Win Streak from genuine points
   let peakTotalLp = currentTotalLp;
   let maxWinStreak = 0;
   let currentStreak = 0;
@@ -303,24 +252,26 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
   if (userMatches.length === 0) return [];
 
   const matchIds = userMatches.map((m) => m.matchId);
-  const userMatchMap = new Map<string, { teamId: number; win: boolean }>();
-  userMatches.forEach((m) => userMatchMap.set(m.matchId, { teamId: m.teamId, win: m.win }));
+  const matchTeamMap = new Map<string, { teamId: number; win: boolean }>();
+  userMatches.forEach((m) => {
+    matchTeamMap.set(m.matchId, { teamId: m.teamId, win: m.win });
+  });
 
-  // Find all fellow teammates who were on the SAME team
-  const fellowParticipants = await prisma.matchParticipant.findMany({
+  // Query teammates in those matches (same teamId, different puuid)
+  const teammates = await prisma.matchParticipant.findMany({
     where: {
       matchId: { in: matchIds },
       puuid: { not: puuid },
     },
     select: {
-      matchId: true,
       puuid: true,
       riotIdGameName: true,
       riotIdTagline: true,
-      teamId: true,
-      win: true,
       championName: true,
       profileIcon: true,
+      teamId: true,
+      win: true,
+      matchId: true,
       summoner: {
         select: {
           profileIconId: true,
@@ -329,7 +280,7 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
     },
   });
 
-  // Filter to same team only
+  // Aggregate stats per teammate
   const teammateStats = new Map<
     string,
     {
@@ -337,76 +288,68 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       gameName: string;
       tagLine: string;
       profileIconId?: number;
-      championCounts: Map<string, number>;
+      championCounts: Record<string, number>;
       games: number;
       wins: number;
       losses: number;
     }
   >();
 
-  for (const fp of fellowParticipants) {
-    const userMatch = userMatchMap.get(fp.matchId);
-    if (!userMatch || userMatch.teamId !== fp.teamId) continue; // Only same team!
+  for (const t of teammates) {
+    const userMatchInfo = matchTeamMap.get(t.matchId);
+    if (!userMatchInfo || userMatchInfo.teamId !== t.teamId) {
+      continue; // Not on the same team
+    }
 
-    const key = fp.puuid || `${fp.riotIdGameName}#${fp.riotIdTagline}`;
-    const cleanName = fp.riotIdGameName || 'Player';
-    const cleanTag = fp.riotIdTagline || '';
-
-    let existing = teammateStats.get(key);
-    if (!existing) {
-      existing = {
-        puuid: fp.puuid,
-        gameName: cleanName,
-        tagLine: cleanTag,
-        profileIconId: fp.profileIcon || fp.summoner?.profileIconId || 29,
-        championCounts: new Map<string, number>(),
+    const key = t.puuid;
+    if (!teammateStats.has(key)) {
+      teammateStats.set(key, {
+        puuid: t.puuid,
+        gameName: t.riotIdGameName,
+        tagLine: t.riotIdTagline,
+        profileIconId: t.summoner?.profileIconId || t.profileIcon || 29,
+        championCounts: {},
         games: 0,
         wins: 0,
         losses: 0,
-      };
-      teammateStats.set(key, existing);
+      });
     }
 
-    existing.games++;
-    if (fp.win) {
-      existing.wins++;
+    const stat = teammateStats.get(key)!;
+    stat.games++;
+    if (t.win) {
+      stat.wins++;
     } else {
-      existing.losses++;
+      stat.losses++;
     }
 
-    if (fp.profileIcon && fp.profileIcon > 0 && fp.profileIcon !== 29) {
-      existing.profileIconId = fp.profileIcon;
-    } else if (fp.summoner?.profileIconId) {
-      existing.profileIconId = fp.summoner.profileIconId;
-    }
-
-    if (fp.championName) {
-      const c = (existing.championCounts.get(fp.championName) || 0) + 1;
-      existing.championCounts.set(fp.championName, c);
+    if (t.championName) {
+      stat.championCounts[t.championName] = (stat.championCounts[t.championName] || 0) + 1;
     }
   }
 
-  // Sort by games played descending, then winrate
+  // Format and sort by games played (minimum 2 games to be meaningful)
   const sorted = Array.from(teammateStats.values())
-    .filter((t) => t.games >= 2 && t.gameName !== 'Unknown') // At least 2 games
-    .sort((a, b) => b.games - a.games || b.wins - a.wins)
+    .filter((t) => t.games >= 2)
+    .sort((a, b) => b.games - a.games)
     .slice(0, limit)
     .map((t) => {
+      // Find most played champion with this teammate
       let topChamp = '';
-      let maxCount = 0;
-      t.championCounts.forEach((cnt, name) => {
-        if (cnt > maxCount) {
-          maxCount = cnt;
-          topChamp = name;
+      let topChampCount = 0;
+      for (const [c, count] of Object.entries(t.championCounts)) {
+        if (count > topChampCount) {
+          topChamp = c;
+          topChampCount = count;
         }
-      });
+      }
 
       return {
         puuid: t.puuid,
         gameName: t.gameName,
         tagLine: t.tagLine,
         profileIconId: t.profileIconId,
-        championName: topChamp,
+        championName: topChamp || undefined,
         games: t.games,
         wins: t.wins,
         losses: t.losses,
@@ -425,20 +368,9 @@ export interface MatchLpChange {
 }
 
 /**
- * Compute a deterministic, realistic LP delta for a match (+20 to +26 for win, -17 to -22 for loss)
- */
-export function computeMatchLpDelta(matchId: string, puuid: string, win: boolean): number {
-  const seed = `${matchId}_${puuid}`;
-  const hash = seed.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) % 1000003, 0);
-  if (win) {
-    return 20 + (hash % 7); // +20 to +26
-  } else {
-    return -(17 + (hash % 6)); // -17 to -22
-  }
-}
-
-/**
- * Resolve LP changes and post-match LP for a batch of matches
+ * Resolve genuine LP changes for matches by correlating consecutive recorded snapshots.
+ * If no verified snapshot transition exists for a match, it is NOT included in the map (returns null/undefined).
+ * Absolutely no synthetic or randomized values are ever generated.
  */
 export async function getMatchesLpChanges(
   puuid: string,
@@ -453,57 +385,63 @@ export async function getMatchesLpChanges(
   const summoner = await prisma.summoner.findUnique({
     where: { puuid },
     include: {
-      ranks: true,
       lpSnapshots: {
-        orderBy: { recordedAt: 'desc' },
-        take: 100,
+        orderBy: { recordedAt: 'asc' },
       },
     },
   });
 
-  const soloRank = summoner?.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
-  const flexRank = summoner?.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
+  if (!summoner || !summoner.lpSnapshots || summoner.lpSnapshots.length < 2) {
+    // Without at least 2 recorded snapshots, no genuine delta can be confirmed
+    return map;
+  }
 
   for (const qId of [420, 440]) {
-    const qMatches = rankedMatches.filter((m) => m.queueId === qId);
-    if (qMatches.length === 0) continue;
+    const queueType = qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
+    const queueSnapshots = summoner.lpSnapshots.filter((s) => s.queueType === queueType);
+    if (queueSnapshots.length < 2) continue;
 
-    const rankObj = qId === 420 ? soloRank : flexRank;
-    const currentTier = rankObj?.tier || 'EMERALD';
-    const currentRank = rankObj?.rank || 'IV';
-    const currentLp = rankObj?.leaguePoints ?? 50;
+    const qMatches = rankedMatches
+      .filter((m) => m.queueId === qId)
+      .map((m) => ({
+        id: m.id,
+        time: Number(m.gameCreation),
+        win: m.win,
+      }))
+      .sort((a, b) => a.time - b.time); // chronological
 
-    let runningTotalLp = calculateTotalLp(currentTier, currentRank, currentLp);
+    // Walk through snapshot transitions
+    for (let i = 1; i < queueSnapshots.length; i++) {
+      const prev = queueSnapshots[i - 1];
+      const curr = queueSnapshots[i];
 
-    for (let i = 0; i < qMatches.length; i++) {
-      const m = qMatches[i];
-      const delta = computeMatchLpDelta(m.id, puuid, m.win);
+      const gamesDiff = (curr.wins + curr.losses) - (prev.wins + prev.losses);
+      const delta = curr.delta ?? (curr.totalLp - prev.totalLp);
 
-      const mTime = Number(m.gameCreation);
-      const matchSnapshot = summoner?.lpSnapshots.find(
-        (s) =>
-          s.queueType === (qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR') &&
-          Math.abs(s.recordedAt.getTime() - mTime) < 30 * 60 * 1000
-      );
+      // If exactly 1 game was recorded between these snapshots and delta is known
+      if (gamesDiff === 1 && delta !== null && delta !== undefined) {
+        const prevTime = prev.recordedAt.getTime();
+        const currTime = curr.recordedAt.getTime();
 
-      let info: { tier: string; rank: string; lp: number };
-      let matchDelta = delta;
+        // Find candidate matches that finished between prev and curr
+        const candidates = qMatches.filter(
+          (m) => m.time >= prevTime - 15 * 60 * 1000 && m.time <= currTime + 10 * 60 * 1000
+        );
 
-      if (matchSnapshot && matchSnapshot.delta) {
-        matchDelta = matchSnapshot.delta;
-        info = { tier: matchSnapshot.tier, rank: matchSnapshot.rank, lp: matchSnapshot.leaguePoints };
-      } else {
-        info = getTierAndRankFromTotalLp(runningTotalLp);
+        const expectedWin = curr.wins > prev.wins;
+        const matchingMatch =
+          candidates.find((m) => m.win === expectedWin) ||
+          (candidates.length === 1 ? candidates[0] : null);
+
+        if (matchingMatch) {
+          map.set(matchingMatch.id, {
+            delta,
+            tier: curr.tier,
+            rank: curr.rank,
+            leaguePoints: curr.leaguePoints,
+          });
+        }
       }
-
-      map.set(m.id, {
-        delta: matchDelta,
-        tier: info.tier,
-        rank: info.rank,
-        leaguePoints: info.lp,
-      });
-
-      runningTotalLp = Math.max(0, runningTotalLp - matchDelta);
     }
   }
 

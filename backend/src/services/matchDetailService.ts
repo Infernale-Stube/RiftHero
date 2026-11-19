@@ -2,7 +2,7 @@ import { prisma } from '../db/prisma';
 import { getRiotClient } from '../riot/client';
 import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
-import { computeMatchLpDelta, MatchLpChange } from './lpService';
+import { getMatchesLpChanges, MatchLpChange } from './lpService';
 
 export interface ObjectiveDetail {
   first: boolean;
@@ -196,6 +196,31 @@ export async function getMatchDetails(
   const blueTotalDamage = participants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
   const redTotalDamage = participants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
+  // Resolve genuine match-to-match LP changes for participants if ranked
+  const lpChangeMap = new Map<string, MatchLpChange>();
+  if (match.queueId === 420 || match.queueId === 440) {
+    await Promise.all(
+      participants.map(async (p) => {
+        try {
+          const map = await getMatchesLpChanges(p.puuid, [
+            {
+              id: match.id,
+              queueId: match.queueId,
+              gameCreation: match.gameCreation,
+              win: p.win,
+            },
+          ]);
+          const change = map.get(match.id);
+          if (change) {
+            lpChangeMap.set(p.puuid, change);
+          }
+        } catch {
+          // Ignore lookup errors
+        }
+      })
+    );
+  }
+
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
       const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
@@ -206,34 +231,7 @@ export async function getMatchDetails(
       const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
       const damageShare = teamDmg > 0 ? Math.round((p.totalDamageDealtToChampions / teamDmg) * 100) : 0;
 
-      let lpChange: MatchLpChange | null = null;
-      if (match.queueId === 420 || match.queueId === 440) {
-        const delta = computeMatchLpDelta(match.id, p.puuid, p.win);
-        let tier: string | undefined = undefined;
-        let rank: string | undefined = undefined;
-        let leaguePoints: number | undefined = undefined;
-
-        if (p.summonerId) {
-          const sRank = await prisma.summonerRank.findFirst({
-            where: {
-              summonerId: p.summonerId,
-              queueType: match.queueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR',
-            },
-          });
-          if (sRank) {
-            tier = sRank.tier;
-            rank = sRank.rank;
-            leaguePoints = sRank.leaguePoints;
-          }
-        }
-
-        lpChange = {
-          delta,
-          tier,
-          rank,
-          leaguePoints,
-        };
-      }
+      const lpChange: MatchLpChange | null = lpChangeMap.get(p.puuid) || null;
 
       return {
         id: p.id,
