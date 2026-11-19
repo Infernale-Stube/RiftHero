@@ -85,7 +85,9 @@ export default function MatchHistory({
 
       const grp = groupMap.get(label)!;
       grp.matches.push(m);
-      if (m.win) {
+      if (m.isRemake || m.gameDuration < 300) {
+        // Remakes do not count towards wins or losses
+      } else if (m.win) {
         grp.wins++;
       } else {
         grp.losses++;

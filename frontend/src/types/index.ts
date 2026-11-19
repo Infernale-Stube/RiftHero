@@ -112,6 +112,8 @@ export interface MatchParticipant {
   tripleKills?: number;
   quadraKills?: number;
   pentaKills?: number;
+  gameEndedInSurrender?: boolean;
+  gameEndedInEarlySurrender?: boolean;
 }
 
 export interface DeepLolScore {
@@ -145,6 +147,8 @@ export interface FormattedMatch {
   queueId: number;
   queueName: string;
   win: boolean;
+  isRemake?: boolean;
+  isSurrender?: boolean;
   participant: MatchParticipant;
   blueTeam: MatchParticipant[];
   redTeam: MatchParticipant[];
@@ -152,6 +156,7 @@ export interface FormattedMatch {
   redTeamTotals?: TeamTotals;
   maxDamage?: number;
   lpChange?: MatchLpChange | null;
+  teams?: any[];
 }
 
 export interface ChampionStatSummary {

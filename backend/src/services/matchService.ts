@@ -41,6 +41,8 @@ export interface FormattedMatchParticipant {
   tripleKills?: number;
   quadraKills?: number;
   pentaKills?: number;
+  gameEndedInSurrender?: boolean;
+  gameEndedInEarlySurrender?: boolean;
 }
 
 export interface TeamTotals {
@@ -58,6 +60,8 @@ export interface FormattedMatch {
   queueId: number;
   queueName: string;
   win: boolean;
+  isRemake?: boolean;
+  isSurrender?: boolean;
   participant: FormattedMatchParticipant;
   blueTeam: FormattedMatchParticipant[];
   redTeam: FormattedMatchParticipant[];
@@ -65,6 +69,7 @@ export interface FormattedMatch {
   redTeamTotals: TeamTotals;
   maxDamage: number;
   lpChange?: MatchLpChange | null;
+  teams?: any[];
 }
 
 export function getPositionSortOrder(p: {
@@ -148,6 +153,8 @@ function formatParticipant(
     tripleKills: (p.challengesJson as any)?.tripleKills || 0,
     quadraKills: (p.challengesJson as any)?.quadraKills || 0,
     pentaKills: (p.challengesJson as any)?.pentaKills || 0,
+    gameEndedInSurrender: Boolean((p.challengesJson as any)?.gameEndedInSurrender),
+    gameEndedInEarlySurrender: Boolean((p.challengesJson as any)?.gameEndedInEarlySurrender),
   };
 }
 
@@ -271,6 +278,12 @@ export async function getSummonerMatches(
     currentFormatted.lpChange = matchLpChange;
     currentFormatted.score = matchScores.get(up.puuid);
 
+    const isRemake = m.gameDuration < 300 || Boolean((up.challengesJson as any)?.gameEndedInEarlySurrender);
+    const isSurrender = Boolean(
+      (up.challengesJson as any)?.gameEndedInSurrender ||
+      (up.challengesJson as any)?.gameEndedInEarlySurrender
+    );
+
     return {
       matchId: m.id,
       gameDuration: m.gameDuration,
@@ -278,6 +291,8 @@ export async function getSummonerMatches(
       queueId: m.queueId,
       queueName: getQueueName(m.queueId),
       win: up.win,
+      isRemake,
+      isSurrender,
       participant: currentFormatted,
       blueTeam,
       redTeam,
@@ -285,6 +300,7 @@ export async function getSummonerMatches(
       redTeamTotals,
       maxDamage,
       lpChange: matchLpChange,
+      teams: (m.teamsJson as any) || [],
     };
   });
 

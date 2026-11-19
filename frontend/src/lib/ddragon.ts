@@ -29,6 +29,11 @@ export function getChampionIconUrl(championName: string, version = DDRAGON_VERSI
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${clean}.png`;
 }
 
+export function getChampionIconByIdUrl(championId: number): string {
+  if (!championId || championId <= 0) return '';
+  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`;
+}
+
 export function getChampionSplashUrl(championName?: string | null): string {
   const clean = normalizeChampionNameForDDragon(championName);
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${clean}_0.jpg`;

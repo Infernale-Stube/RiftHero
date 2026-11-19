@@ -355,6 +355,8 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
                 quadraKills: (p as any).quadraKills ?? 0,
                 pentaKills: (p as any).pentaKills ?? 0,
                 largestMultiKill: (p as any).largestMultiKill ?? 0,
+                gameEndedInSurrender: (p as any).gameEndedInSurrender ?? false,
+                gameEndedInEarlySurrender: (p as any).gameEndedInEarlySurrender ?? false,
               } as any,
             },
             update: {
@@ -380,6 +382,8 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
                 quadraKills: (p as any).quadraKills ?? 0,
                 pentaKills: (p as any).pentaKills ?? 0,
                 largestMultiKill: (p as any).largestMultiKill ?? 0,
+                gameEndedInSurrender: (p as any).gameEndedInSurrender ?? false,
+                gameEndedInEarlySurrender: (p as any).gameEndedInEarlySurrender ?? false,
               } as any,
             },
           });

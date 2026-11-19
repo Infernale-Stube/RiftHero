@@ -129,16 +129,20 @@ export function calculateMatchScores(
     const isMvp = item.puuid === mvpItem?.puuid;
     const isAce = item.puuid === aceItem?.puuid;
 
+    const roundedScore = isMvp
+      ? 100
+      : Math.min(99, Math.max(10, Math.round(item.rawScore * 10)));
+
     let tierRating: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D' = 'C';
-    if (item.rawScore >= 9.0) tierRating = 'S+';
-    else if (item.rawScore >= 8.0) tierRating = 'S';
-    else if (item.rawScore >= 7.0) tierRating = 'A';
-    else if (item.rawScore >= 6.0) tierRating = 'B';
-    else if (item.rawScore >= 5.0) tierRating = 'C';
+    if (roundedScore >= 90) tierRating = 'S+';
+    else if (roundedScore >= 80) tierRating = 'S';
+    else if (roundedScore >= 70) tierRating = 'A';
+    else if (roundedScore >= 60) tierRating = 'B';
+    else if (roundedScore >= 50) tierRating = 'C';
     else tierRating = 'D';
 
     resultMap.set(item.puuid, {
-      score: item.rawScore,
+      score: roundedScore,
       rank: index + 1,
       isMvp,
       isAce,
