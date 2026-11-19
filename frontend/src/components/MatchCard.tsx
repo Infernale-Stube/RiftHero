@@ -754,7 +754,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           </div>
         </div>
 
-        {/* Badges Block: Multi-kill, DeepLoL Score (0-100), Most Dmg/Gold */}
+        {/* Badges Block: Multi-kill, Score (0-100), Most Dmg/Gold */}
         <div className="flex flex-col items-center justify-center gap-1.5 shrink-0 min-w-[95px]">
           {multiKill && (
             <div className="flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/25 px-3 py-1 shadow-sm">

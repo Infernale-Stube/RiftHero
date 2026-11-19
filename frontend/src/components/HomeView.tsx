@@ -138,7 +138,7 @@ export default function HomeView() {
           </div>
         </div>
 
-        {/* Pillar 2: DeepLoL Scores */}
+        {/* Pillar 2: 0-100 Performance Scores */}
         <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-xl transition-all hover:border-amber-500/40 hover:bg-[#15131a]">
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -146,7 +146,7 @@ export default function HomeView() {
                 <Trophy className="h-5 w-5" />
               </div>
               <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black uppercase text-amber-300 tracking-wider">
-                DeepLoL
+                MVP & ACE
               </span>
             </div>
             <h3 className="text-base font-extrabold text-white mb-1.5">

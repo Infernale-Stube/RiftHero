@@ -71,13 +71,19 @@ export default function ScoreTimelineChart({
   const maxMinute = Math.max(...scoreTimeline.map((p) => p.minute), 1);
   const finalPoint = scoreTimeline[scoreTimeline.length - 1];
 
-  // Min and max score bounds (typically 3.0 to 10.0)
-  const minScore = 2.0;
-  const maxScore = 10.0;
+  // Min and max score bounds (0 to 100 system, plotted between 20 and 100)
+  const toScore100 = (val?: number | null): number => {
+    if (val === undefined || val === null || isNaN(val)) return 50;
+    return Math.round(val <= 10 ? val * 10 : val);
+  };
+
+  const minScore = 20;
+  const maxScore = 100;
   const scoreRange = maxScore - minScore;
 
   const getX = (min: number) => padLeft + (min / maxMinute) * chartW;
-  const getY = (scoreVal: number) => padTop + chartH - ((scoreVal - minScore) / scoreRange) * chartH;
+  const getY = (scoreVal: number) =>
+    padTop + chartH - ((Math.min(100, Math.max(minScore, toScore100(scoreVal))) - minScore) / scoreRange) * chartH;
 
   // Toggle player selection
   const togglePlayer = (puuid: string) => {
@@ -132,8 +138,8 @@ export default function ScoreTimelineChart({
 
   const activePoint = hoveredPoint || finalPoint;
 
-  // Grid steps (scores 2, 4, 6, 8, 10)
-  const gridScores = [10, 8, 6, 4, 2];
+  // Grid steps (scores 100, 80, 60, 40, 20)
+  const gridScores = [100, 80, 60, 40, 20];
 
   // Time ticks (every 5 minutes)
   const timeTicks: number[] = [];
@@ -165,16 +171,16 @@ export default function ScoreTimelineChart({
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black tracking-tight text-white">
-                {locale === 'de' ? 'DeepLoL Score-Verlauf' : 'DeepLoL Score Progression'}
+                {locale === 'de' ? 'Match-Score Verlauf (0–100)' : 'Match Score Progression (0–100)'}
               </h3>
-              <span className="rounded-full bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black text-amber-300">
-                AI PERFORMANCE
+              <span className="rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black text-amber-300">
+                0–100 SCORE
               </span>
             </div>
             <p className="text-xs text-zinc-400">
               {locale === 'de'
-                ? 'Score-Berechnung (0 - 10) über das gesamte Spiel hinweg basierend auf Combat, Farming, KDA & Objectives'
-                : 'Performance score (0 - 10) tracked across the entire game based on combat, farming, KDA & objectives'}
+                ? 'Minütliche Score-Berechnung (0–100) über das gesamte Spiel hinweg basierend auf Combat, Farming, KDA & Objectives'
+                : 'Performance score (0–100) tracked across the entire game based on combat, farming, KDA & objectives'}
             </p>
           </div>
         </div>
@@ -214,28 +220,33 @@ export default function ScoreTimelineChart({
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-400 shadow-sm" />
             <span className="text-zinc-400">{locale === 'de' ? 'Blaues Team' : 'Blue Team'}:</span>
-            <span className="font-black text-blue-400">{activePoint.blueScore.toFixed(1)}</span>
+            <span className="font-black text-blue-400">{toScore100(activePoint.blueScore)}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-rose-400 shadow-sm" />
             <span className="text-zinc-400">{locale === 'de' ? 'Rotes Team' : 'Red Team'}:</span>
-            <span className="font-black text-rose-400">{activePoint.redScore.toFixed(1)}</span>
+            <span className="font-black text-rose-400">{toScore100(activePoint.redScore)}</span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <span className="text-zinc-500 font-medium">{locale === 'de' ? 'Vorteil' : 'Advantage'}:</span>
-            <span
-              className={`font-black ${
-                activePoint.diff > 0
-                  ? 'text-blue-400'
-                  : activePoint.diff < 0
-                  ? 'text-rose-400'
-                  : 'text-zinc-400'
-              }`}
-            >
-              {activePoint.diff > 0 ? `+${activePoint.diff.toFixed(1)} Blau` : activePoint.diff < 0 ? `+${Math.abs(activePoint.diff).toFixed(1)} Rot` : 'Ausgeglichen'}
-            </span>
+            {(() => {
+              const diff100 = toScore100(activePoint.blueScore) - toScore100(activePoint.redScore);
+              return (
+                <span
+                  className={`font-black ${
+                    diff100 > 0
+                      ? 'text-blue-400'
+                      : diff100 < 0
+                      ? 'text-rose-400'
+                      : 'text-zinc-400'
+                  }`}
+                >
+                  {diff100 > 0 ? `+${diff100} Blau` : diff100 < 0 ? `+${Math.abs(diff100)} Rot` : 'Ausgeglichen'}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -246,7 +257,7 @@ export default function ScoreTimelineChart({
               <Trophy className="h-3.5 w-3.5 text-amber-400" />
               <span className="text-[10px] font-black text-amber-300">MVP</span>
               <span className="text-[11px] font-bold text-white">{mvpParticipant.riotIdGameName}</span>
-              <span className="text-[10px] font-black text-amber-400">({mvpParticipant.score?.score.toFixed(1)})</span>
+              <span className="text-[10px] font-black text-amber-400">({toScore100(mvpParticipant.score?.score)})</span>
             </div>
           )}
           {aceParticipant && (
@@ -254,7 +265,7 @@ export default function ScoreTimelineChart({
               <Award className="h-3.5 w-3.5 text-purple-400" />
               <span className="text-[10px] font-black text-purple-300">ACE</span>
               <span className="text-[11px] font-bold text-white">{aceParticipant.riotIdGameName}</span>
-              <span className="text-[10px] font-black text-purple-400">({aceParticipant.score?.score.toFixed(1)})</span>
+              <span className="text-[10px] font-black text-purple-400">({toScore100(aceParticipant.score?.score)})</span>
             </div>
           )}
         </div>
@@ -326,7 +337,7 @@ export default function ScoreTimelineChart({
                           : 'text-zinc-400'
                       }`}
                     >
-                      {p.score.score.toFixed(1)}
+                      {toScore100(p.score.score)}
                     </span>
                   )}
                 </button>
@@ -355,10 +366,10 @@ export default function ScoreTimelineChart({
             </linearGradient>
           </defs>
 
-          {/* Horizontal Grid lines for Scores (10, 8, 6, 4, 2) */}
+          {/* Horizontal Grid lines for Scores (100, 80, 60, 40, 20) */}
           {gridScores.map((scoreVal) => {
             const y = getY(scoreVal);
-            const isMid = scoreVal === 6;
+            const isMid = scoreVal === 60;
 
             return (
               <g key={scoreVal}>
@@ -367,7 +378,7 @@ export default function ScoreTimelineChart({
                   y1={y}
                   x2={svgWidth - padRight}
                   y2={y}
-                  stroke={isMid ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)'}
+                  stroke={isMid ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.05)'}
                   strokeDasharray={isMid ? undefined : '3 3'}
                   strokeWidth={isMid ? '1.5' : '1'}
                 />
@@ -375,11 +386,11 @@ export default function ScoreTimelineChart({
                   x={padLeft - 8}
                   y={y + 3.5}
                   textAnchor="end"
-                  fill="rgba(161, 161, 170, 0.7)"
+                  fill={isMid ? 'rgba(255, 255, 255, 0.85)' : 'rgba(161, 161, 170, 0.7)'}
                   fontSize="10"
                   fontWeight={isMid ? 'bold' : 'normal'}
                 >
-                  {scoreVal.toFixed(0)}
+                  {scoreVal}
                 </text>
               </g>
             );
@@ -504,7 +515,11 @@ export default function ScoreTimelineChart({
             <div className="font-bold text-amber-300 border-b border-white/10 pb-1 mb-1.5 flex items-center justify-between gap-3">
               <span>{locale === 'de' ? `Minute ${hoveredPoint.minute}` : `Minute ${hoveredPoint.minute}:00`}</span>
               <span className="text-[10px] text-zinc-400">
-                {hoveredPoint.diff > 0 ? '+ Blau' : hoveredPoint.diff < 0 ? '+ Rot' : '='}
+                {toScore100(hoveredPoint.blueScore) > toScore100(hoveredPoint.redScore)
+                  ? '+ Blau'
+                  : toScore100(hoveredPoint.blueScore) < toScore100(hoveredPoint.redScore)
+                  ? '+ Rot'
+                  : '='}
               </span>
             </div>
 
@@ -512,11 +527,11 @@ export default function ScoreTimelineChart({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-4 text-blue-300">
                   <span className="font-semibold">{locale === 'de' ? 'Blaues Team' : 'Blue Team'}:</span>
-                  <span className="font-black">{hoveredPoint.blueScore.toFixed(1)}</span>
+                  <span className="font-black">{toScore100(hoveredPoint.blueScore)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4 text-rose-300">
                   <span className="font-semibold">{locale === 'de' ? 'Rotes Team' : 'Red Team'}:</span>
-                  <span className="font-black">{hoveredPoint.redScore.toFixed(1)}</span>
+                  <span className="font-black">{toScore100(hoveredPoint.redScore)}</span>
                 </div>
               </div>
             ) : (
@@ -524,7 +539,7 @@ export default function ScoreTimelineChart({
                 {participants
                   .filter((p) => selectedPuuids.has(p.puuid))
                   .map((p, idx) => {
-                    const sc = hoveredPoint.playerScores[p.puuid] ?? 5.5;
+                    const sc = hoveredPoint.playerScores[p.puuid] ?? 50;
                     const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
 
                     return (
@@ -533,7 +548,7 @@ export default function ScoreTimelineChart({
                           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
                           <span className="text-zinc-300 truncate max-w-[85px]">{p.riotIdGameName}</span>
                         </div>
-                        <span className="font-black text-white">{sc.toFixed(1)}</span>
+                        <span className="font-black text-white">{toScore100(sc)}</span>
                       </div>
                     );
                   })}

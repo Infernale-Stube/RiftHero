@@ -399,7 +399,10 @@ export default function MatchDetailPage() {
                           >
                             {p.score.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
                             {p.score.isAce && <Award className="h-3 w-3 text-purple-400" />}
-                            <span>{p.score.isMvp ? 'MVP' : p.score.isAce ? 'ACE' : 'Score'} {p.score.score.toFixed(1)}</span>
+                            <span>
+                              {p.score.isMvp ? 'MVP' : p.score.isAce ? 'ACE' : 'Score'}{' '}
+                              {Math.round(p.score.score <= 10 ? p.score.score * 10 : p.score.score)}
+                            </span>
                           </span>
                         )}
                       </div>
@@ -784,7 +787,7 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* 5. DEEPLOL AI-SCORE PROGRESSION GRAPH */}
+      {/* 5. MATCH PERFORMANCE SCORE GRAPH */}
       {scoreTimeline && scoreTimeline.length > 1 && (
         <ScoreTimelineChart
           scoreTimeline={scoreTimeline}

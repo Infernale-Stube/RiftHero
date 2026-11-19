@@ -226,12 +226,12 @@ export function calculateScoreTimeline(
     // Minute 0 baseline
     if (frameIdx === 0) {
       participants.forEach((p) => {
-        playerScores[p.puuid] = 5.5;
+        playerScores[p.puuid] = 50;
         if (p.teamId === 100) {
-          blueScoreSum += 5.5;
+          blueScoreSum += 50;
           blueCount++;
         } else {
-          redScoreSum += 5.5;
+          redScoreSum += 50;
           redCount++;
         }
       });
@@ -275,25 +275,25 @@ export function calculateScoreTimeline(
         const myTeamGold = isBlue ? teamBlueGold : teamRedGold;
         const myTeamKills = isBlue ? teamBlueKills : teamRedKills;
 
-        let score = 5.0;
+        let score = 50.0;
 
         // KDA component
         const kda = (stats.kills + stats.assists) / Math.max(stats.deaths, 1);
-        score += Math.min(2.5, Math.max(-2.0, (kda - 2.5) * 0.6));
+        score += Math.min(25, Math.max(-20, (kda - 2.5) * 6.0));
         if (stats.deaths > 3) {
-          score -= (stats.deaths - 3) * 0.15;
+          score -= (stats.deaths - 3) * 1.5;
         }
 
         // KP component
         if (myTeamKills > 0) {
           const kp = (stats.kills + stats.assists) / myTeamKills;
-          score += (kp - 0.45) * 1.5;
+          score += (kp - 0.45) * 15.0;
         }
 
         // Gold share component
         if (myTeamGold > 0 && pf?.totalGold) {
           const goldShare = pf.totalGold / myTeamGold;
-          score += (goldShare - 0.2) * 4.0;
+          score += (goldShare - 0.2) * 40.0;
         }
 
         // CS/min component
@@ -302,15 +302,16 @@ export function calculateScoreTimeline(
           const csPerMin = totalCs / currentMinute;
           const rolePos = (p.teamPosition || p.lane || '').toUpperCase();
           if (rolePos !== 'UTILITY' && rolePos !== 'SUPPORT') {
-            score += Math.min(1.0, Math.max(-1.0, (csPerMin - 6.0) * 0.25));
+            score += Math.min(10, Math.max(-10, (csPerMin - 6.0) * 2.5));
           }
         }
 
         // Team momentum influence (smooth blend towards final score at the end)
-        const finalScore = matchScores.get(p.puuid)?.score ?? 6.0;
+        const rawFinal = matchScores.get(p.puuid)?.score ?? 60.0;
+        const finalScore = rawFinal <= 10 ? rawFinal * 10 : rawFinal;
         const weightedScore = score * (1 - progressRatio * 0.5) + finalScore * (progressRatio * 0.5);
 
-        const clamped = Number(Math.min(9.9, Math.max(2.2, weightedScore)).toFixed(1));
+        const clamped = Math.min(100, Math.max(10, Math.round(weightedScore)));
         playerScores[p.puuid] = clamped;
 
         if (isBlue) {
@@ -323,9 +324,9 @@ export function calculateScoreTimeline(
       });
     }
 
-    const avgBlue = blueCount > 0 ? Number((blueScoreSum / blueCount).toFixed(1)) : 5.5;
-    const avgRed = redCount > 0 ? Number((redScoreSum / redCount).toFixed(1)) : 5.5;
-    const diff = Number((avgBlue - avgRed).toFixed(1));
+    const avgBlue = blueCount > 0 ? Math.round(blueScoreSum / blueCount) : 50;
+    const avgRed = redCount > 0 ? Math.round(redScoreSum / redCount) : 50;
+    const diff = avgBlue - avgRed;
 
     result.push({
       minute: frameIdx,
