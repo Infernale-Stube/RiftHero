@@ -158,7 +158,7 @@ export async function getLiveGame(
       gameName: { equals: gameName, mode: 'insensitive' },
       ...(cleanTag ? { tagLine: { equals: cleanTag, mode: 'insensitive' } } : {}),
     },
-    select: { puuid: true, id: true, summonerLevel: true },
+    select: { puuid: true, id: true, summonerLevel: true, gameName: true, tagLine: true },
   });
 
   if (!summoner) {
@@ -167,7 +167,7 @@ export async function getLiveGame(
         gameName: { equals: gameName, mode: 'insensitive' },
         ...(cleanTag ? { tagLine: { equals: cleanTag, mode: 'insensitive' } } : {}),
       },
-      select: { puuid: true, id: true, summonerLevel: true },
+      select: { puuid: true, id: true, summonerLevel: true, gameName: true, tagLine: true },
     });
   }
 
@@ -177,74 +177,121 @@ export async function getLiveGame(
   let puuid = summoner?.puuid;
   if (!puuid) {
     const cluster = getClusterForRegion(region);
-    try {
-      const acc = await rApi.account.getByRiotId({
-        region: cluster as any,
-        gameName,
-        tagLine: cleanTag || region.toUpperCase(),
-      });
-      puuid = acc?.puuid;
-    } catch {
-      // Direct REST fallback for Account-v1
-      if (config.riotApiKey) {
-        try {
-          const res = await fetch(
-            `https://${cluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(cleanTag || region.toUpperCase())}`,
-            { headers: { 'X-Riot-Token': config.riotApiKey } }
-          );
-          if (res.ok) {
-            const data = (await res.json()) as any;
-            puuid = data?.puuid;
-          }
-        } catch {
-          // ignore
+    // Direct REST fetch for Account-v1 first if API key configured
+    if (config.riotApiKey) {
+      try {
+        const res = await fetch(
+          `https://${cluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(cleanTag || region.toUpperCase())}`,
+          { headers: { 'X-Riot-Token': config.riotApiKey } }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          puuid = data?.puuid;
         }
+      } catch (err: any) {
+        console.warn('[LiveGame] Direct Account-v1 lookup failed:', err?.message);
+      }
+    }
+
+    if (!puuid) {
+      try {
+        const acc = await rApi.account.getByRiotId({
+          region: cluster as any,
+          gameName,
+          tagLine: cleanTag || region.toUpperCase(),
+        });
+        puuid = acc?.puuid;
+      } catch (rErr: any) {
+        console.warn('[LiveGame] rApi Account lookup failed:', rErr?.message);
       }
     }
   }
 
   if (!puuid) {
-    return { inGame: false, message: 'Spieler konnte nicht gefunden werden.' };
+    return {
+      inGame: false,
+      message: `Spieler "${gameName}#${cleanTag || region.toUpperCase()}" konnte bei Riot nicht gefunden werden.`,
+    };
   }
 
-  // 2. Query Spectator-v5 via rApi with direct fetch fallback
-  let currentGame: any;
-  try {
-    currentGame = await rApi.spectator.getBySummonerId({
-      region: platform as any,
-      summonerId: puuid,
-    });
-  } catch (err: any) {
-    const status = err?.status || err?.statusCode || err?.response?.status;
-    if (status === 404 || (err?.message && err.message.includes('404'))) {
-      return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+  // 2. Query Spectator-v5 (Direct REST fetch prioritized for reliability, then TFT fallback, then rApi fallback)
+  let currentGame: any = null;
+
+  if (config.riotApiKey) {
+    // 2a. Direct fetch to League of Legends Spectator-v5
+    try {
+      const specUrl = `https://${platform.toLowerCase()}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${encodeURIComponent(puuid)}`;
+      const specRes = await fetch(specUrl, {
+        headers: { 'X-Riot-Token': config.riotApiKey },
+      });
+
+      if (specRes.ok) {
+        currentGame = await specRes.json();
+      } else if (specRes.status === 401 || specRes.status === 403) {
+        console.error(`[LiveGame] Riot API Key rejected (HTTP ${specRes.status})`);
+        return {
+          inGame: false,
+          message: `Riot API Key ungültig oder abgelaufen (HTTP ${specRes.status}). Bitte erneuere deinen RIOT_API_KEY in der Konfiguration.`,
+        };
+      } else if (specRes.status === 429) {
+        console.warn('[LiveGame] Riot API Rate Limited (HTTP 429)');
+        return {
+          inGame: false,
+          message: 'Riot API Rate-Limit erreicht (429). Bitte warte einen kurzen Moment.',
+        };
+      } else if (specRes.status !== 404) {
+        console.warn(`[LiveGame] Spectator endpoint returned HTTP ${specRes.status}`);
+      }
+    } catch (specErr: any) {
+      console.error('[LiveGame] Direct Spectator-v5 fetch failed:', specErr?.message);
     }
 
-    // Direct Spectator-v5 fallback
-    if (config.riotApiKey) {
+    // 2b. If not found in LoL, check TFT Spectator-v5 fallback
+    if (!currentGame) {
       try {
-        const specUrl = `https://${platform.toLowerCase()}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${encodeURIComponent(puuid)}`;
-        const specRes = await fetch(specUrl, {
+        const tftUrl = `https://${platform.toLowerCase()}.api.riotgames.com/lol/spectator/tft/v5/active-games/by-puuid/${encodeURIComponent(puuid)}`;
+        const tftRes = await fetch(tftUrl, {
           headers: { 'X-Riot-Token': config.riotApiKey },
         });
-        if (specRes.status === 404) {
-          return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+
+        if (tftRes.ok) {
+          currentGame = await tftRes.json();
         }
-        if (specRes.ok) {
-          currentGame = await specRes.json();
-        }
-      } catch (specErr) {
-        console.error('[Spectator direct fetch error]:', specErr);
+      } catch (tftErr: any) {
+        // ignore TFT fallback errors
       }
     }
+  }
 
-    if (!currentGame) {
-      return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+  // 2c. Fallback to @fightmegg/riot-api client if direct fetch didn't return a game
+  if (!currentGame) {
+    try {
+      currentGame = await rApi.spectator.getBySummonerId({
+        region: platform as any,
+        summonerId: puuid,
+      });
+    } catch (err: any) {
+      const status = err?.status || err?.statusCode || err?.response?.status;
+      if (status === 401 || status === 403) {
+        return {
+          inGame: false,
+          message: `Riot API Key ungültig oder abgelaufen (HTTP ${status}). Bitte erneuere deinen RIOT_API_KEY.`,
+        };
+      }
+      if (status === 429) {
+        return {
+          inGame: false,
+          message: 'Riot API Rate-Limit erreicht (429). Bitte warte einen kurzen Moment.',
+        };
+      }
     }
   }
 
   if (!currentGame || !Array.isArray(currentGame.participants) || currentGame.participants.length === 0) {
-    return { inGame: false, message: 'Spieler befindet sich aktuell in keinem aktiven Spiel.' };
+    return {
+      inGame: false,
+      message: 'Spieler befindet sich aktuell in keinem aktiven Spiel (oder das Spiel befindet sich noch in der Championauswahl / im Ladebildschirm - Riot Spectator benötigt ca. 1-2 Min. nach Spielstart).',
+    };
   }
 
   // 3. Resolve all participant champion names & cached ranks from PostgreSQL
@@ -398,10 +445,18 @@ export async function getLiveGame(
       liveLevelMap.get(p.puuid) ||
       (p.puuid === summoner?.puuid ? summoner?.summonerLevel : undefined);
 
+    const resolvedRiotId =
+      p.riotId ||
+      (dbEntry ? `${dbEntry.gameName}#${dbEntry.tagLine}` : '') ||
+      (p.puuid === puuid ? `${summoner?.gameName || gameName}#${summoner?.tagLine || cleanTag || region.toUpperCase()}` : '') ||
+      p.summonerName ||
+      champName ||
+      'Unknown';
+
     const formatted: LiveGameParticipant = {
       puuid: p.puuid,
-      riotId: p.riotId || (p.summonerName ? `${p.summonerName}` : 'Unknown'),
-      summonerName: p.summonerName || '',
+      riotId: resolvedRiotId,
+      summonerName: p.summonerName || (resolvedRiotId.includes('#') ? resolvedRiotId.split('#')[0] : resolvedRiotId),
       summonerLevel,
       teamId: p.teamId,
       championId: p.championId,

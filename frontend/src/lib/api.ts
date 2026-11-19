@@ -124,11 +124,25 @@ export async function fetchLiveGame(
       cache: 'no-store',
     });
     if (!res.ok) {
-      return { inGame: false, message: 'Spieler ist nicht im Spiel oder Live-Service offline.' };
+      try {
+        const errorData = await res.json();
+        if (errorData?.message) {
+          return { inGame: false, message: errorData.message };
+        }
+      } catch {
+        // ignore JSON parse error
+      }
+      return {
+        inGame: false,
+        message: `API-Status: ${res.status} (${res.statusText || 'Keine Antwort vom Server'}).`,
+      };
     }
     return await res.json();
-  } catch {
-    return { inGame: false, message: 'Fehler beim Abrufen des Live-Spiels.' };
+  } catch (err: any) {
+    return {
+      inGame: false,
+      message: `Netzwerkfehler beim Abrufen des Live-Spiels: ${err?.message || 'Server nicht erreichbar'}.`,
+    };
   }
 }
 

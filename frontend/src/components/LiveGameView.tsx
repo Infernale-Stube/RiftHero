@@ -145,10 +145,11 @@ export default function LiveGameView({
         {/* Players List */}
         <div className="flex flex-col gap-2 p-3">
           {sortedTeam.map((p) => {
-            const isTarget = p.riotId.toLowerCase().includes(gameName.toLowerCase());
+            const pRiotId = p.riotId || p.summonerName || 'Player';
+            const isTarget = pRiotId.toLowerCase().includes(gameName.toLowerCase());
             const targetTag = region.toUpperCase();
-            const cleanName = p.riotId.includes('#') ? p.riotId.split('#')[0] : p.riotId;
-            const cleanTag = p.riotId.includes('#') ? p.riotId.split('#')[1] : targetTag;
+            const cleanName = pRiotId.includes('#') ? pRiotId.split('#')[0] : pRiotId;
+            const cleanTag = pRiotId.includes('#') ? pRiotId.split('#')[1] : targetTag;
             const formattedTag = `${cleanName}-${cleanTag}`;
             const pos = getParticipantPosition(p);
 

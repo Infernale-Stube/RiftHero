@@ -9,23 +9,29 @@ import { prisma } from '../../db/prisma';
 import { getSummonerLpHistory, getPlayedWithStats } from '../../services/lpService';
 import { getSummonerChallenges } from '../../services/challengeService';
 import { getSummonerMasteries } from '../../services/masteryService';
+import { getLiveGame } from '../../services/liveGameService';
 
 export function parseRiotIdTag(tagParam: string): { gameName: string; tagLine: string } {
-  const decoded = decodeURIComponent(tagParam);
+  let decoded = tagParam;
+  try {
+    decoded = decodeURIComponent(tagParam);
+  } catch {
+    // Ignore decode error
+  }
   // If user passed GameName#TagLine directly
   if (decoded.includes('#')) {
     const [name, tag] = decoded.split('#');
-    return { gameName: name, tagLine: tag };
+    return { gameName: name.trim(), tagLine: tag.trim() };
   }
   // If formatted as GameName-TagLine, split by the last hyphen
   const lastHyphenIndex = decoded.lastIndexOf('-');
   if (lastHyphenIndex !== -1) {
     return {
-      gameName: decoded.slice(0, lastHyphenIndex),
-      tagLine: decoded.slice(lastHyphenIndex + 1),
+      gameName: decoded.slice(0, lastHyphenIndex).trim(),
+      tagLine: decoded.slice(lastHyphenIndex + 1).trim(),
     };
   }
-  return { gameName: decoded, tagLine: '' };
+  return { gameName: decoded.trim(), tagLine: '' };
 }
 
 export async function summonerRoutes(fastify: FastifyInstance) {
@@ -193,6 +199,39 @@ export async function summonerRoutes(fastify: FastifyInstance) {
       }
 
       return masteries;
+    }
+  );
+
+  // Active live game spectator check
+  fastify.get(
+    '/summoners/:region/:tag/live-game',
+    async (
+      request: FastifyRequest<{
+        Params: { region: string; tag: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { region, tag } = request.params;
+      const { gameName, tagLine } = parseRiotIdTag(tag);
+
+      if (!gameName) {
+        return reply.status(400).send({
+          inGame: false,
+          error: 'Bad Request',
+          message: 'Ungültiges Riot ID Format.',
+        });
+      }
+
+      try {
+        const result = await getLiveGame(region, gameName, tagLine);
+        return result;
+      } catch (err: any) {
+        fastify.log.error(err, '[LiveGame Route Error]');
+        return {
+          inGame: false,
+          message: 'Fehler beim Abrufen des Live-Spiels: ' + (err?.message || 'Unbekannter Serverfehler'),
+        };
+      }
     }
   );
 }
