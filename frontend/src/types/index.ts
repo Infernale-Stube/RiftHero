@@ -255,6 +255,7 @@ export interface LiveGameParticipant {
   teamId: number;
   championId: number;
   championName: string;
+  teamPosition?: string | null;
   spell1Id: number;
   spell2Id: number;
   profileIconId: number;

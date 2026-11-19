@@ -7,6 +7,76 @@ import {
 } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
 
+const CHAMP_DEFAULT_POSITION: Record<string, string> = {
+  // Top
+  Aatrox: 'TOP', Camille: 'TOP', ChoGath: 'TOP', Chogath: 'TOP', Darius: 'TOP',
+  DrMundo: 'TOP', Fiora: 'TOP', Gangplank: 'TOP', Garen: 'TOP', Gnar: 'TOP',
+  Gragas: 'TOP', Gwen: 'TOP', Illaoi: 'TOP', Irelia: 'TOP', Jax: 'TOP',
+  Jayce: 'TOP', Kayle: 'TOP', Kennen: 'TOP', Kled: 'TOP', KSante: 'TOP',
+  Malphite: 'TOP', Mordekaiser: 'TOP', Nasus: 'TOP', Olaf: 'TOP', Ornn: 'TOP',
+  Pantheon: 'TOP', Poppy: 'TOP', Quinn: 'TOP', Renekton: 'TOP', Riven: 'TOP',
+  Rumble: 'TOP', Sett: 'TOP', Shen: 'TOP', Singed: 'TOP', Sion: 'TOP',
+  TahmKench: 'TOP', Teemo: 'TOP', Trundle: 'TOP', Tryndamere: 'TOP', Urgot: 'TOP',
+  Volibear: 'TOP', Warwick: 'TOP', Wukong: 'TOP', Yorick: 'TOP',
+
+  // Jungle
+  Amumu: 'JUNGLE', BelVeth: 'JUNGLE', Belveth: 'JUNGLE', Briar: 'JUNGLE',
+  Diana: 'JUNGLE', Elise: 'JUNGLE', Evelynn: 'JUNGLE', Fiddlesticks: 'JUNGLE',
+  Graves: 'JUNGLE', Hecarim: 'JUNGLE', Ivern: 'JUNGLE', JarvanIV: 'JUNGLE',
+  Karthus: 'JUNGLE', Kayn: 'JUNGLE', KhaZix: 'JUNGLE', Khazix: 'JUNGLE',
+  Kindred: 'JUNGLE', LeeSin: 'JUNGLE', Lillia: 'JUNGLE', MasterYi: 'JUNGLE',
+  Nidalee: 'JUNGLE', Nocturne: 'JUNGLE', Nunu: 'JUNGLE', Rammus: 'JUNGLE',
+  RekSai: 'JUNGLE', Rengar: 'JUNGLE', Sejuani: 'JUNGLE', Shaco: 'JUNGLE',
+  Shyvana: 'JUNGLE', Skarner: 'JUNGLE', Taliyah: 'JUNGLE', Udyr: 'JUNGLE',
+  Vi: 'JUNGLE', Viego: 'JUNGLE', XinZhao: 'JUNGLE', Zac: 'JUNGLE',
+
+  // Mid
+  Ahri: 'MID', Akali: 'MID', Akshan: 'MID', Anivia: 'MID', Annie: 'MID',
+  AurelionSol: 'MID', Azir: 'MID', Cassiopeia: 'MID', Corki: 'MID', Ekko: 'MID',
+  Fizz: 'MID', Galio: 'MID', Hwei: 'MID', Kassadin: 'MID', Katarina: 'MID',
+  Leblanc: 'MID', LeBlanc: 'MID', Lissandra: 'MID', Lux: 'MID', Malzahar: 'MID',
+  Naafiri: 'MID', Neeko: 'MID', Orianna: 'MID', Qiyana: 'MID', Ryze: 'MID',
+  Sylas: 'MID', Syndra: 'MID', Talon: 'MID', TwistedFate: 'MID', Veigar: 'MID',
+  Vex: 'MID', Viktor: 'MID', Vladimir: 'MID', Xerath: 'MID', Yasuo: 'MID',
+  Yone: 'MID', Zed: 'MID', Ziggs: 'MID', Zoe: 'MID',
+
+  // ADC / Bottom
+  Aphelios: 'ADC', Ashe: 'ADC', Caitlyn: 'ADC', Draven: 'ADC', Ezreal: 'ADC',
+  Jhin: 'ADC', Jinx: 'ADC', KaiSa: 'ADC', Kaisa: 'ADC', Kalista: 'ADC',
+  KogMaw: 'ADC', Lucian: 'ADC', MissFortune: 'ADC', Nilah: 'ADC', Samira: 'ADC',
+  Sivir: 'ADC', Smolder: 'ADC', Tristana: 'ADC', Twitch: 'ADC', Varus: 'ADC',
+  Vayne: 'ADC', Xayah: 'ADC', Zeri: 'ADC',
+
+  // Support
+  Alistar: 'SUPPORT', Bard: 'SUPPORT', Blitzcrank: 'SUPPORT', Brand: 'SUPPORT',
+  Braum: 'SUPPORT', Janna: 'SUPPORT', Karma: 'SUPPORT', Leona: 'SUPPORT',
+  Lulu: 'SUPPORT', Milio: 'SUPPORT', Morgana: 'SUPPORT', Nami: 'SUPPORT',
+  Nautilus: 'SUPPORT', Pyke: 'SUPPORT', Rakan: 'SUPPORT', Rell: 'SUPPORT',
+  Renata: 'SUPPORT', RenataGlasc: 'SUPPORT', Senna: 'SUPPORT', Seraphine: 'SUPPORT',
+  Sona: 'SUPPORT', Soraka: 'SUPPORT', Taric: 'SUPPORT', Thresh: 'SUPPORT',
+  VelKoz: 'SUPPORT', Velkoz: 'SUPPORT', Yuumi: 'SUPPORT', Zilean: 'SUPPORT',
+  Zyra: 'SUPPORT',
+};
+
+function resolveParticipantPosition(p: any, champName: string): string {
+  const direct = (p.teamPosition || p.selectedPosition || p.lane || '').toUpperCase();
+  if (direct === 'TOP') return 'TOP';
+  if (direct === 'JUNGLE') return 'JUNGLE';
+  if (direct === 'MIDDLE' || direct === 'MID') return 'MID';
+  if (direct === 'BOTTOM' || direct === 'BOT' || direct === 'ADC') return 'ADC';
+  if (direct === 'UTILITY' || direct === 'SUPPORT') return 'SUPPORT';
+
+  if (p.spell1Id === 11 || p.spell2Id === 11) {
+    return 'JUNGLE';
+  }
+
+  if (champName && CHAMP_DEFAULT_POSITION[champName]) {
+    return CHAMP_DEFAULT_POSITION[champName];
+  }
+
+  return 'MID';
+}
+
 export interface LiveGameParticipant {
   puuid: string;
   riotId: string;
@@ -14,6 +84,7 @@ export interface LiveGameParticipant {
   teamId: number;
   championId: number;
   championName: string;
+  teamPosition?: string | null;
   spell1Id: number;
   spell2Id: number;
   profileIconId: number;
@@ -208,6 +279,7 @@ export async function getLiveGame(
     }
 
     const champStats = champStatsMap.get(`${p.puuid}_${p.championId}`) || null;
+    const teamPosition = resolveParticipantPosition(p, champName);
 
     const primaryRune = p.perks?.perkIds?.[0] || null;
     const secondaryStyle = p.perks?.perkSubStyle || null;
@@ -219,6 +291,7 @@ export async function getLiveGame(
       teamId: p.teamId,
       championId: p.championId,
       championName: champName,
+      teamPosition,
       spell1Id: p.spell1Id,
       spell2Id: p.spell2Id,
       profileIconId: p.profileIconId,
