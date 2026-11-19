@@ -1,0 +1,53 @@
+{
+	# Email for Let's Encrypt SSL/TLS notifications & certificates
+	email {$ACME_EMAIL:admin@rifthero.gg}
+	debug
+}
+
+# =========================================================================
+# 1. RiftHero Web & Next.js Frontend (rifthero.gg, www.rifthero.gg)
+# =========================================================================
+{$APP_DOMAIN:rifthero.gg}, www.{$APP_DOMAIN:rifthero.gg} {
+	# Block known exploit & vulnerability scanner probes immediately at proxy level
+	@blocked_scanners {
+		path *.php *.asp *.aspx *.jsp *.cgi
+		path /wp-* /xmlrpc.php /server-status* /manager/html*
+		path /phpmyadmin* /pma* /config.json* /aws*
+		path_regexp scanner (?i)(\.env|\.git|\.aws|\.yml|\.yaml)
+	}
+	respond @blocked_scanners 404
+
+	# Forward /api/* requests directly to the Fastify API container
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	# Forward all other requests to Next.js Frontend
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
+
+# =========================================================================
+# 2. RiftHero Pure REST API (api.rifthero.gg)
+# =========================================================================
+{$API_DOMAIN:api.rifthero.gg} {
+	@blocked_scanners {
+		path *.php *.asp *.aspx *.jsp *.cgi
+		path /wp-* /xmlrpc.php /server-status* /manager/html*
+		path /phpmyadmin* /pma* /config.json* /aws*
+		path_regexp scanner (?i)(\.env|\.git|\.aws|\.yml|\.yaml)
+	}
+	respond @blocked_scanners 404
+
+	handle {
+		reverse_proxy api:4000
+	}
+}
+
+# =========================================================================
+# 3. RiftHero Mail Host (ACME Let's Encrypt TLS for docker-mailserver)
+# =========================================================================
+mail.{$APP_DOMAIN:rifthero.gg} {
+	respond "RiftHero Mail Server Online" 200
+}

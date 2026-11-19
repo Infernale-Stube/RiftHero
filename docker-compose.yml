@@ -1,0 +1,238 @@
+name: rifthero-${APP_ENV:-prod}
+
+services:
+  # =========================================================================
+  # 1. Caddy Reverse Proxy (Automatic Let's Encrypt HTTPS / TLS)
+  # =========================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: rifthero-${APP_ENV:-prod}-caddy
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+      - "${CADDY_HTTPS_PORT:-443}:443/udp"
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:-rifthero.gg}
+      - API_DOMAIN=${API_DOMAIN:-api.rifthero.gg}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@rifthero.gg}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+  # =========================================================================
+  # 2. RiftHero Next.js Frontend (App Router, Tailwind CSS, Dark Mode)
+  # =========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: rifthero-frontend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-frontend
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
+      - NEXT_PUBLIC_APP_DOMAIN=${APP_DOMAIN:-rifthero.gg}
+      - NEXT_PUBLIC_API_DOMAIN=${API_DOMAIN:-api.rifthero.gg}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || node -e \"fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # =========================================================================
+  # 3. RiftHero REST API (Fastify Node.js Service)
+  # =========================================================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-api
+    command: ["api"]
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${PORT:-4000}:4000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - PORT=4000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
+      - RIOT_API_KEY=${RIOT_API_KEY}
+      - PROFILE_STALE_MINUTES=${PROFILE_STALE_MINUTES:-2}
+      - INITIAL_MATCH_COUNT=${INITIAL_MATCH_COUNT:-50}
+      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/api/health || node -e \"fetch('http://127.0.0.1:4000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 25s
+
+  # =========================================================================
+  # 4. RiftHero Background Worker (BullMQ + Riot Rate-Limiter & Snowball Crawler)
+  # =========================================================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker
+    command: ["worker"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - RIOT_API_KEY=${RIOT_API_KEY}
+      - RATE_LIMIT_10S=${RATE_LIMIT_10S:-1000}
+      - RATE_LIMIT_10M=${RATE_LIMIT_10M:-60000}
+      - INITIAL_MATCH_COUNT=${INITIAL_MATCH_COUNT:-50}
+      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
+      - SNOWBALL_MATCH_DEPTH=${SNOWBALL_MATCH_DEPTH:-20}
+      - SNOWBALL_MAX_CONCURRENCY=${SNOWBALL_MAX_CONCURRENCY:-3}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 5. PostgreSQL 16 Database
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: rifthero-${APP_ENV:-prod}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rifthero}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rifthero_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-rifthero}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rifthero} -d ${POSTGRES_DB:-rifthero}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # =========================================================================
+  # 6. Redis 7 (In-Memory Datastore & BullMQ Queue Broker)
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: rifthero-${APP_ENV:-prod}-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # =========================================================================
+  # 7. Production Mailserver (docker-mailserver)
+  # =========================================================================
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: rifthero-${APP_ENV:-prod}-mailserver
+    hostname: mail
+    domainname: ${APP_DOMAIN:-rifthero.gg}
+    restart: unless-stopped
+    ports:
+      - "25:25"     # SMTP
+      - "465:465"   # SMTPS
+      - "587:587"   # Submission
+      - "993:993"   # IMAPS
+    environment:
+      - OVERRIDE_HOSTNAME=mail.${APP_DOMAIN:-rifthero.gg}
+      - LOG_LEVEL=${MAIL_LOG_LEVEL:-info}
+      - ONE_DIR=1
+      - POSTMASTER_ADDRESS=${POSTMASTER_ADDRESS:-postmaster@rifthero.gg}
+      - ENABLE_RSPAMD=1
+      - ENABLE_SPAMASSASSIN=0
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=1
+      - ENABLE_POSTGREY=0
+      - PERMIT_DOCKER=network
+      - SSL_TYPE=${MAIL_SSL_TYPE:-manual}
+      - SSL_CERT_PATH=/tmp/docker-mailserver/ssl/cert.pem
+      - SSL_KEY_PATH=/tmp/docker-mailserver/ssl/key.pem
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - mail-data:/var/mail
+      - mail-state:/var/mail-state
+      - mail-logs:/var/log/mail
+      - ./docker/mailserver:/tmp/docker-mailserver
+      - caddy-data:/etc/letsencrypt:ro
+    healthcheck:
+      test: ["CMD", "/usr/bin/supervisorctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  caddy-data:
+    name: ${CADDY_DATA_VOLUME:-rifthero-${APP_ENV:-prod}-caddy-data}
+  caddy-config:
+    name: ${CADDY_CONFIG_VOLUME:-rifthero-${APP_ENV:-prod}-caddy-config}
+  postgres-data:
+    name: rifthero-${APP_ENV:-prod}-postgres-data
+  redis-data:
+    name: rifthero-${APP_ENV:-prod}-redis-data
+  mail-data:
+    name: ${MAIL_DATA_VOLUME:-rifthero-${APP_ENV:-prod}-mail-data}
+  mail-state:
+    name: ${MAIL_STATE_VOLUME:-rifthero-${APP_ENV:-prod}-mail-state}
+  mail-logs:
+    name: ${MAIL_LOGS_VOLUME:-rifthero-${APP_ENV:-prod}-mail-logs}
