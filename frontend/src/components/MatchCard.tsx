@@ -504,70 +504,105 @@ export default function MatchCard({ match, region }: MatchCardProps) {
           )}
         </div>
 
-        {/* Right Side: 2 Columns of 5 Teammates (Col 6) + Expand Button (Col 7) */}
+        {/* Right Side: 5 Matchups with Role Icon Separator (Col 6) + Expand Button (Col 7) */}
         <div className="flex items-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 lg:border-l border-white/[0.06] lg:pl-3">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-            {/* Blue Team (5 rows) */}
-            <div className="flex flex-col gap-1 min-w-[95px] max-w-[110px]">
-              {sortedBlueTeam.map((p) => {
-                const isCurrent = p.puuid === participant.puuid;
-                const formatted = `${p.riotIdGameName}-${p.riotIdTagline || region.toUpperCase()}`;
+          <div className="flex flex-col gap-1 text-[10px]">
+            {[0, 1, 2, 3, 4].map((i) => {
+              const blueP = sortedBlueTeam[i];
+              const redP = sortedRedTeam[i];
+              const pos =
+                (blueP ? getParticipantPosition(blueP) : null) ||
+                (redP ? getParticipantPosition(redP) : null);
+              const isBlueCurrent = blueP?.puuid === participant.puuid;
+              const isRedCurrent = redP?.puuid === participant.puuid;
+              const blueFormatted = blueP
+                ? `${blueP.riotIdGameName}-${blueP.riotIdTagline || region.toUpperCase()}`
+                : '';
+              const redFormatted = redP
+                ? `${redP.riotIdGameName}-${redP.riotIdTagline || region.toUpperCase()}`
+                : '';
 
-                return (
-                  <div key={p.puuid} className="flex items-center gap-1.5">
-                    <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  {/* Blue Player */}
+                  <div className="flex items-center gap-1.5 w-[85px] sm:w-[95px] min-w-0">
+                    {blueP && (
+                      <>
+                        <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
+                          <Image
+                            src={getChampionIconUrl(blueP.championName)}
+                            alt={blueP.championName}
+                            width={14}
+                            height={14}
+                            className="h-full w-full object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <Link
+                          href={`/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
+                          className={`truncate hover:text-white transition-colors ${
+                            isBlueCurrent
+                              ? 'font-black text-white'
+                              : 'text-zinc-400 font-medium'
+                          }`}
+                          title={`${blueP.riotIdGameName}#${blueP.riotIdTagline}`}
+                        >
+                          {blueP.riotIdGameName}
+                        </Link>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Role Icon Divider */}
+                  <div
+                    className="flex items-center justify-center shrink-0 w-3.5"
+                    title={pos || 'Role'}
+                  >
+                    {pos ? (
                       <Image
-                        src={getChampionIconUrl(p.championName)}
-                        alt={p.championName}
-                        width={14}
-                        height={14}
-                        className="h-full w-full object-cover"
+                        src={getPositionIconUrl(pos)}
+                        alt={pos}
+                        width={12}
+                        height={12}
+                        className="h-3 w-3 object-contain invert opacity-45 hover:opacity-100 transition-opacity"
                         unoptimized
                       />
-                    </div>
-                    <Link
-                      href={`/summoner/${region}/${encodeURIComponent(formatted)}`}
-                      className={`truncate hover:text-white transition-colors ${
-                        isCurrent ? 'font-black text-white' : 'text-zinc-400 font-medium'
-                      }`}
-                    >
-                      {p.riotIdGameName}
-                    </Link>
+                    ) : (
+                      <span className="text-[8px] text-zinc-600">•</span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Red Team (5 rows) */}
-            <div className="flex flex-col gap-1 min-w-[95px] max-w-[110px]">
-              {sortedRedTeam.map((p) => {
-                const isCurrent = p.puuid === participant.puuid;
-                const formatted = `${p.riotIdGameName}-${p.riotIdTagline || region.toUpperCase()}`;
-
-                return (
-                  <div key={p.puuid} className="flex items-center gap-1.5">
-                    <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
-                      <Image
-                        src={getChampionIconUrl(p.championName)}
-                        alt={p.championName}
-                        width={14}
-                        height={14}
-                        className="h-full w-full object-cover"
-                        unoptimized
-                      />
-                    </div>
-                    <Link
-                      href={`/summoner/${region}/${encodeURIComponent(formatted)}`}
-                      className={`truncate hover:text-white transition-colors ${
-                        isCurrent ? 'font-black text-white' : 'text-zinc-400 font-medium'
-                      }`}
-                    >
-                      {p.riotIdGameName}
-                    </Link>
+                  {/* Red Player */}
+                  <div className="flex items-center gap-1.5 w-[85px] sm:w-[95px] min-w-0">
+                    {redP && (
+                      <>
+                        <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-white/10">
+                          <Image
+                            src={getChampionIconUrl(redP.championName)}
+                            alt={redP.championName}
+                            width={14}
+                            height={14}
+                            className="h-full w-full object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <Link
+                          href={`/summoner/${region}/${encodeURIComponent(redFormatted)}`}
+                          className={`truncate hover:text-white transition-colors ${
+                            isRedCurrent
+                              ? 'font-black text-white'
+                              : 'text-zinc-400 font-medium'
+                          }`}
+                          title={`${redP.riotIdGameName}#${redP.riotIdTagline}`}
+                        >
+                          {redP.riotIdGameName}
+                        </Link>
+                      </>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Expand Details Arrow Button */}

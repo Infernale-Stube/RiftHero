@@ -30,9 +30,39 @@ export const RANK_THEMES: Record<
 };
 
 export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [hoveredPoint, setHoveredPoint] = useState<LpPoint | null>(null);
   const chartId = useId();
+
+  const formatDate = (timestamp?: number, dateStr?: string) => {
+    if (timestamp && timestamp > 0) {
+      return new Date(timestamp).toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+        day: '2-digit',
+        month: '2-digit',
+      });
+    }
+    if (dateStr) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) return `${parts[2]}.${parts[1]}.`;
+    }
+    return '';
+  };
+
+  const formatDateTime = (timestamp?: number, dateStr?: string) => {
+    if (timestamp && timestamp > 0) {
+      const d = new Date(timestamp);
+      const datePart = d.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+        day: '2-digit',
+        month: '2-digit',
+      });
+      const timePart = d.toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      return `${datePart}, ${timePart}`;
+    }
+    return dateStr || '';
+  };
 
   const {
     points,
@@ -233,7 +263,7 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
           })}
         </svg>
 
-        {/* Hover Tooltip with Official Rank Emblem */}
+        {/* Hover Tooltip with Official Rank Emblem & Match Date/Time */}
         {hoveredPoint && (
           <div className="absolute top-1 left-7 rounded-lg bg-black/95 border border-white/20 px-2.5 py-1 text-[10px] text-white shadow-xl pointer-events-none z-20 flex items-center gap-2">
             <div className="relative h-4 w-4 shrink-0">
@@ -259,8 +289,29 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
                 {hoveredPoint.delta})
               </span>
             )}
+            {(hoveredPoint.timestamp || hoveredPoint.date) && (
+              <span className="text-[10px] text-zinc-400 border-l border-white/10 pl-2">
+                {formatDateTime(hoveredPoint.timestamp, hoveredPoint.date)}
+              </span>
+            )}
           </div>
         )}
+
+        {/* Date Timeline Axis below Graph */}
+        <div className="flex items-center justify-between px-2.5 py-1 border-t border-white/[0.04] text-[9px] font-semibold text-zinc-500">
+          <span>{formatDate(points[0]?.timestamp, points[0]?.date)}</span>
+          {points.length > 3 && (
+            <span className="text-zinc-600">
+              {formatDate(
+                points[Math.floor(points.length / 2)]?.timestamp,
+                points[Math.floor(points.length / 2)]?.date
+              )}
+            </span>
+          )}
+          <span>
+            {formatDate(points[points.length - 1]?.timestamp, points[points.length - 1]?.date)}
+          </span>
+        </div>
       </div>
 
       {/* Bottom Peak & Streak Stats */}
