@@ -4,6 +4,7 @@ import { SummonerRank, LpHistorySummary } from '@/types';
 import RankBadge, { TIER_COLORS } from './RankBadge';
 import { getWinrateColor } from '@/lib/utils';
 import LpHistoryChart from './LpHistoryChart';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface RankCardProps {
   title: string;
@@ -12,6 +13,8 @@ interface RankCardProps {
 }
 
 export default function RankCard({ title, rankData, lpHistory }: RankCardProps) {
+  const { t } = useTranslation();
+
   if (!rankData) {
     return (
       <div className="flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] p-4 shadow-xl">
@@ -21,8 +24,8 @@ export default function RankCard({ title, rankData, lpHistory }: RankCardProps) 
         <div className="flex items-center gap-3">
           <RankBadge tier="UNRANKED" size="md" />
           <div>
-            <div className="text-sm font-black text-zinc-400">Unranked</div>
-            <div className="text-[11px] text-zinc-500">Keine Spiele erfasst</div>
+            <div className="text-sm font-black text-zinc-400">{t('summoner.unranked')}</div>
+            <div className="text-[11px] text-zinc-500">{t('summoner.noGamesRecorded')}</div>
           </div>
         </div>
       </div>

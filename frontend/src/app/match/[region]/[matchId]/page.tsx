@@ -35,8 +35,10 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function MatchDetailPage() {
+  const { t, locale } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const region = (params?.region as string) || 'euw';
@@ -74,8 +76,8 @@ export default function MatchDetailPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-4">
         <Loader2 className="h-10 w-10 animate-spin text-hextech-blue mb-4" />
-        <h2 className="text-lg font-bold text-slate-200">Match-Details werden analysiert...</h2>
-        <p className="text-xs text-slate-500 mt-1">Timeline & Ingame-Objektive laden</p>
+        <h2 className="text-lg font-bold text-slate-200">{t('matchDetail.analyzing')}</h2>
+        <p className="text-xs text-slate-500 mt-1">{t('matchDetail.timelineLoading')}</p>
       </div>
     );
   }
@@ -85,16 +87,16 @@ export default function MatchDetailPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-8 shadow-xl">
           <AlertCircle className="mx-auto h-12 w-12 text-rose-400 mb-3" />
-          <h2 className="text-xl font-bold text-white mb-2">Match nicht gefunden</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t('matchDetail.notFoundTitle')}</h2>
           <p className="text-sm text-slate-300 mb-6">
-            Das Spiel {matchId} konnte weder in der Datenbank noch über die Riot API abgerufen werden.
+            {t('matchDetail.notFoundDesc', { id: matchId })}
           </p>
           <button
             onClick={() => router.back()}
             className="inline-flex items-center gap-2 rounded-lg bg-white/[0.08] px-4 py-2 text-xs font-bold text-white hover:bg-white/[0.12] transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
-            <span>Zurück</span>
+            <span>{t('matchDetail.back')}</span>
           </button>
         </div>
       </div>
@@ -142,12 +144,12 @@ export default function MatchDetailPage() {
           <div className="flex items-center gap-1.5">
             {blueFirst && (
               <span className="rounded bg-blue-500/20 border border-blue-500/40 px-1.5 py-0.5 text-[9px] font-black text-blue-300 uppercase">
-                First (Blau)
+                {t('matchDetail.firstBlue')}
               </span>
             )}
             {redFirst && (
               <span className="rounded bg-rose-500/20 border border-rose-500/40 px-1.5 py-0.5 text-[9px] font-black text-rose-300 uppercase">
-                First (Rot)
+                {t('matchDetail.firstRed')}
               </span>
             )}
           </div>
@@ -214,7 +216,7 @@ export default function MatchDetailPage() {
         >
           <div className="flex items-center gap-2.5">
             <span className="text-base font-black uppercase tracking-wider">
-              {isBlue ? 'Blaues Team' : 'Rotes Team'}
+              {isBlue ? t('matchDetail.blueTeam') : t('matchDetail.redTeam')}
             </span>
             <span
               className={`rounded-md px-2.5 py-0.5 text-xs font-black uppercase tracking-wide border ${
@@ -223,14 +225,14 @@ export default function MatchDetailPage() {
                   : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
               }`}
             >
-              {teamDetail.win ? 'Sieg' : 'Niederlage'}
+              {teamDetail.win ? t('matchDetail.win') : t('matchDetail.loss')}
             </span>
           </div>
 
           <div className="flex items-center gap-4 text-xs font-bold text-slate-200">
             <span className="flex items-center gap-1.5">
               <Swords className="h-4 w-4 text-slate-400" />
-              <span>{teamDetail.totalKills} Kills</span>
+              <span>{teamDetail.totalKills} {t('matchDetail.kills')}</span>
             </span>
             <span className="flex items-center gap-1.5 text-amber-400">
               <Coins className="h-4 w-4" />
@@ -479,7 +481,7 @@ export default function MatchDetailPage() {
           <div className="p-3 border-t border-white/[0.06] bg-black/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 text-slate-400 font-semibold">
               <Ban className="h-3.5 w-3.5 text-rose-400" />
-              <span>Bans:</span>
+              <span>{t('matchDetail.bans')}</span>
             </div>
             <div className="flex items-center gap-1">
               {teamDetail.bans.map((ban, bIdx) => (
@@ -516,13 +518,13 @@ export default function MatchDetailPage() {
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
-            <span>Zurück</span>
+            <span>{t('matchDetail.back')}</span>
           </button>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-black text-white">
-                Match-Analyse
+                {t('matchDetail.title')}
               </h1>
               <span className="rounded bg-white/[0.08] px-2 py-0.5 text-xs font-bold uppercase text-amber-300">
                 {queueName}
@@ -547,7 +549,7 @@ export default function MatchDetailPage() {
               )}
             </div>
             <span className="text-xs text-slate-400 mt-0.5">
-              Dauer: {formatDuration(gameDuration)} • Gespielt {formatTimeAgo(gameCreation)} • Patch {gameVersion.slice(0, 5)}
+              {t('matchDetail.duration', { dur: formatDuration(gameDuration) })} • {t('matchDetail.playedAgo', { time: formatTimeAgo(gameCreation) })} • {t('matchDetail.patch', { patch: gameVersion.slice(0, 5) })}
             </span>
           </div>
         </div>
@@ -567,7 +569,7 @@ export default function MatchDetailPage() {
               {blueTeam.totalKills}
             </span>
             <div className="flex flex-col">
-              <span className="text-sm font-black uppercase text-blue-300">Blaues Team</span>
+              <span className="text-sm font-black uppercase text-blue-300">{t('matchDetail.blueTeam')}</span>
               <span className="text-xs font-bold text-amber-400">
                 {(blueTeam.totalGold / 1000).toFixed(1)}k Gold
               </span>
@@ -583,7 +585,7 @@ export default function MatchDetailPage() {
           {/* Red Outcome */}
           <div className="flex items-center gap-3 text-right">
             <div className="flex flex-col items-end">
-              <span className="text-sm font-black uppercase text-rose-300">Rotes Team</span>
+              <span className="text-sm font-black uppercase text-rose-300">{t('matchDetail.redTeam')}</span>
               <span className="text-xs font-bold text-amber-400">
                 {(redTeam.totalGold / 1000).toFixed(1)}k Gold
               </span>
@@ -607,11 +609,11 @@ export default function MatchDetailPage() {
           <div className="flex items-center gap-2">
             <Crosshair className="h-4 w-4 text-hextech-blue" />
             <h2 className="text-sm font-black uppercase tracking-wider text-white">
-              Spielerübersicht (Blaues Team vs. Rotes Team)
+              {t('matchDetail.playerOverview')}
             </h2>
           </div>
           <span className="text-xs text-slate-500 font-medium">
-            KDA, Schaden, CS, Vision & Items
+            {t('matchDetail.playerOverviewSubtitle')}
           </span>
         </div>
 
@@ -628,17 +630,17 @@ export default function MatchDetailPage() {
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-amber-400" />
             <h2 className="text-sm font-black uppercase tracking-wider text-white">
-              Team-Objektive (Ingame-Statistiken)
+              {t('matchDetail.teamObjectives')}
             </h2>
           </div>
           <span className="text-xs text-slate-400 font-medium">
-            Erreichte neutrale & strategische Ziele
+            {t('matchDetail.teamObjectivesSubtitle')}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           {renderObjectiveCard(
-            'Drakes',
+            t('matchDetail.drakes'),
             'dragon',
             blueTeam.objectives.dragon.kills,
             redTeam.objectives.dragon.kills,
@@ -646,7 +648,7 @@ export default function MatchDetailPage() {
             redTeam.objectives.dragon.first
           )}
           {renderObjectiveCard(
-            'Baron Nashor',
+            t('matchDetail.baronNashor'),
             'baron',
             blueTeam.objectives.baron.kills,
             redTeam.objectives.baron.kills,
@@ -654,7 +656,7 @@ export default function MatchDetailPage() {
             redTeam.objectives.baron.first
           )}
           {renderObjectiveCard(
-            'Voidgrubs',
+            t('matchDetail.voidgrubs'),
             'voidgrub',
             blueTeam.objectives.horde.kills,
             redTeam.objectives.horde.kills,
@@ -662,7 +664,7 @@ export default function MatchDetailPage() {
             redTeam.objectives.horde.first
           )}
           {renderObjectiveCard(
-            'Türme',
+            t('matchDetail.towers'),
             'tower',
             blueTeam.objectives.tower.kills,
             redTeam.objectives.tower.kills,
@@ -670,7 +672,7 @@ export default function MatchDetailPage() {
             redTeam.objectives.tower.first
           )}
           {renderObjectiveCard(
-            'Inhibitoren',
+            t('matchDetail.inhibitors'),
             'inhibitor',
             blueTeam.objectives.inhibitor.kills,
             redTeam.objectives.inhibitor.kills,
@@ -678,7 +680,7 @@ export default function MatchDetailPage() {
             redTeam.objectives.inhibitor.first
           )}
           {renderObjectiveCard(
-            'Rift Herald',
+            t('matchDetail.riftHerald'),
             'herald',
             blueTeam.objectives.riftHerald.kills,
             redTeam.objectives.riftHerald.kills,
@@ -693,7 +695,7 @@ export default function MatchDetailPage() {
           <div className="mt-4 pt-4 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
             {/* Blue Drakes */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-blue-400">Blau Drakes:</span>
+              <span className="font-bold text-blue-400">{t('matchDetail.blueDrakes')}</span>
               {blueTeam.dragonTypes && blueTeam.dragonTypes.length > 0 ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {blueTeam.dragonTypes.map((d, i) => (
@@ -715,13 +717,13 @@ export default function MatchDetailPage() {
                   ))}
                 </div>
               ) : (
-                <span className="text-slate-500">Keine Drakes</span>
+                <span className="text-slate-500">{t('matchDetail.noDrakes')}</span>
               )}
             </div>
 
             {/* Red Drakes */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-rose-400">Rot Drakes:</span>
+              <span className="font-bold text-rose-400">{t('matchDetail.redDrakes')}</span>
               {redTeam.dragonTypes && redTeam.dragonTypes.length > 0 ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {redTeam.dragonTypes.map((d, i) => (
@@ -743,7 +745,7 @@ export default function MatchDetailPage() {
                   ))}
                 </div>
               ) : (
-                <span className="text-slate-500">Keine Drakes</span>
+                <span className="text-slate-500">{t('matchDetail.noDrakes')}</span>
               )}
             </div>
           </div>

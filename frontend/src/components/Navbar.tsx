@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import SearchBar from './SearchBar';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === '/';
+  const { t } = useTranslation();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-rift-700/60 bg-rift-950/80 backdrop-blur-md">
@@ -24,7 +27,7 @@ export default function Navbar() {
               RIFT<span className="text-hextech-blue">HERO</span>
             </span>
             <span className="text-[10px] uppercase tracking-wider text-slate-400 -mt-1 font-semibold">
-              LoL Stats & Analytics
+              {t('nav.brandSubtitle')}
             </span>
           </div>
         </Link>
@@ -36,11 +39,13 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Status / Links */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400 font-medium">
+        {/* Status & Language Switcher */}
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400 font-medium">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden sm:inline">Riot API Online</span>
+            <span>{t('nav.apiOnline')}</span>
           </div>
         </div>
       </div>

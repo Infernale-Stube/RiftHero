@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RecentSearchItem } from '@/types';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 const REGIONS = [
   { code: 'euw', label: 'EUW' },
@@ -25,6 +26,7 @@ export default function SearchBar({
   className,
 }: SearchBarProps) {
   const router = useRouter();
+  const { locale } = useTranslation();
   const [region, setRegion] = useState(defaultRegion);
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function SearchBar({
     }
 
     if (!gameName) {
-      setError('Bitte einen Spielernamen eingeben');
+      setError(locale === 'de' ? 'Bitte einen Spielernamen eingeben' : 'Please enter a summoner name');
       return;
     }
 
@@ -118,7 +120,11 @@ export default function SearchBar({
               setInput(e.target.value);
               if (error) setError(null);
             }}
-            placeholder={compact ? 'Riot ID (z.B. Agurin#EUW)' : 'Riot ID suchen (z.B. Agurin#EUW oder Faker#T1)...'}
+            placeholder={
+              compact
+                ? (locale === 'de' ? 'Riot ID (z.B. Agurin#EUW)' : 'Riot ID (e.g. Faker#T1)')
+                : (locale === 'de' ? 'Riot ID suchen (z.B. Agurin#EUW oder Faker#T1)...' : 'Search Riot ID (e.g. Faker#T1 or Agurin#EUW)...')
+            }
             className={cn(
               'w-full bg-transparent text-white placeholder-slate-500 outline-none font-medium',
               compact ? 'text-sm' : 'text-base sm:text-lg'
@@ -135,7 +141,11 @@ export default function SearchBar({
           )}
         >
           <Search className={cn('text-white', compact ? 'h-4 w-4' : 'h-5 w-5')} />
-          {!compact && <span className="ml-2 hidden sm:inline text-sm font-bold">Profil laden</span>}
+          {!compact && (
+            <span className="ml-2 hidden sm:inline text-sm font-bold">
+              {locale === 'de' ? 'Profil laden' : 'Search Profile'}
+            </span>
+          )}
         </button>
       </form>
 

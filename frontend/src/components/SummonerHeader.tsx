@@ -7,6 +7,7 @@ import { SummonerData, SummonerRank } from '@/types';
 import { getProfileIconUrl } from '@/lib/ddragon';
 import { getRankEmblemUrl } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface SummonerHeaderProps {
   summoner: SummonerData;
@@ -25,6 +26,7 @@ export default function SummonerHeader({
   onTabChange,
   isLive = false,
 }: SummonerHeaderProps) {
+  const { t } = useTranslation();
   const soloRank = ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
 
@@ -125,7 +127,7 @@ export default function SummonerHeader({
                 ) : (
                   <div className="flex items-center gap-2 text-zinc-500">
                     <span className="text-zinc-500 font-medium">Solo/Duo</span>
-                    <span className="font-semibold">Unranked</span>
+                    <span className="font-semibold">{t('summoner.unranked')}</span>
                   </div>
                 )}
 
@@ -156,13 +158,13 @@ export default function SummonerHeader({
             {isUpdating && (
               <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-300 animate-pulse">
                 <Loader2 className="h-3 w-3 animate-spin text-orange-400" />
-                <span>Hintergrund-Sync läuft...</span>
+                <span>{t('summoner.bgSync')}</span>
               </div>
             )}
 
             {summoner.lastFetchedAt && !isUpdating && (
               <span className="text-[11px] text-zinc-500">
-                Gecached · vor {formatTimeAgo(summoner.lastFetchedAt)}
+                {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
               </span>
             )}
           </div>
@@ -179,7 +181,7 @@ export default function SummonerHeader({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Match History
+            {t('summoner.tabMatches')}
           </button>
 
           <button
@@ -191,7 +193,7 @@ export default function SummonerHeader({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Champions
+            {t('summoner.tabChampions')}
           </button>
 
           <button
@@ -203,7 +205,7 @@ export default function SummonerHeader({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Challenges
+            {t('summoner.tabChallenges')}
           </button>
 
           {isLive && (
@@ -217,7 +219,7 @@ export default function SummonerHeader({
               }`}
             >
               <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-400" />
-              <span>Live Game</span>
+              <span>{t('summoner.tabLive')}</span>
             </button>
           )}
         </div>

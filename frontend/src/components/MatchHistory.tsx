@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Swords, Loader2, ChevronDown } from 'lucide-react';
 import { FormattedMatch } from '@/types';
 import MatchCard from './MatchCard';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface MatchHistoryProps {
   matches: FormattedMatch[];
@@ -35,6 +36,15 @@ export default function MatchHistory({
   isLoadingMore = false,
   onLoadMore,
 }: MatchHistoryProps) {
+  const { t, locale } = useTranslation();
+
+  const queueTabs = [
+    { id: 'all', label: locale === 'de' ? 'Alle' : 'All' },
+    { id: 'ranked_solo', label: 'Solo' },
+    { id: 'ranked_flex', label: 'Flex' },
+    { id: 'aram', label: 'ARAM' },
+  ];
+
   // Group matches by day like LoLDB (e.g. "Today 2W 1L", "Yesterday 3W 0L", "Nov 17 6W 1L")
   const groupedMatches = useMemo(() => {
     const groups: Array<{
@@ -59,11 +69,11 @@ export default function MatchHistory({
 
       let label = dStr;
       if (dStr === todayStr) {
-        label = 'Today';
+        label = locale === 'de' ? 'Heute' : 'Today';
       } else if (dStr === yesterdayStr) {
-        label = 'Yesterday';
+        label = locale === 'de' ? 'Gestern' : 'Yesterday';
       } else {
-        label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        label = d.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', { month: 'short', day: 'numeric' });
       }
 
       if (!groupMap.has(label)) {
@@ -91,14 +101,14 @@ export default function MatchHistory({
     });
 
     return groups;
-  }, [matches]);
+  }, [matches, locale]);
 
   return (
     <div className="flex flex-col gap-5">
       {/* Queue Filter Bar (Exact LoLDB pill styling with orange indicator) */}
       <div className="flex items-center justify-between">
         <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04]">
-          {QUEUE_TABS.map((tab) => {
+          {queueTabs.map((tab) => {
             const isActive = activeQueue === tab.id;
             return (
               <button
@@ -118,7 +128,7 @@ export default function MatchHistory({
 
         {total > 0 && (
           <span className="text-xs text-zinc-500 font-medium">
-            {matches.length} of {total} Matches
+            {matches.length} {locale === 'de' ? 'von' : 'of'} {total} Matches
           </span>
         )}
       </div>
@@ -137,10 +147,12 @@ export default function MatchHistory({
         <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-12 text-center">
           <Swords className="mx-auto h-10 w-10 text-zinc-600 mb-2.5" />
           <p className="text-sm font-bold text-zinc-200">
-            Keine Matches in dieser Kategorie gefunden
+            {locale === 'de' ? 'Keine Matches in dieser Kategorie gefunden' : 'No matches found in this category'}
           </p>
           <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-            Sobald der Hintergrund-Worker neue Matches analysiert hat, erscheinen sie automatisch hier.
+            {locale === 'de'
+              ? 'Sobald der Hintergrund-Worker neue Matches analysiert hat, erscheinen sie automatisch hier.'
+              : 'As soon as the background worker analyzes new matches, they will automatically appear here.'}
           </p>
         </div>
       ) : (
@@ -175,12 +187,12 @@ export default function MatchHistory({
                 {isLoadingMore ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-orange-400" />
-                    <span>Lade weitere Matches...</span>
+                    <span>{locale === 'de' ? 'Lade weitere Matches...' : 'Loading more matches...'}</span>
                   </>
                 ) : (
                   <>
                     <ChevronDown className="h-4 w-4 text-orange-400" />
-                    <span>Mehr Matches anzeigen (+20)</span>
+                    <span>{locale === 'de' ? 'Mehr Matches anzeigen (+20)' : 'Show more matches (+20)'}</span>
                   </>
                 )}
               </button>
@@ -189,7 +201,9 @@ export default function MatchHistory({
 
           {!hasMore && matches.length > 0 && (
             <div className="text-center py-4 text-xs text-zinc-500 font-medium">
-              Alle gespeicherten Matches geladen ({matches.length})
+              {locale === 'de'
+                ? `Alle gespeicherten Matches geladen (${matches.length})`
+                : `All saved matches loaded (${matches.length})`}
             </div>
           )}
         </div>

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Search, Trophy, Swords, Zap, Shield, Coins, Award } from 'lucide-react';
 import { ChampionStatSummary } from '@/types';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface ChampionStatsViewProps {
   stats: ChampionStatSummary[];
@@ -15,23 +16,24 @@ interface ChampionStatsViewProps {
 type SortField = 'games' | 'winrate' | 'kda' | 'cs' | 'damage' | 'gold';
 type SortOrder = 'desc' | 'asc';
 
-const QUEUE_OPTIONS = [
-  { id: 'all', label: 'Alle Queues' },
-  { id: '420', label: 'Ranked Solo' },
-  { id: '440', label: 'Ranked Flex' },
-  { id: '450', label: 'ARAM' },
-  { id: '400', label: 'Normal Draft' },
-];
-
 export default function ChampionStatsView({
   stats,
   activeQueue,
   onQueueChange,
   isLoading = false,
 }: ChampionStatsViewProps) {
+  const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('games');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  const queueOptions = [
+    { id: 'all', label: locale === 'de' ? 'Alle Queues' : 'All Queues' },
+    { id: '420', label: 'Ranked Solo' },
+    { id: '440', label: 'Ranked Flex' },
+    { id: '450', label: 'ARAM' },
+    { id: '400', label: 'Normal Draft' },
+  ];
 
   // Filter & Sort
   const filteredAndSortedStats = useMemo(() => {
@@ -107,17 +109,17 @@ export default function ChampionStatsView({
         {/* Champions Played */}
         <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span>Champions</span>
+            <span>{t('champions.championsPlayed')}</span>
             <Trophy className="h-4 w-4 text-orange-400" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{stats.length}</div>
-          <div className="text-[11px] text-zinc-500 mt-1">Gespielte Champions</div>
+          <div className="text-[11px] text-zinc-500 mt-1">{t('champions.championsPlayedSubtitle')}</div>
         </div>
 
         {/* Total Games & W/L */}
         <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span>Spiele gesamt</span>
+            <span>{t('champions.totalGames')}</span>
             <Swords className="h-4 w-4 text-sky-400" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{totalGames}</div>
@@ -130,7 +132,7 @@ export default function ChampionStatsView({
         {/* Overall Winrate */}
         <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span>Gesamte Winrate</span>
+            <span>{t('champions.overallWinrate')}</span>
             <Zap className="h-4 w-4 text-emerald-400" />
           </div>
           <div className={`mt-2 text-2xl font-black ${overallWinrate >= 55 ? 'text-emerald-400' : overallWinrate >= 50 ? 'text-orange-400' : 'text-zinc-200'}`}>
@@ -160,18 +162,18 @@ export default function ChampionStatsView({
               </div>
               <div className="min-w-0">
                 <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
-                  Meistgespielt
+                  {t('champions.mostPlayed')}
                 </div>
                 <div className="text-sm font-black text-white truncate">
                   {mostPlayed.championName}
                 </div>
                 <div className="text-xs text-zinc-400">
-                  {mostPlayed.games} Spiele · <span className="text-emerald-400 font-bold">{mostPlayed.winrate}%</span>
+                  {mostPlayed.games} {locale === 'de' ? 'Spiele' : 'Games'} · <span className="text-emerald-400 font-bold">{mostPlayed.winrate}%</span>
                 </div>
               </div>
             </>
           ) : (
-            <div className="text-xs text-zinc-500">Keine Daten verfügbar</div>
+            <div className="text-xs text-zinc-500">{locale === 'de' ? 'Keine Daten verfügbar' : 'No data available'}</div>
           )}
         </div>
       </div>
@@ -180,7 +182,7 @@ export default function ChampionStatsView({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0d1116] p-3">
         {/* Queue filter pills */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {QUEUE_OPTIONS.map((q) => (
+          {queueOptions.map((q) => (
             <button
               key={q.id}
               onClick={() => onQueueChange(q.id)}
@@ -200,7 +202,7 @@ export default function ChampionStatsView({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
           <input
             type="text"
-            placeholder="Champion suchen..."
+            placeholder={t('champions.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-white/[0.08] bg-[#060809] py-1.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-orange-500/50 focus:outline-none"
@@ -214,44 +216,44 @@ export default function ChampionStatsView({
           <thead>
             <tr className="border-b border-white/[0.06] bg-white/[0.02] text-[11px] font-bold uppercase tracking-wider text-zinc-400">
               <th className="py-3 pl-4 pr-2 w-10 text-center">#</th>
-              <th className="py-3 px-3">Champion</th>
+              <th className="py-3 px-3">{t('champions.colChampion')}</th>
               <th
                 onClick={() => handleSort('games')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                Gespielt {sortField === 'games' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colPlayed')} {sortField === 'games' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
               <th
                 onClick={() => handleSort('winrate')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                Winrate {sortField === 'winrate' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colWinrate')} {sortField === 'winrate' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
               <th
                 onClick={() => handleSort('kda')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                KDA {sortField === 'kda' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colKda')} {sortField === 'kda' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
               <th
                 onClick={() => handleSort('cs')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                CS {sortField === 'cs' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colCs')} {sortField === 'cs' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
               <th
                 onClick={() => handleSort('damage')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                Schaden {sortField === 'damage' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colDamage')} {sortField === 'damage' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
               <th
                 onClick={() => handleSort('gold')}
                 className="py-3 px-3 cursor-pointer hover:text-white transition-colors"
               >
-                Gold {sortField === 'gold' && (sortOrder === 'desc' ? '▼' : '▲')}
+                {t('champions.colGold')} {sortField === 'gold' && (sortOrder === 'desc' ? '▼' : '▲')}
               </th>
-              <th className="py-3 pr-4 pl-3">Highlights</th>
+              <th className="py-3 pr-4 pl-3">{t('champions.colHighlights')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
@@ -260,14 +262,14 @@ export default function ChampionStatsView({
                 <td colSpan={9} className="py-12 text-center text-zinc-500">
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-                    <span>Lade Champion-Statistiken...</span>
+                    <span>{t('champions.loading')}</span>
                   </div>
                 </td>
               </tr>
             ) : filteredAndSortedStats.length === 0 ? (
               <tr>
                 <td colSpan={9} className="py-12 text-center text-zinc-500">
-                  Keine Champions gefunden.
+                  {t('champions.noChampions')}
                 </td>
               </tr>
             ) : (

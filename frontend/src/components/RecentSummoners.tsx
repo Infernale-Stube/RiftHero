@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sparkles, Clock } from 'lucide-react';
@@ -5,18 +7,23 @@ import { RecentSummoner } from '@/types';
 import { getProfileIconUrl } from '@/lib/ddragon';
 import { formatTimeAgo } from '@/lib/utils';
 import RankBadge from './RankBadge';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface RecentSummonersProps {
   summoners: RecentSummoner[];
 }
 
 export default function RecentSummoners({ summoners }: RecentSummonersProps) {
+  const { locale } = useTranslation();
+
   if (!summoners || summoners.length === 0) {
     return (
       <div className="rounded-xl border border-rift-700/60 bg-rift-900/40 p-8 text-center">
         <Sparkles className="mx-auto h-8 w-8 text-slate-600 mb-2" />
         <p className="text-sm text-slate-400">
-          Noch keine Profile in der Datenbank. Suche oben nach einem Spieler, um den ersten Crawl zu starten!
+          {locale === 'de'
+            ? 'Noch keine Profile in der Datenbank. Suche oben nach einem Spieler, um den ersten Crawl zu starten!'
+            : 'No profiles in database yet. Search for a player above to start indexing!'}
         </p>
       </div>
     );
@@ -27,9 +34,11 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="h-4 w-4 text-hextech-blue" />
         <h2 className="text-base font-bold text-white uppercase tracking-wider">
-          Zuletzt aktualisierte Profile
+          {locale === 'de' ? 'Zuletzt aktualisierte Profile' : 'Recently Updated Profiles'}
         </h2>
-        <span className="ml-auto text-xs text-slate-500 font-medium">Live aus PostgreSQL</span>
+        <span className="ml-auto text-xs text-slate-500 font-medium">
+          {locale === 'de' ? 'Live aus PostgreSQL' : 'Live from PostgreSQL'}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -13,6 +13,7 @@ import {
   getStyleIconUrl,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface MatchCardProps {
   match: FormattedMatch;
@@ -20,6 +21,7 @@ interface MatchCardProps {
 }
 
 export default function MatchCard({ match, region }: MatchCardProps) {
+  const { locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const {
     win,
@@ -67,14 +69,14 @@ export default function MatchCard({ match, region }: MatchCardProps) {
         >
           <div className="flex items-center gap-2">
             <span className="uppercase tracking-wider">
-              {isBlue ? 'Blaues Team' : 'Rotes Team'}
+              {isBlue ? (locale === 'de' ? 'Blaues Team' : 'Blue Team') : (locale === 'de' ? 'Rotes Team' : 'Red Team')}
             </span>
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-black uppercase ${
                 teamWon ? 'bg-blue-500/20 text-blue-400' : 'bg-rose-500/20 text-rose-400'
               }`}
             >
-              {teamWon ? 'Sieg' : 'Niederlage'}
+              {teamWon ? (locale === 'de' ? 'Sieg' : 'Victory') : (locale === 'de' ? 'Niederlage' : 'Defeat')}
             </span>
           </div>
 
@@ -497,7 +499,7 @@ export default function MatchCard({ match, region }: MatchCardProps) {
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center justify-center h-8 w-8 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
-            title={isExpanded ? 'Details schließen' : 'Details anzeigen'}
+            title={isExpanded ? (locale === 'de' ? 'Details schließen' : 'Hide details') : (locale === 'de' ? 'Details anzeigen' : 'Show details')}
           >
             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
@@ -509,13 +511,13 @@ export default function MatchCard({ match, region }: MatchCardProps) {
         <div className="p-4 pt-0 border-t border-white/[0.06] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between text-xs text-zinc-400 pt-3 flex-wrap gap-2">
             <span className="font-semibold uppercase tracking-wider text-zinc-300">
-              Detaillierte Spielübersicht
+              {locale === 'de' ? 'Detaillierte Spielübersicht' : 'Detailed Match Overview'}
             </span>
             <Link
               href={`/match/${region}/${match.matchId}#participant${participant.puuid}`}
               className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-colors"
             >
-              <span>Vollständige Match-Seite (Drakes, Timeline & Grafiken)</span>
+              <span>{locale === 'de' ? 'Vollständige Match-Seite (Drakes, Timeline & Grafiken)' : 'Full Match Page (Drakes, Timeline & Graphs)'}</span>
               <ExternalLink className="h-3 w-3" />
             </Link>
           </div>

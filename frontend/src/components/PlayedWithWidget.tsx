@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Users } from 'lucide-react';
 import { PlayedWithTeammate } from '@/types';
 import { getProfileIconUrl, getChampionIconUrl } from '@/lib/ddragon';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface PlayedWithWidgetProps {
   teammates: PlayedWithTeammate[];
@@ -13,6 +14,8 @@ interface PlayedWithWidgetProps {
 }
 
 export default function PlayedWithWidget({ teammates, region }: PlayedWithWidgetProps) {
+  const { t } = useTranslation();
+
   if (!teammates || teammates.length === 0) {
     return null;
   }
@@ -21,30 +24,30 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
     <div className="flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] p-4 shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400 pb-2.5 border-b border-white/[0.06]">
-        <span>Played With</span>
+        <span>{t('summoner.playedWithTitle')}</span>
         <div className="flex items-center gap-6">
-          <span>Games</span>
-          <span className="w-9 text-right">Win %</span>
+          <span>{t('summoner.playedWithGames')}</span>
+          <span className="w-9 text-right">{t('summoner.playedWithWinrate')}</span>
         </div>
       </div>
 
       {/* Teammates List */}
       <div className="divide-y divide-white/[0.04]">
-        {teammates.map((t) => {
-          const formattedTag = `${t.gameName}-${t.tagLine || region.toUpperCase()}`;
-          const isGoodWinrate = t.winrate >= 50;
+        {teammates.map((item) => {
+          const formattedTag = `${item.gameName}-${item.tagLine || region.toUpperCase()}`;
+          const isGoodWinrate = item.winrate >= 50;
 
           // Resolve avatar: actual profile icon if available, else their champion avatar
           const avatarUrl =
-            t.profileIconId && t.profileIconId > 0 && t.profileIconId !== 29
-              ? getProfileIconUrl(t.profileIconId)
-              : t.championName
-              ? getChampionIconUrl(t.championName)
-              : getProfileIconUrl(t.profileIconId || 29);
+            item.profileIconId && item.profileIconId > 0 && item.profileIconId !== 29
+              ? getProfileIconUrl(item.profileIconId)
+              : item.championName
+              ? getChampionIconUrl(item.championName)
+              : getProfileIconUrl(item.profileIconId || 29);
 
           return (
             <div
-              key={t.puuid || t.gameName}
+              key={item.puuid || item.gameName}
               className="flex items-center justify-between py-2.5 text-xs hover:bg-white/[0.02] transition-colors -mx-1 px-1 rounded-lg"
             >
               {/* Player Avatar & Name */}
@@ -55,7 +58,7 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
                 <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/10 group-hover:border-white/30 transition-colors shadow-sm">
                   <Image
                     src={avatarUrl}
-                    alt={t.gameName}
+                    alt={item.gameName}
                     width={28}
                     height={28}
                     className="h-full w-full object-cover"
@@ -64,11 +67,11 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="truncate font-bold text-zinc-300 group-hover:text-white transition-colors">
-                    {t.gameName}
+                    {item.gameName}
                   </span>
-                  {t.championName && (
+                  {item.championName && (
                     <span className="text-[9px] text-zinc-500 truncate">
-                      mit {t.championName}
+                      {t('summoner.playedWithAs', { champ: item.championName })}
                     </span>
                   )}
                 </div>
@@ -76,13 +79,13 @@ export default function PlayedWithWidget({ teammates, region }: PlayedWithWidget
 
               {/* Games & Winrate */}
               <div className="flex items-center gap-6 shrink-0">
-                <span className="text-zinc-400 font-semibold">{t.games}</span>
+                <span className="text-zinc-400 font-semibold">{item.games}</span>
                 <span
                   className={`w-9 text-right font-bold ${
                     isGoodWinrate ? 'text-emerald-400' : 'text-zinc-400'
                   }`}
                 >
-                  {t.winrate}%
+                  {item.winrate}%
                 </span>
               </div>
             </div>

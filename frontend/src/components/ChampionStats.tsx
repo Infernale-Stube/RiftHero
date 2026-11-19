@@ -5,17 +5,20 @@ import { Award } from 'lucide-react';
 import { ChampionStatSummary } from '@/types';
 import { getChampionIconUrl } from '@/lib/ddragon';
 import { getKdaColor, getWinrateColor } from '@/lib/utils';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface ChampionStatsProps {
   stats: ChampionStatSummary[];
 }
 
 export default function ChampionStats({ stats }: ChampionStatsProps) {
+  const { t } = useTranslation();
+
   if (!stats || stats.length === 0) {
     return (
       <div className="rounded-xl border border-white/[0.06] bg-[#0d1116] p-5 text-center shadow-xl">
         <Award className="mx-auto h-6 w-6 text-zinc-600 mb-1.5" />
-        <p className="text-xs text-zinc-400">Keine Champion-Statistiken verfügbar.</p>
+        <p className="text-xs text-zinc-400">{t('champions.noChampions')}</p>
       </div>
     );
   }
@@ -24,9 +27,11 @@ export default function ChampionStats({ stats }: ChampionStatsProps) {
     <div className="flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] p-4 shadow-xl">
       <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-white/[0.06]">
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-          Most Played Champions
+          {t('champions.mostPlayedTitle')}
         </h3>
-        <span className="text-[10px] text-zinc-500 font-semibold">{stats.length} Champs</span>
+        <span className="text-[10px] text-zinc-500 font-semibold">
+          {t('champions.champCount', { count: stats.length })}
+        </span>
       </div>
 
       <div className="flex flex-col divide-y divide-white/[0.04]">
@@ -70,7 +75,7 @@ export default function ChampionStats({ stats }: ChampionStatsProps) {
                   {c.winrate}%
                 </span>
                 <span className="text-[9px] text-zinc-500 font-semibold">
-                  {c.games} {c.games === 1 ? 'Game' : 'Games'}
+                  {t('champions.gamesLabel', { count: c.games })}
                 </span>
               </div>
             </div>

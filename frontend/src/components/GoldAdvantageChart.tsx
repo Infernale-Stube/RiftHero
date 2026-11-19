@@ -2,6 +2,7 @@
 
 import React, { useState, useId } from 'react';
 import { Coins, TrendingUp } from 'lucide-react';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export interface GoldTimelinePoint {
   minute: number;
@@ -19,6 +20,7 @@ export default function GoldAdvantageChart({
   timeline,
   blueWon = true,
 }: GoldAdvantageChartProps) {
+  const { t } = useTranslation();
   const [hoveredPoint, setHoveredPoint] = useState<GoldTimelinePoint | null>(null);
   const [hoverX, setHoverX] = useState<number | null>(null);
   const chartId = useId();
@@ -26,7 +28,7 @@ export default function GoldAdvantageChart({
   if (!timeline || timeline.length < 2) {
     return (
       <div className="rounded-2xl border border-white/[0.08] bg-black/50 p-6 text-center text-xs text-slate-500">
-        Keine Timeline-Daten für dieses Match verfügbar.
+        {t('matchDetail.noTimeline')}
       </div>
     );
   }
@@ -152,13 +154,13 @@ export default function GoldAdvantageChart({
           </div>
           <div>
             <h2 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <span>Gold-Vorteil Graph (Timeline)</span>
+              <span>{t('matchDetail.goldLeadTitle')}</span>
               <span className="text-[10px] rounded bg-white/[0.08] px-2 py-0.5 font-bold uppercase text-slate-300">
-                Minutenverlauf
+                {t('matchDetail.minuteProgress')}
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Netto-Golddifferenz zwischen Blauem und Rotem Team im Spielverlauf
+              {t('matchDetail.goldLeadSubtitle')}
             </p>
           </div>
         </div>
@@ -167,14 +169,14 @@ export default function GoldAdvantageChart({
         <div className="flex items-center gap-3 text-xs">
           {maxBlueLead > 0 && (
             <div className="flex items-center gap-1.5 rounded-lg bg-blue-950/40 border border-blue-500/30 px-2.5 py-1 text-blue-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Max Blau:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">{t('matchDetail.maxBlue')}</span>
               <span className="font-black text-blue-400">+{(maxBlueLead / 1000).toFixed(1)}k</span>
               <span className="text-[10px] text-slate-400">({maxBlueMin}m)</span>
             </div>
           )}
           {Math.abs(maxRedLead) > 0 && (
             <div className="flex items-center gap-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 px-2.5 py-1 text-rose-300">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Max Rot:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">{t('matchDetail.maxRed')}</span>
               <span className="font-black text-rose-400">+{(Math.abs(maxRedLead) / 1000).toFixed(1)}k</span>
               <span className="text-[10px] text-slate-400">({maxRedMin}m)</span>
             </div>
@@ -185,7 +187,7 @@ export default function GoldAdvantageChart({
       {/* Floating Interactive Metric Card */}
       <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-3 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-300">Minute {activePoint.minute}:00</span>
+          <span className="font-bold text-slate-300">{t('matchDetail.minuteAt', { min: activePoint.minute })}</span>
           <span className="text-slate-500">•</span>
           <span
             className={`font-black ${
@@ -194,20 +196,20 @@ export default function GoldAdvantageChart({
           >
             {isBlueLead ? '+' : ''}
             {(activePoint.diff / 1000).toFixed(2)}k Gold{' '}
-            {activePoint.diff === 0 ? '(Gleichstand)' : isBlueLead ? '(Blau führt)' : '(Rot führt)'}
+            {activePoint.diff === 0 ? t('matchDetail.goldTied') : isBlueLead ? t('matchDetail.blueLeads') : t('matchDetail.redLeads')}
           </span>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] font-semibold">
           <span className="text-blue-300">
-            Blau:{' '}
+            {t('matchDetail.blueTeam')}:{' '}
             <strong className="text-white">
               {(activePoint.blueGold / 1000).toFixed(1)}k
             </strong>
           </span>
           <span className="text-slate-600">|</span>
           <span className="text-rose-300">
-            Rot:{' '}
+            {t('matchDetail.redTeam')}:{' '}
             <strong className="text-white">
               {(activePoint.redGold / 1000).toFixed(1)}k
             </strong>

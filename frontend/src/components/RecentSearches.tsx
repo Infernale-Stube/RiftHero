@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { History, X } from 'lucide-react';
 import { RecentSearchItem } from '@/types';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function RecentSearches() {
+  const { locale } = useTranslation();
   const [searches, setSearches] = useState<RecentSearchItem[]>([]);
   const [mounted, setMounted] = useState(false);
 
@@ -56,13 +58,13 @@ export default function RecentSearches() {
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
           <History className="h-3.5 w-3.5 text-hextech-blue" />
-          <span>Zuletzt gesucht</span>
+          <span>{locale === 'de' ? 'Zuletzt gesucht' : 'Recent Searches'}</span>
         </div>
         <button
           onClick={clearHistory}
           className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
         >
-          Verlauf leeren
+          {locale === 'de' ? 'Verlauf leeren' : 'Clear history'}
         </button>
       </div>
 
@@ -85,7 +87,7 @@ export default function RecentSearches() {
               <button
                 onClick={(e) => removeSearch(e, item)}
                 className="ml-1 text-slate-600 hover:text-rose-400 transition-colors"
-                title="Aus Verlauf entfernen"
+                title={locale === 'de' ? 'Aus Verlauf entfernen' : 'Remove from history'}
               >
                 <X className="h-3 w-3" />
               </button>

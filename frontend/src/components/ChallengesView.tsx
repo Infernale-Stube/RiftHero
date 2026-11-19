@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Search, Trophy, Sparkles, Shield, Flame, Users, BookOpen, Layers, CheckCircle2 } from 'lucide-react';
 import { FormattedPlayerChallenges, FormattedChallengeItem } from '@/types';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface ChallengesViewProps {
   challengesData: FormattedPlayerChallenges | null;
@@ -36,6 +37,7 @@ export default function ChallengesView({
   challengesData,
   isLoading = false,
 }: ChallengesViewProps) {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,7 +76,7 @@ export default function ChallengesView({
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-zinc-400">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-          <span>Lade Challenges & Punkte...</span>
+          <span>{t('challenges.loading')}</span>
         </div>
       </div>
     );
@@ -84,9 +86,9 @@ export default function ChallengesView({
     return (
       <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-12 text-center">
         <Trophy className="mx-auto h-12 w-12 text-zinc-600 mb-3" />
-        <h3 className="text-lg font-bold text-white mb-1">Keine Challenges gefunden</h3>
+        <h3 className="text-lg font-bold text-white mb-1">{t('challenges.emptyTitle')}</h3>
         <p className="text-xs text-zinc-400">
-          Für diesen Beschwörer konnten noch keine Challenge-Daten abgerufen werden.
+          {t('challenges.emptyDesc')}
         </p>
       </div>
     );
@@ -114,20 +116,20 @@ export default function ChallengesView({
             <div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${crystalTierColors.bg} ${crystalTierColors.text} ${crystalTierColors.border}`}>
-                  {totalPoints.level} Crystal
+                  {t('challenges.crystal', { level: totalPoints.level })}
                 </span>
                 {totalPoints.percentile > 0 && (
                   <span className="text-xs text-zinc-400 font-medium">
-                    Top {(totalPoints.percentile * 100).toFixed(1)}%
+                    {t('challenges.topPercent', { pct: (totalPoints.percentile * 100).toFixed(1) })}
                   </span>
                 )}
               </div>
               <div className="mt-1 text-3xl font-black text-white">
-                {totalPoints.current.toLocaleString()} <span className="text-sm font-semibold text-zinc-400">Punkte</span>
+                {totalPoints.current.toLocaleString()} <span className="text-sm font-semibold text-zinc-400">{t('challenges.points')}</span>
               </div>
               {preferences?.title && (
                 <div className="mt-1 text-xs text-orange-400 font-semibold italic">
-                  Titel: &ldquo;{preferences.title}&rdquo;
+                  {t('challenges.titleEquipped', { title: preferences.title })}
                 </div>
               )}
             </div>
@@ -136,7 +138,7 @@ export default function ChallengesView({
           {/* Right: Progress to next crystal level */}
           <div className="w-full md:w-80">
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-1.5 font-medium">
-              <span>Fortschritt</span>
+              <span>{t('challenges.progress')}</span>
               <span className="text-white font-bold">
                 {totalPoints.current.toLocaleString()} / {totalPoints.max.toLocaleString()} ({totalPoints.progressPercent}%)
               </span>
@@ -195,7 +197,7 @@ export default function ChallengesView({
 
               {cat.percentile > 0 && (
                 <div className="mt-2 text-[10px] text-zinc-500 font-medium">
-                  Top {(cat.percentile * 100).toFixed(1)}% der Spieler
+                  {t('challenges.topPercent', { pct: (cat.percentile * 100).toFixed(1) })}
                 </div>
               )}
             </button>
@@ -218,7 +220,7 @@ export default function ChallengesView({
                     : 'bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 border border-transparent'
                 }`}
               >
-                {cat === 'ALL' ? 'Alle Kategorien' : cat}
+                {cat === 'ALL' ? t('challenges.allCategories') : cat}
               </button>
             ))}
           </div>
@@ -228,7 +230,7 @@ export default function ChallengesView({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
             <input
               type="text"
-              placeholder="Challenge suchen..."
+              placeholder={t('challenges.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-white/[0.08] bg-[#060809] py-1.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-orange-500/50 focus:outline-none"
@@ -238,7 +240,7 @@ export default function ChallengesView({
 
         {/* Tier filter row */}
         <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/[0.04]">
-          <span className="text-[11px] font-semibold text-zinc-500 mr-1">Rang:</span>
+          <span className="text-[11px] font-semibold text-zinc-500 mr-1">{t('challenges.tierFilter')}</span>
           {['ALL', 'CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'PLATINUM', 'GOLD', 'SILVER', 'BRONZE', 'IRON'].map((tier) => (
             <button
               key={tier}
@@ -259,7 +261,7 @@ export default function ChallengesView({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredChallenges.length === 0 ? (
           <div className="col-span-full rounded-xl border border-white/[0.08] bg-[#0d1116] p-12 text-center text-xs text-zinc-500">
-            Keine Challenges mit diesen Filterkriterien gefunden.
+            {t('challenges.noChallenges')}
           </div>
         ) : (
           filteredChallenges.map((ch) => {
@@ -319,16 +321,16 @@ export default function ChallengesView({
                 <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 text-zinc-300 font-bold">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Wert: {ch.value.toLocaleString()}</span>
+                    <span>{t('challenges.value', { val: ch.value.toLocaleString() })}</span>
                   </div>
 
                   {ch.nextThreshold ? (
                     <div className="text-zinc-500 text-[10px]">
-                      Nächster: <span className="text-zinc-300 font-semibold">{ch.nextThreshold.tier}</span> ({ch.nextThreshold.value.toLocaleString()})
+                      {t('challenges.nextThreshold', { tier: ch.nextThreshold.tier, val: ch.nextThreshold.value.toLocaleString() })}
                     </div>
                   ) : ch.percentile > 0 ? (
                     <div className="text-orange-400/90 text-[10px] font-semibold">
-                      Top {(ch.percentile * 100).toFixed(1)}%
+                      {t('challenges.topPercent', { pct: (ch.percentile * 100).toFixed(1) })}
                     </div>
                   ) : null}
                 </div>

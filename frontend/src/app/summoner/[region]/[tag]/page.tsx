@@ -30,8 +30,10 @@ import LiveGameView from '@/components/LiveGameView';
 import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
 import RankCard from '@/components/RankCard';
 import PlayedWithWidget from '@/components/PlayedWithWidget';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function SummonerPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -200,8 +202,8 @@ export default function SummonerPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-4">
         <Loader2 className="h-10 w-10 animate-spin text-orange-400 mb-4" />
-        <h2 className="text-lg font-bold text-zinc-200">Profil wird geladen...</h2>
-        <p className="text-xs text-zinc-500 mt-1">PostgreSQL & Riot API Überprüfung</p>
+        <h2 className="text-lg font-bold text-zinc-200">{t('summoner.loadingProfile')}</h2>
+        <p className="text-xs text-zinc-500 mt-1">{t('summoner.loadingSubtitle')}</p>
       </div>
     );
   }
@@ -211,7 +213,7 @@ export default function SummonerPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-8 shadow-xl">
           <AlertCircle className="mx-auto h-12 w-12 text-rose-400 mb-3" />
-          <h2 className="text-xl font-bold text-white mb-2">Profil konnte nicht geladen werden</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t('summoner.profileNotFound')}</h2>
           <p className="text-sm text-zinc-300">{error}</p>
         </div>
       </div>
@@ -225,14 +227,14 @@ export default function SummonerPage() {
         <div className="rounded-2xl border border-white/[0.08] bg-[#0d1116] p-8 max-w-md shadow-2xl backdrop-blur-md">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-orange-400 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">
-            Neuer Spieler wird erfasst
+            {t('summoner.newPlayerTitle')}
           </h2>
           <p className="text-sm text-zinc-400 mb-4">
-            Dieses Profil ist noch nicht in PostgreSQL gespeichert. Der Worker ruft gerade alle Matches und Liga-Ränge über die Riot Production API ab.
+            {t('summoner.newPlayerDesc')}
           </p>
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-orange-300">
             <span className="h-2 w-2 rounded-full bg-orange-400 animate-ping" />
-            <span>High-Priority Ingestion läuft...</span>
+            <span>{t('summoner.highPrioritySync')}</span>
           </div>
         </div>
 
@@ -306,7 +308,7 @@ export default function SummonerPage() {
           <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
             {/* Ranked Solo/Duo Card with LP History Graph */}
             <RankCard
-              title="Ranked Solo/Duo"
+              title={t('summoner.soloRank')}
               rankData={soloRank}
               lpHistory={lpHistory}
             />
@@ -314,7 +316,7 @@ export default function SummonerPage() {
             {/* Ranked Flex Card (if ranked) */}
             {flexRank && (
               <RankCard
-                title="Ranked Flex"
+                title={t('summoner.flexRank')}
                 rankData={flexRank}
               />
             )}

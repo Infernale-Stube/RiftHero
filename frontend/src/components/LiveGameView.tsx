@@ -13,6 +13,7 @@ import {
 } from '@/lib/ddragon';
 import RankBadge from './RankBadge';
 import { getWinrateColor } from '@/lib/utils';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface LiveGameViewProps {
   region: string;
@@ -31,6 +32,7 @@ export default function LiveGameView({
   isLoading,
   onRefresh,
 }: LiveGameViewProps) {
+  const { t } = useTranslation();
   // Live Timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -58,8 +60,8 @@ export default function LiveGameView({
     return (
       <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-black/40 p-12 text-center">
         <RefreshCw className="h-8 w-8 animate-spin text-hextech-blue mb-3" />
-        <h3 className="text-sm font-bold text-slate-200">Spectator-Status wird abgefragt...</h3>
-        <p className="text-xs text-slate-500 mt-1">Riot Games Spectator v5 Überprüfung</p>
+        <h3 className="text-sm font-bold text-slate-200">{t('live.analyzing')}</h3>
+        <p className="text-xs text-slate-500 mt-1">{t('live.spectatorCheck')}</p>
       </div>
     );
   }
@@ -71,17 +73,17 @@ export default function LiveGameView({
           <Radio className="h-7 w-7" />
         </div>
         <h3 className="text-base font-bold text-white mb-1.5">
-          Kein aktives Live-Spiel
+          {t('live.notInGame')}
         </h3>
         <p className="text-xs text-slate-400 max-w-md mb-6">
-          <span className="text-amber-400 font-bold">{gameName}#{tagLine}</span> befindet sich aktuell in keinem laufenden League-of-Legends-Match.
+          {t('live.notInGameDesc', { name: `${gameName}#${tagLine}` })}
         </p>
         <button
           onClick={onRefresh}
           className="flex items-center gap-2 rounded-xl border border-hextech-blue/40 bg-hextech-blue/10 px-5 py-2.5 text-xs font-bold text-hextech-blue hover:bg-hextech-blue/20 transition-all shadow-md active:scale-95"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          <span>Status erneut prüfen</span>
+          <span>{t('live.checkAgain')}</span>
         </button>
       </div>
     );
@@ -99,7 +101,7 @@ export default function LiveGameView({
         }`}
       >
         <div className="flex items-center gap-2 font-black uppercase tracking-wider text-xs">
-          <span>{isBlue ? 'Blaues Team' : 'Rotes Team'}</span>
+          <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
         </div>
       </div>
 
@@ -218,7 +220,7 @@ export default function LiveGameView({
                     </div>
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-500 font-medium">Unranked</span>
+                  <span className="text-xs text-slate-500 font-medium">{t('summoner.unranked')}</span>
                 )}
               </div>
             </div>
@@ -240,13 +242,13 @@ export default function LiveGameView({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                Live Spiel Aktiv
+                {t('live.gameActive')}
               </span>
               <span className="text-xs text-slate-400">•</span>
               <span className="text-xs font-bold text-white">{game.queueName}</span>
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
-              Spielmodus: {game.gameMode}
+              {t('live.gameMode', { mode: game.gameMode })}
             </div>
           </div>
         </div>
@@ -259,7 +261,7 @@ export default function LiveGameView({
           <button
             onClick={onRefresh}
             className="flex items-center justify-center h-10 w-10 rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors"
-            title="Live-Daten aktualisieren"
+            title={t('live.refreshTitle')}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -271,13 +273,13 @@ export default function LiveGameView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-white/[0.06] bg-black/40 p-3.5 gap-3">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
             <Ban className="h-3.5 w-3.5 text-rose-400" />
-            <span>Bans:</span>
+            <span>{t('live.bans')}</span>
           </div>
 
           <div className="flex items-center gap-6">
             {/* Blue Bans */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-blue-400 uppercase">Blau:</span>
+              <span className="text-[10px] font-bold text-blue-400 uppercase">{t('live.blueBans')}</span>
               <div className="flex gap-1">
                 {game.bans.filter((b) => b.teamId === 100).map((b) => (
                   <div key={b.pickTurn} className="h-6 w-6 rounded border border-white/10 overflow-hidden" title={b.championName}>
@@ -296,7 +298,7 @@ export default function LiveGameView({
 
             {/* Red Bans */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-rose-400 uppercase">Rot:</span>
+              <span className="text-[10px] font-bold text-rose-400 uppercase">{t('live.redBans')}</span>
               <div className="flex gap-1">
                 {game.bans.filter((b) => b.teamId === 200).map((b) => (
                   <div key={b.pickTurn} className="h-6 w-6 rounded border border-white/10 overflow-hidden" title={b.championName}>

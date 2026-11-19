@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LpHistorySummary, LpPoint } from '@/types';
 import { getRankEmblemUrl } from './RankBadge';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface LpHistoryChartProps {
   lpHistory: LpHistorySummary;
@@ -29,6 +30,7 @@ export const RANK_THEMES: Record<
 };
 
 export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
+  const { t } = useTranslation();
   const [hoveredPoint, setHoveredPoint] = useState<LpPoint | null>(null);
   const chartId = useId();
 
@@ -108,7 +110,7 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
       <div className="flex items-center justify-between text-[11px] mb-2 px-1">
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-zinc-400 uppercase tracking-wider text-[10px]">
-            Last {points.length} Games
+            {t('summoner.lastGames', { count: points.length })}
           </span>
           <span className={`text-[10px] font-bold ${activeTheme.text}`}>
             • {currentTier} {currentRank}
@@ -274,7 +276,7 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
               unoptimized
             />
           </div>
-          <span className="font-semibold text-zinc-500 uppercase tracking-wide">Peak:</span>
+          <span className="font-semibold text-zinc-500 uppercase tracking-wide">{t('summoner.peakRank')}:</span>
           <span className="font-bold text-zinc-200">
             {peakTier} {peakRank} · {peakLp} LP
           </span>
@@ -282,8 +284,8 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
 
         {longestWinStreak > 1 && (
           <div className="flex items-center gap-1">
-            <span className="font-semibold text-zinc-500 uppercase tracking-wide">Longest:</span>
-            <span className="font-bold text-emerald-400">{longestWinStreak}W Streak</span>
+            <span className="font-semibold text-zinc-500 uppercase tracking-wide">{t('summoner.winStreak')}:</span>
+            <span className="font-bold text-emerald-400">{longestWinStreak}W {t('summoner.longestStreak')}</span>
           </div>
         )}
       </div>

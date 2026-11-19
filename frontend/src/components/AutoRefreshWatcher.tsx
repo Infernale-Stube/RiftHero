@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, CheckCircle2 } from 'lucide-react';
 import { fetchSummonerStatus } from '@/lib/api';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 interface AutoRefreshWatcherProps {
   region: string;
@@ -18,6 +19,7 @@ export default function AutoRefreshWatcher({
   isUpdating: initialUpdating,
   onRefreshCompleted,
 }: AutoRefreshWatcherProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [updating, setUpdating] = useState(initialUpdating);
   const [justCompleted, setJustCompleted] = useState(false);
@@ -72,12 +74,12 @@ export default function AutoRefreshWatcher({
       {updating ? (
         <div className="flex items-center gap-2.5 rounded-xl border border-hextech-blue/50 bg-rift-950/95 px-4 py-2.5 text-xs font-semibold text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
           <RefreshCw className="h-4 w-4 animate-spin text-hextech-blue" />
-          <span>Profil & Matches werden im Hintergrund aktualisiert...</span>
+          <span>{t('summoner.syncingToast')}</span>
         </div>
       ) : justCompleted ? (
         <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/50 bg-rift-950/95 px-4 py-2.5 text-xs font-semibold text-emerald-400 shadow-2xl backdrop-blur-md animate-in fade-in">
           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          <span>Profil erfolgreich aktualisiert!</span>
+          <span>{t('summoner.syncCompletedToast')}</span>
         </div>
       ) : null}
     </div>
