@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { Flame } from 'lucide-react';
 import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -37,6 +38,21 @@ export default function Navbar() {
             </span>
           </div>
         </Link>
+
+        {/* Navigation Links */}
+        <nav className="flex items-center gap-1">
+          <Link
+            href={`/${locale}/tier-list`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              pathname?.includes('/tier-list')
+                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                : 'text-zinc-300 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Flame className="h-3.5 w-3.5 text-amber-400" />
+            <span>{t('nav.tierList')}</span>
+          </Link>
+        </nav>
 
         {/* Compact Search Bar in Header if not on Home */}
         {!isHome && (

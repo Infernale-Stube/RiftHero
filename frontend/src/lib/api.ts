@@ -253,12 +253,14 @@ export async function fetchSummonerMasteries(
 
 export interface MetaChampionItem {
   name: string;
-  tier: 'S+' | 'S' | 'A';
+  tier: 'S+' | 'S' | 'A' | 'B';
   winrate: string;
   pickrate: string;
   banrate: string;
   role: string;
   games?: number;
+  wins?: number;
+  losses?: number;
 }
 
 export interface MetaChampionsResponse {
@@ -272,6 +274,41 @@ export async function fetchMetaChampions(): Promise<MetaChampionsResponse | null
     const res = await fetch(`${baseUrl}/meta/champions`, {
       cache: 'no-store',
     });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface TierListChampionItem {
+  rank: number;
+  name: string;
+  role: string;
+  tier: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
+  winrate: string;
+  winrateNum: number;
+  pickrate: string;
+  pickrateNum: number;
+  banrate: string;
+  banrateNum: number;
+  games: number;
+  wins: number;
+  losses: number;
+  score: number;
+}
+
+export interface TierListResponse {
+  patch: string;
+  totalMatches: number;
+  champions: TierListChampionItem[];
+}
+
+export async function fetchTierList(role?: string): Promise<TierListResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const url = role && role !== 'ALL' ? `${baseUrl}/meta/tier-list?role=${role}` : `${baseUrl}/meta/tier-list`;
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     return await res.json();
   } catch {

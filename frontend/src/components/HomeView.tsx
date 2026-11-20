@@ -31,6 +31,7 @@ interface MetaChampion {
   pickrate: string;
   banrate: string;
   role: PositionKey;
+  games?: number;
 }
 
 const ROLES: Array<{ key: PositionKey; label: string }> = [
@@ -191,32 +192,41 @@ export default function HomeView() {
             </p>
           </div>
 
-          {/* Role Filter Tabs with Metallic Role Icons */}
-          <div className="inline-flex rounded-xl bg-black/50 p-1 border border-white/[0.06] self-start sm:self-auto">
-            {ROLES.map((r) => {
-              const isActive = activeRole === r.key;
-              return (
-                <button
-                  key={r.key}
-                  onClick={() => setActiveRole(r.key)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <Image
-                    src={getPositionIconUrl(r.key)}
-                    alt={r.label}
-                    width={14}
-                    height={14}
-                    className={`object-contain ${isActive ? 'opacity-100' : 'opacity-60'}`}
-                    unoptimized
-                  />
-                  <span className="hidden sm:inline">{r.key}</span>
-                </button>
-              );
-            })}
+          {/* Right Controls: Role Filter Tabs + Tier List CTA */}
+          <div className="flex items-center gap-3 flex-wrap self-start sm:self-auto">
+            <div className="inline-flex rounded-xl bg-black/50 p-1 border border-white/[0.06]">
+              {ROLES.map((r) => {
+                const isActive = activeRole === r.key;
+                return (
+                  <button
+                    key={r.key}
+                    onClick={() => setActiveRole(r.key)}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                        : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Image
+                      src={getPositionIconUrl(r.key)}
+                      alt={r.label}
+                      width={14}
+                      height={14}
+                      className={`object-contain ${isActive ? 'opacity-100' : 'opacity-60'}`}
+                      unoptimized
+                    />
+                    <span className="hidden sm:inline">{r.key}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <Link
+              href={`/${locale}/tier-list`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 transition-all shadow-sm hover:border-amber-500/50"
+            >
+              <span>{t('home.viewAllTierList')}</span>
+            </Link>
           </div>
         </div>
 
@@ -226,12 +236,20 @@ export default function HomeView() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 rounded-2xl border border-white/[0.04] bg-black/25 p-3.5 animate-pulse"
+                className="flex flex-col justify-between rounded-2xl border border-white/[0.04] bg-black/25 p-4 animate-pulse h-44"
               >
-                <div className="h-12 w-12 rounded-full bg-white/5 shrink-0" />
-                <div className="flex flex-col gap-2 flex-1">
-                  <div className="h-4 w-24 bg-white/5 rounded" />
-                  <div className="h-3 w-16 bg-white/5 rounded" />
+                <div className="flex items-center gap-3">
+                  <div className="h-13 w-13 rounded-2xl bg-white/5 shrink-0" />
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="h-4 w-24 bg-white/5 rounded" />
+                    <div className="h-3 w-16 bg-white/5 rounded" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.04]">
+                  <div className="h-8 bg-white/5 rounded-xl" />
+                  <div className="h-8 bg-white/5 rounded-xl" />
+                  <div className="h-8 bg-white/5 rounded-xl" />
+                  <div className="h-8 bg-white/5 rounded-xl" />
                 </div>
               </div>
             ))}
@@ -241,50 +259,93 @@ export default function HomeView() {
             {metaChampions.map((champ) => (
               <div
                 key={champ.name}
-                className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-black/40 p-3.5 transition-all hover:border-amber-500/30 hover:bg-white/[0.02]"
+                className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#0c1017]/85 hover:bg-[#101724] hover:border-amber-500/35 p-4 transition-all duration-200 shadow-xl"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                {/* Top: Avatar, Name, Role Icon & Tier Badge */}
+                <div className="flex items-center gap-3.5 mb-3.5">
                   <div className="relative shrink-0">
-                    <div className="h-12 w-12 rounded-full overflow-hidden border border-white/10 shadow-md">
+                    <div className="h-13 w-13 rounded-2xl overflow-hidden border border-white/10 shadow-lg group-hover:scale-105 transition-transform duration-200">
                       <Image
                         src={getChampionIconUrl(champ.name)}
                         alt={champ.name}
-                        width={48}
-                        height={48}
+                        width={52}
+                        height={52}
                         className="h-full w-full object-cover"
                         unoptimized
                       />
                     </div>
                     <div
-                      className={`absolute -bottom-1 -right-1 rounded-md px-1.5 py-0.5 text-[9px] font-black tracking-tight uppercase shadow-md border border-black/80 flex items-center justify-center leading-none z-10 ${
+                      className={`absolute -bottom-1 -right-1 rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-tight shadow-md border border-black/80 flex items-center justify-center leading-none z-10 ${
                         champ.tier === 'S+'
-                          ? 'bg-amber-400 text-black'
-                          : 'bg-sky-400 text-black'
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-amber-500/30'
+                          : champ.tier === 'S'
+                          ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-black shadow-sky-500/30'
+                          : 'bg-zinc-700 text-white'
                       }`}
                     >
                       {champ.tier}
                     </div>
                   </div>
 
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-extrabold text-sm text-white truncate">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-extrabold text-base text-white truncate group-hover:text-amber-300 transition-colors">
                       {champ.name}
                     </span>
-                    <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
-                      <span className="text-emerald-400 font-bold">{champ.winrate} WR</span>
-                      <span className="text-zinc-600">•</span>
-                      <span className="text-zinc-400">{champ.pickrate} Pick</span>
-                    </div>
+                    <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mt-0.5">
+                      <Image
+                        src={getPositionIconUrl(champ.role)}
+                        alt={champ.role}
+                        width={13}
+                        height={13}
+                        className="opacity-70"
+                        unoptimized
+                      />
+                      <span>{champ.role}</span>
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end shrink-0 pl-2">
-                  <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
-                    Ban
-                  </span>
-                  <span className="text-xs font-bold text-zinc-300">
-                    {champ.banrate}
-                  </span>
+                {/* 4 Unified Metric Badges: Winrate, Pickrate, Banrate, Matches */}
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.05]">
+                  {/* Winrate */}
+                  <div className="flex flex-col rounded-xl bg-black/40 px-2.5 py-1.5 border border-white/[0.04]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Winrate
+                    </span>
+                    <span className="text-xs font-black text-emerald-400">
+                      {champ.winrate}
+                    </span>
+                  </div>
+
+                  {/* Pickrate */}
+                  <div className="flex flex-col rounded-xl bg-black/40 px-2.5 py-1.5 border border-white/[0.04]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Pickrate
+                    </span>
+                    <span className="text-xs font-black text-sky-400">
+                      {champ.pickrate}
+                    </span>
+                  </div>
+
+                  {/* Banrate */}
+                  <div className="flex flex-col rounded-xl bg-black/40 px-2.5 py-1.5 border border-white/[0.04]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Banrate
+                    </span>
+                    <span className="text-xs font-bold text-rose-400">
+                      {champ.banrate || '—'}
+                    </span>
+                  </div>
+
+                  {/* Matches */}
+                  <div className="flex flex-col rounded-xl bg-black/40 px-2.5 py-1.5 border border-white/[0.04]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Matches
+                    </span>
+                    <span className="text-xs font-bold text-zinc-200">
+                      {champ.games ? champ.games.toLocaleString() : '—'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

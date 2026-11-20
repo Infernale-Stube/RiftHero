@@ -16,6 +16,7 @@ export interface TranslationDictionary {
     brandSubtitle: string;
     searchPlaceholder: string;
     apiOnline: string;
+    tierList: string;
   };
   home: {
     heroBadge: string;
@@ -35,6 +36,7 @@ export interface TranslationDictionary {
     metaTitle: string;
     metaSubtitle: string;
     noMetaPicks: string;
+    viewAllTierList: string;
   };
   summoner: {
     loadingProfile: string;
@@ -229,6 +231,26 @@ export interface TranslationDictionary {
     prodKey: string;
     snowball: string;
   };
+  tierList: {
+    pageTitle: string;
+    pageSubtitle: string;
+    allRoles: string;
+    searchPlaceholder: string;
+    colRank: string;
+    colChampion: string;
+    colRole: string;
+    colTier: string;
+    colWinrate: string;
+    colPickrate: string;
+    colBanrate: string;
+    colMatches: string;
+    colScore: string;
+    noResults: string;
+    topWinrate: string;
+    mostPicked: string;
+    mostBanned: string;
+    totalAnalyzed: string;
+  };
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
@@ -248,6 +270,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       brandSubtitle: 'LoL Stats & Analytics',
       searchPlaceholder: 'Beschwörer suchen (Name#TAG)...',
       apiOnline: 'Riot API Online',
+      tierList: 'Tier List',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
@@ -268,6 +291,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       metaTitle: 'Patch 14.23 Meta Picks',
       metaSubtitle: 'Die stärksten Champions nach Rolle auf der aktuellen Kluft',
       noMetaPicks: 'Noch keine Match-Daten für diese Rolle erfasst.',
+      viewAllTierList: 'Vollständige Tier List ansehen →',
     },
     summoner: {
       loadingProfile: 'Profil wird geladen...',
@@ -463,6 +487,26 @@ export const translations: Record<Locale, TranslationDictionary> = {
       prodKey: 'Production Key Enabled',
       snowball: '10-Player Snowball Ingestion',
     },
+    tierList: {
+      pageTitle: 'Patch 14.23 Champion Tier List',
+      pageSubtitle: 'Die stärksten Champions der Kluft der Beschwörer nach Rolle, Winrate und Pickrate',
+      allRoles: 'Alle Rollen',
+      searchPlaceholder: 'Champion suchen...',
+      colRank: '#',
+      colChampion: 'Champion',
+      colRole: 'Rolle',
+      colTier: 'Tier',
+      colWinrate: 'Winrate',
+      colPickrate: 'Pickrate',
+      colBanrate: 'Banrate',
+      colMatches: 'Matches',
+      colScore: 'Rating',
+      noResults: 'Keine Champions gefunden, die den Filtern entsprechen.',
+      topWinrate: 'Höchste Winrate',
+      mostPicked: 'Meistgespielt',
+      mostBanned: 'Meistgebannt',
+      totalAnalyzed: 'Analysierte Matches',
+    },
   },
   en: {
     common: {
@@ -480,6 +524,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       brandSubtitle: 'LoL Stats & Analytics',
       searchPlaceholder: 'Search summoner (Name#TAG)...',
       apiOnline: 'Riot API Online',
+      tierList: 'Tier List',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
@@ -500,6 +545,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       metaTitle: 'Patch 14.23 Meta Picks',
       metaSubtitle: 'Top tier champion picks by lane on Summoner\'s Rift',
       noMetaPicks: 'No match data recorded for this role yet.',
+      viewAllTierList: 'View Full Tier List →',
     },
     summoner: {
       loadingProfile: 'Loading profile...',
@@ -694,6 +740,26 @@ export const translations: Record<Locale, TranslationDictionary> = {
       copyright: '© {year} RiftHero. Not affiliated with Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.',
       prodKey: 'Production Key Enabled',
       snowball: '10-Player Snowball Ingestion',
+    },
+    tierList: {
+      pageTitle: 'Patch 14.23 Champion Tier List',
+      pageSubtitle: 'Top tier champion picks on Summoner\'s Rift ranked by winrate, pickrate, and impact',
+      allRoles: 'All Roles',
+      searchPlaceholder: 'Search champion...',
+      colRank: '#',
+      colChampion: 'Champion',
+      colRole: 'Role',
+      colTier: 'Tier',
+      colWinrate: 'Winrate',
+      colPickrate: 'Pickrate',
+      colBanrate: 'Banrate',
+      colMatches: 'Matches',
+      colScore: 'Rating',
+      noResults: 'No champions found matching the selected filters.',
+      topWinrate: 'Highest Winrate',
+      mostPicked: 'Most Picked',
+      mostBanned: 'Most Banned',
+      totalAnalyzed: 'Matches Analyzed',
     },
   },
 };
