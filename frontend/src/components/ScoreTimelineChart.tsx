@@ -171,7 +171,7 @@ export default function ScoreTimelineChart({
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black tracking-tight text-white">
-                {locale === 'de' ? 'Hero Score Verlauf (0–100)' : 'Hero Score Progression (0–100)'}
+                {locale === 'de' ? 'Hero Score Verlauf' : 'Hero Score Progression'}
               </h3>
               <span className="rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black text-amber-300">
                 HERO SCORE
@@ -179,8 +179,8 @@ export default function ScoreTimelineChart({
             </div>
             <p className="text-xs text-zinc-400">
               {locale === 'de'
-                ? 'Minütliche Hero Score-Berechnung (0–100) über das gesamte Spiel hinweg basierend auf Combat, Farming, KDA & Objectives'
-                : 'Hero Score (0–100) tracked across the entire game based on combat, farming, KDA & objectives'}
+                ? 'Minütliche Hero Score-Berechnung über das gesamte Spiel hinweg basierend auf Combat, Farming, KDA & Objectives'
+                : 'Hero Score tracked across the entire game based on combat, farming, KDA & objectives'}
             </p>
           </div>
         </div>
