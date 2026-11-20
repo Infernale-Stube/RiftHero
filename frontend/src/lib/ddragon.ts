@@ -1,8 +1,10 @@
 let currentDDragonVersion = '16.23.1';
+let cachedVersionsList: string[] = [];
 let lastVersionFetchTime = 0;
 const VERSION_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 const STORAGE_KEY = 'rifthero_ddragon_version';
 const STORAGE_TIME_KEY = 'rifthero_ddragon_version_time';
+const VERSIONS_LIST_KEY = 'rifthero_ddragon_versions_list';
 
 /**
  * Returns the currently active DDragon game version.
@@ -19,6 +21,53 @@ export function getDDragonVersion(): string {
     } catch {}
   }
   return currentDDragonVersion;
+}
+
+export function getDDragonVersionsList(): string[] {
+  if (cachedVersionsList.length === 0 && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(VERSIONS_LIST_KEY);
+      if (stored) {
+        cachedVersionsList = JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return cachedVersionsList;
+}
+
+export function getMajorMinorPatch(fullVersion?: string): string {
+  const v = fullVersion || getDDragonVersion();
+  const parts = v.split('.');
+  return parts.length >= 2 ? `${parts[0]}.${parts[1]}` : v;
+}
+
+/**
+ * Returns the previous patch dynamically according to versions.json (e.g. '16.22' when latest is '16.23').
+ */
+export function getPreviousDDragonPatch(): string {
+  const list = getDDragonVersionsList();
+  if (list && list.length > 0) {
+    const patches: string[] = [];
+    for (const v of list) {
+      const p = v.split('.').slice(0, 2).join('.');
+      if (!patches.includes(p)) patches.push(p);
+    }
+    if (patches.length > 1) return patches[1];
+    if (patches.length > 0) return patches[0];
+  }
+
+  // Dynamic fallback: subtract 1 from minor version of current DDragon version
+  const current = getDDragonVersion();
+  const parts = current.split('.');
+  if (parts.length >= 2) {
+    const major = parseInt(parts[0], 10);
+    const minor = parseInt(parts[1], 10);
+    if (!isNaN(major) && !isNaN(minor) && minor > 1) {
+      return `${major}.${minor - 1}`;
+    }
+    return `${parts[0]}.${parts[1]}`;
+  }
+  return '16.22';
 }
 
 /**
@@ -67,6 +116,12 @@ export async function updateDDragonVersion(force = false): Promise<string> {
     if (res.ok) {
       const versions = (await res.json()) as string[];
       if (Array.isArray(versions) && versions.length > 0 && versions[0]) {
+        cachedVersionsList = versions;
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(VERSIONS_LIST_KEY, JSON.stringify(versions));
+          } catch {}
+        }
         const latest = versions[0];
         setDDragonVersion(latest);
         lastVersionFetchTime = now;

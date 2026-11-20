@@ -1,4 +1,5 @@
 let cachedVersion = '16.23.1';
+let cachedVersions: string[] = [];
 let lastFetchedVersion = 0;
 const VERSION_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
@@ -17,6 +18,7 @@ export async function getLatestDDragonVersion(force = false): Promise<string> {
     if (res.ok) {
       const versions = (await res.json()) as string[];
       if (Array.isArray(versions) && versions.length > 0 && versions[0]) {
+        cachedVersions = versions;
         const latest = versions[0];
         if (latest !== cachedVersion) {
           console.log(`[DDragon] Active game version updated: ${cachedVersion} -> ${latest}`);
@@ -32,6 +34,43 @@ export async function getLatestDDragonVersion(force = false): Promise<string> {
   }
 
   return cachedVersion;
+}
+
+export async function getDDragonVersionsList(force = false): Promise<string[]> {
+  if (!force && cachedVersions.length > 0 && Date.now() - lastFetchedVersion < VERSION_CACHE_TTL) {
+    return cachedVersions;
+  }
+  await getLatestDDragonVersion(force);
+  return cachedVersions;
+}
+
+export async function getDDragonPatches(): Promise<string[]> {
+  const versions = await getDDragonVersionsList();
+  const patches: string[] = [];
+  for (const v of versions) {
+    const parts = v.split('.');
+    if (parts.length >= 2) {
+      const p = `${parts[0]}.${parts[1]}`;
+      if (!patches.includes(p)) patches.push(p);
+    }
+  }
+  return patches;
+}
+
+/**
+ * Returns the previous patch from versions.json (e.g. '16.22' when latest is '16.23').
+ */
+export async function getPreviousPatch(): Promise<string> {
+  const patches = await getDDragonPatches();
+  return patches[1] || patches[0] || '16.22';
+}
+
+/**
+ * Returns the latest patch from versions.json (e.g. '16.23').
+ */
+export async function getLatestPatch(): Promise<string> {
+  const patches = await getDDragonPatches();
+  return patches[0] || '16.23';
 }
 
 /**

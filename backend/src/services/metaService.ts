@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { getChampionNameById } from '../riot/ddragon';
+import { getChampionNameById, getPreviousPatch } from '../riot/ddragon';
 
 export interface MetaChampion {
   name: string;
@@ -49,11 +49,11 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
  * Returns top meta picks per role dynamically aggregated from database matches.
  */
 export async function getMetaChampions(): Promise<{ patch: string; champions: Record<string, MetaChampion[]> }> {
-  const PREVIOUS_PATCH = '14.23';
+  const patch = await getPreviousPatch();
   const now = Date.now();
 
-  if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL_MS && cachedMeta.patch === PREVIOUS_PATCH) {
-    return { patch: PREVIOUS_PATCH, champions: cachedMeta.data };
+  if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL_MS && cachedMeta.patch === patch) {
+    return { patch, champions: cachedMeta.data };
   }
 
   const result: Record<string, MetaChampion[]> = {
@@ -182,10 +182,10 @@ export async function getMetaChampions(): Promise<{ patch: string; champions: Re
   cachedMeta = {
     data: result,
     timestamp: now,
-    patch: PREVIOUS_PATCH,
+    patch,
   };
 
-  return { patch: PREVIOUS_PATCH, champions: result };
+  return { patch, champions: result };
 }
 
 /**
@@ -196,13 +196,13 @@ export async function getFullTierList(roleFilter?: string): Promise<{
   totalMatches: number;
   champions: TierListChampion[];
 }> {
-  const PREVIOUS_PATCH = '14.23';
+  const patch = await getPreviousPatch();
   const now = Date.now();
 
   let allChampions: TierListChampion[] = [];
   let totalMatches = 0;
 
-  if (cachedTierList && now - cachedTierList.timestamp < CACHE_TTL_MS && cachedTierList.patch === PREVIOUS_PATCH) {
+  if (cachedTierList && now - cachedTierList.timestamp < CACHE_TTL_MS && cachedTierList.patch === patch) {
     allChampions = cachedTierList.data;
     totalMatches = cachedTierList.totalMatches;
   } else {
@@ -322,7 +322,7 @@ export async function getFullTierList(roleFilter?: string): Promise<{
           data: allChampions,
           totalMatches,
           timestamp: now,
-          patch: PREVIOUS_PATCH,
+          patch,
         };
       }
     } catch (err) {
@@ -341,8 +341,15 @@ export async function getFullTierList(roleFilter?: string): Promise<{
     });
   }
 
+  cachedTierList = {
+    data: allChampions,
+    totalMatches,
+    timestamp: now,
+    patch,
+  };
+
   return {
-    patch: PREVIOUS_PATCH,
+    patch,
     totalMatches,
     champions: filtered,
   };

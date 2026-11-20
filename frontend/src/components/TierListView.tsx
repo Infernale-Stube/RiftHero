@@ -20,6 +20,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import {
   getPositionIconUrl,
   getChampionIconUrl,
+  getPreviousDDragonPatch,
   PositionKey,
 } from '@/lib/ddragon';
 import { fetchTierList, TierListChampionItem, TierListResponse } from '@/lib/api';
@@ -148,7 +149,7 @@ export default function TierListView() {
     };
   }, [rawChampions]);
 
-  const patchVersion = tierData?.patch || '14.23';
+  const patchVersion = tierData?.patch || getPreviousDDragonPatch();
   const totalMatches = tierData?.totalMatches ?? 0;
 
   return (
@@ -161,7 +162,7 @@ export default function TierListView() {
             <span>Patch {patchVersion} Meta Analysis</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-            {t('tierList.pageTitle') || `Patch ${patchVersion} Champion Tier List`}
+            {t('tierList.pageTitle', { patch: patchVersion })}
           </h1>
           <p className="mt-2 text-sm sm:text-base text-zinc-400 max-w-2xl">
             {t('tierList.pageSubtitle') ||

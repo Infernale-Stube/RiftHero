@@ -20,6 +20,7 @@ import {
   getPositionIconUrl,
   getChampionIconUrl,
   getDDragonVersion,
+  getPreviousDDragonPatch,
   PositionKey,
 } from '@/lib/ddragon';
 import { fetchMetaChampions } from '@/lib/api';
@@ -45,6 +46,7 @@ const ROLES: Array<{ key: PositionKey; label: string }> = [
 export default function HomeView() {
   const { t, locale } = useTranslation();
   const [activeRole, setActiveRole] = useState<PositionKey>('MID');
+  const [patch, setPatch] = useState<string>(() => getPreviousDDragonPatch());
   const [metaByRole, setMetaByRole] = useState<Record<string, MetaChampion[]>>({
     TOP: [],
     JUNGLE: [],
@@ -60,6 +62,9 @@ export default function HomeView() {
       .then((res) => {
         if (res && res.champions) {
           setMetaByRole(res.champions as any);
+        }
+        if (res && res.patch) {
+          setPatch(res.patch);
         }
       })
       .finally(() => {
@@ -185,7 +190,7 @@ export default function HomeView() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
               <Flame className="h-4 w-4 text-amber-400" />
-              <span>{t('home.metaTitle')}</span>
+              <span>{t('home.metaTitle', { patch: patch || getPreviousDDragonPatch() })}</span>
             </div>
             <p className="text-sm text-zinc-400">
               {t('home.metaSubtitle')}
