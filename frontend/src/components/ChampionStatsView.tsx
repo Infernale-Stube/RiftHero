@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Search, Trophy, Swords, Zap, Shield, Coins } from 'lucide-react';
 import { ChampionStatSummary } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { getChampionIconUrl } from '@/lib/ddragon';
 
 interface ChampionStatsViewProps {
   stats: ChampionStatSummary[];
@@ -153,7 +154,7 @@ export default function ChampionStatsView({
             <>
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10">
                 <Image
-                  src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${mostPlayed.championName}.png`}
+                  src={getChampionIconUrl(mostPlayed.championName)}
                   alt={mostPlayed.championName}
                   fill
                   className="object-cover"
@@ -297,7 +298,7 @@ export default function ChampionStatsView({
                       <div className="flex items-center gap-3">
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#060809]">
                           <Image
-                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.championName}.png`}
+                            src={getChampionIconUrl(champ.championName)}
                             alt={champ.championName}
                             fill
                             className="object-cover"

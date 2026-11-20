@@ -1,4 +1,84 @@
-const DDRAGON_VERSION = '14.23.1';
+let currentDDragonVersion = '16.23.1';
+let lastVersionFetchTime = 0;
+const VERSION_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const STORAGE_KEY = 'rifthero_ddragon_version';
+const STORAGE_TIME_KEY = 'rifthero_ddragon_version_time';
+
+/**
+ * Returns the currently active DDragon game version.
+ */
+export function getDDragonVersion(): string {
+  // If in browser and cached in localStorage, restore if newer
+  if (typeof window !== 'undefined' && lastVersionFetchTime === 0) {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        currentDDragonVersion = stored;
+        lastVersionFetchTime = Number(localStorage.getItem(STORAGE_TIME_KEY) || '0');
+      }
+    } catch {}
+  }
+  return currentDDragonVersion;
+}
+
+/**
+ * Update the active DDragon game version.
+ */
+export function setDDragonVersion(version: string) {
+  if (version && version !== currentDDragonVersion) {
+    currentDDragonVersion = version;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, version);
+        localStorage.setItem(STORAGE_TIME_KEY, Date.now().toString());
+        window.dispatchEvent(new CustomEvent('rifthero:ddragon-version', { detail: version }));
+      } catch {}
+    }
+  }
+}
+
+/**
+ * Fetches the latest game version directly from Riot's DDragon API:
+ * https://ddragon.leagueoflegends.com/api/versions.json
+ */
+export async function updateDDragonVersion(force = false): Promise<string> {
+  const now = Date.now();
+  if (!force && now - lastVersionFetchTime < VERSION_CACHE_TTL && currentDDragonVersion) {
+    return currentDDragonVersion;
+  }
+
+  // Check localStorage if not forced
+  if (typeof window !== 'undefined' && !force) {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const storedTime = Number(localStorage.getItem(STORAGE_TIME_KEY) || '0');
+      if (stored && now - storedTime < VERSION_CACHE_TTL) {
+        currentDDragonVersion = stored;
+        lastVersionFetchTime = storedTime;
+        return stored;
+      }
+    } catch {}
+  }
+
+  try {
+    const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json', {
+      cache: 'no-cache',
+    });
+    if (res.ok) {
+      const versions = (await res.json()) as string[];
+      if (Array.isArray(versions) && versions.length > 0 && versions[0]) {
+        const latest = versions[0];
+        setDDragonVersion(latest);
+        lastVersionFetchTime = now;
+        return latest;
+      }
+    }
+  } catch (err) {
+    console.warn('[DDragon] Failed to fetch latest game version, keeping:', currentDDragonVersion);
+  }
+
+  return currentDDragonVersion;
+}
 
 export function normalizeChampionNameForDDragon(championName?: string | null): string {
   if (!championName) return 'Aatrox';
@@ -19,14 +99,16 @@ export function normalizeChampionNameForDDragon(championName?: string | null): s
   return mapping[championName] || championName;
 }
 
-export function getProfileIconUrl(iconId: number, version = DDRAGON_VERSION): string {
-  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${iconId}.png`;
+export function getProfileIconUrl(iconId: number, version?: string): string {
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/profileicon/${iconId}.png`;
 }
 
-export function getChampionIconUrl(championName: string, version = DDRAGON_VERSION): string {
+export function getChampionIconUrl(championName: string, version?: string): string {
   if (!championName) return '';
   const clean = normalizeChampionNameForDDragon(championName);
-  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${clean}.png`;
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${clean}.png`;
 }
 
 export function getChampionIconByIdUrl(championId: number): string {
@@ -44,9 +126,10 @@ export function getChampionLoadingUrl(championName?: string | null): string {
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_0.jpg`;
 }
 
-export function getItemIconUrl(itemId: number, version = DDRAGON_VERSION): string {
+export function getItemIconUrl(itemId: number, version?: string): string {
   if (!itemId || itemId === 0) return '';
-  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${itemId}.png`;
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${itemId}.png`;
 }
 
 export const SPELL_MAP: Record<number, string> = {
@@ -62,9 +145,10 @@ export const SPELL_MAP: Record<number, string> = {
   32: 'SummonerSnowball',
 };
 
-export function getSpellIconUrl(spellId: number, version = DDRAGON_VERSION): string {
+export function getSpellIconUrl(spellId: number, version?: string): string {
   const key = SPELL_MAP[spellId] || 'SummonerFlash';
-  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${key}.png`;
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${key}.png`;
 }
 
 // Major Keystone Rune Icon paths

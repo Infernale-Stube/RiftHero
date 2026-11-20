@@ -7,6 +7,7 @@ import { summonerRoutes } from './routes/summoners';
 import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
 import { disconnectPrisma } from '../db/prisma';
+import { initDDragonScheduler } from '../riot/ddragon';
 
 // Polyfill BigInt JSON serialization for Fastify / Prisma responses
 (BigInt.prototype as any).toJSON = function () {
@@ -57,6 +58,9 @@ async function start() {
       host: '0.0.0.0',
     });
     console.log(`🚀 RiftHero Fastify REST API running at: ${address}`);
+
+    // Start periodic League of Legends DDragon version checker (every 30m)
+    initDDragonScheduler();
 
     const shutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Shutting down API server gracefully...`);

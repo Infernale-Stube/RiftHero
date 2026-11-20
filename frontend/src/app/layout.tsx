@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import DDragonVersionSync from '@/components/DDragonVersionSync';
 import { LanguageProvider } from '@/i18n/LanguageContext';
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default function RootLayout({
         </div>
 
         <LanguageProvider>
+          <DDragonVersionSync />
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />

@@ -1,13 +1,14 @@
-let cachedVersion = '14.23.1';
+let cachedVersion = '16.23.1';
 let lastFetchedVersion = 0;
-const VERSION_CACHE_TTL = 3600 * 1000; // 1 hour
+const VERSION_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 const championIdMap = new Map<number, string>();
 let championsFetched = false;
+let schedulerInterval: NodeJS.Timeout | null = null;
 
-export async function getLatestDDragonVersion(): Promise<string> {
+export async function getLatestDDragonVersion(force = false): Promise<string> {
   const now = Date.now();
-  if (now - lastFetchedVersion < VERSION_CACHE_TTL && cachedVersion) {
+  if (!force && now - lastFetchedVersion < VERSION_CACHE_TTL && cachedVersion) {
     return cachedVersion;
   }
 
@@ -15,8 +16,14 @@ export async function getLatestDDragonVersion(): Promise<string> {
     const res = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
     if (res.ok) {
       const versions = (await res.json()) as string[];
-      if (Array.isArray(versions) && versions.length > 0) {
-        cachedVersion = versions[0];
+      if (Array.isArray(versions) && versions.length > 0 && versions[0]) {
+        const latest = versions[0];
+        if (latest !== cachedVersion) {
+          console.log(`[DDragon] Active game version updated: ${cachedVersion} -> ${latest}`);
+          cachedVersion = latest;
+          championsFetched = false;
+          championIdMap.clear();
+        }
         lastFetchedVersion = now;
       }
     }
@@ -25,6 +32,33 @@ export async function getLatestDDragonVersion(): Promise<string> {
   }
 
   return cachedVersion;
+}
+
+/**
+ * Periodically polls https://ddragon.leagueoflegends.com/api/versions.json
+ * to ensure all image URLs (champions, items, spells, icons) and champion maps use the latest game patch.
+ */
+export function initDDragonScheduler(intervalMs = 30 * 60 * 1000): void {
+  // Initial background update
+  getLatestDDragonVersion(true)
+    .then((v) => {
+      console.log(`[DDragon] Periodic version checker initialized. Active version: ${v}`);
+      loadChampionIdMap().catch(() => {});
+    })
+    .catch((err) => {
+      console.warn('[DDragon] Initial version check error:', err);
+    });
+
+  if (!schedulerInterval) {
+    schedulerInterval = setInterval(async () => {
+      try {
+        await getLatestDDragonVersion(true);
+      } catch (err) {
+        console.warn('[DDragon] Scheduled version check failed:', err);
+      }
+    }, intervalMs);
+    schedulerInterval.unref();
+  }
 }
 
 export async function loadChampionIdMap(): Promise<Map<number, string>> {
