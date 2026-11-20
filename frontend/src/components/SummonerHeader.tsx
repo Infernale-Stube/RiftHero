@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Radio, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
-import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
+import RankBadge, { TIER_COLORS } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -86,6 +86,24 @@ export default function SummonerHeader({
   const formattedTag = `${summoner.gameName}-${summoner.tagLine}`;
   const basePath = `/${locale}/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
 
+  const rankCards = [
+    {
+      id: 'solo',
+      title: 'Solo/Duo',
+      rank: soloRank,
+    },
+    {
+      id: 'flex',
+      title: 'Flex',
+      rank: flexRank,
+    },
+    {
+      id: 'ranked5s',
+      title: 'Ranked 5s',
+      rank: ranked5s,
+    },
+  ];
+
   const getRegionName = (reg: string) => {
     switch (reg.toLowerCase()) {
       case 'euw':
@@ -136,8 +154,8 @@ export default function SummonerHeader({
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-          {/* Left Block: Avatar + Name + Pills + Ranks */}
-          <div className="flex items-start gap-5">
+          {/* Left Block: Avatar + Name + Pills */}
+          <div className="flex items-center gap-5">
             {/* Circular Avatar */}
             <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 shadow-xl">
               <Image
@@ -151,7 +169,7 @@ export default function SummonerHeader({
             </div>
 
             {/* Info Block */}
-            <div className="flex flex-col">
+            <div className="flex flex-col justify-center">
               {/* Name & Tag */}
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-baseline">
                 <span>{summoner.gameName}</span>
@@ -167,83 +185,6 @@ export default function SummonerHeader({
                   <Globe className="h-3 w-3 text-zinc-400" />
                   <span>{getRegionName(summoner.region)}</span>
                 </span>
-              </div>
-
-              {/* Mini Rank Rows below pills */}
-              <div className="mt-3 flex flex-col gap-1.5 text-xs">
-                {soloRank ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-4 w-4 shrink-0">
-                      <Image
-                        src={getRankEmblemUrl(soloRank.tier)}
-                        alt={soloRank.tier}
-                        width={16}
-                        height={16}
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
-                    <span className="text-zinc-400 font-medium">Solo/Duo</span>
-                    <span className={`font-bold uppercase ${TIER_COLORS[soloRank.tier.toUpperCase()]?.text || 'text-sky-400'}`}>
-                      {soloRank.tier} {soloRank.rank} · {soloRank.leaguePoints} LP
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    <span className="text-zinc-500 font-medium">Solo/Duo</span>
-                    <span className="font-semibold">{t('summoner.unranked')}</span>
-                  </div>
-                )}
-
-                {/* 2. Flex */}
-                {flexRank ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-4 w-4 shrink-0">
-                      <Image
-                        src={getRankEmblemUrl(flexRank.tier)}
-                        alt={flexRank.tier}
-                        width={16}
-                        height={16}
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
-                    <span className="text-zinc-400 font-medium">Flex</span>
-                    <span className={`font-bold uppercase ${TIER_COLORS[flexRank.tier.toUpperCase()]?.text || 'text-zinc-300'}`}>
-                      {flexRank.tier} {flexRank.rank} · {flexRank.leaguePoints} LP
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    <span className="text-zinc-500 font-medium">Flex</span>
-                    <span className="font-semibold">{t('summoner.unranked')}</span>
-                  </div>
-                )}
-
-                {/* 3. Ranked 5s */}
-                {ranked5s ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative h-4 w-4 shrink-0">
-                      <Image
-                        src={getRankEmblemUrl(ranked5s.tier)}
-                        alt={ranked5s.tier}
-                        width={16}
-                        height={16}
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
-                    <span className="text-zinc-400 font-medium">Ranked 5s</span>
-                    <span className={`font-bold uppercase ${TIER_COLORS[ranked5s.tier.toUpperCase()]?.text || 'text-amber-300'}`}>
-                      {ranked5s.tier} {ranked5s.rank} · {ranked5s.leaguePoints} LP
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    <span className="text-zinc-500 font-medium">Ranked 5s</span>
-                    <span className="font-semibold">{t('summoner.unranked')}</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -286,6 +227,63 @@ export default function SummonerHeader({
               </div>
             ) : null}
           </div>
+        </div>
+
+        {/* Ranks Showcase Row: Side-by-side, larger emblems and stats */}
+        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {rankCards.map((rc) => {
+            const hasRank = !!rc.rank;
+            const theme = hasRank
+              ? TIER_COLORS[rc.rank!.tier.toUpperCase()] || TIER_COLORS.UNRANKED
+              : TIER_COLORS.UNRANKED;
+
+            return (
+              <div
+                key={rc.id}
+                className="group relative flex items-center gap-3.5 rounded-xl border border-white/[0.07] bg-[#090d12]/75 hover:bg-[#090d12]/90 hover:border-white/[0.14] px-4 py-3 backdrop-blur-md transition-all duration-200 shadow-lg"
+              >
+                <RankBadge
+                  tier={rc.rank?.tier || 'UNRANKED'}
+                  size="md"
+                  showGlow={hasRank}
+                  className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 transition-transform duration-200 group-hover:scale-105"
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                    {rc.title}
+                  </span>
+                  {hasRank ? (
+                    <>
+                      <div className="flex items-baseline gap-1.5 leading-tight mt-0.5 truncate">
+                        <span className={`text-sm sm:text-base font-black uppercase tracking-tight ${theme.text} truncate`}>
+                          {rc.rank!.tier} {rc.rank!.rank}
+                        </span>
+                        <span className="text-zinc-500 font-bold text-xs">·</span>
+                        <span className="text-xs font-black text-sky-400 shrink-0">
+                          {rc.rank!.leaguePoints} LP
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium">
+                        <span className="font-bold text-emerald-400">{rc.rank!.wins}W</span>
+                        <span className="font-bold text-rose-400">{rc.rank!.losses}L</span>
+                        <span className="text-zinc-500">•</span>
+                        <span>{rc.rank!.winrate}% WR</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-bold text-zinc-400 mt-0.5">
+                        {t('summoner.unranked')}
+                      </span>
+                      <span className="text-[11px] text-zinc-500 mt-0.5">
+                        {t('summoner.noGamesRecorded')}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}
