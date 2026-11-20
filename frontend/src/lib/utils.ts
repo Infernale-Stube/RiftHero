@@ -66,6 +66,24 @@ export interface TeamAverageRank {
   formatted: string;
   count: number;
   totalPlayers: number;
+  avgWinrate?: number | null;
+  avgChampWinrate?: number | null;
+}
+
+export function calculateTeamAverageWinrate(
+  participants: Array<{
+    rank?: {
+      winrate?: number;
+      wins?: number;
+      losses?: number;
+    } | null;
+  }>
+): number | null {
+  const players = participants.filter(
+    (p) => p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0)
+  );
+  if (players.length === 0) return null;
+  return Math.round(players.reduce((sum, p) => sum + (p.rank?.winrate || 0), 0) / players.length);
 }
 
 export function calculateTeamAverageRank(
@@ -74,12 +92,28 @@ export function calculateTeamAverageRank(
       tier: string;
       rank?: string;
       leaguePoints?: number;
+      winrate?: number;
+      wins?: number;
+      losses?: number;
+    } | null;
+    championStats?: {
+      winrate?: number;
+      games?: number;
     } | null;
   }>
 ): TeamAverageRank | null {
   const pointsList: number[] = [];
+  const winrateList: number[] = [];
+  const champWinrateList: number[] = [];
 
   for (const p of participants) {
+    if (p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0)) {
+      winrateList.push(p.rank.winrate);
+    }
+    if (p.championStats && typeof p.championStats.winrate === 'number' && (p.championStats.games || 0) > 0) {
+      champWinrateList.push(p.championStats.winrate);
+    }
+
     if (!p.rank || !p.rank.tier) continue;
     const tier = p.rank.tier.toUpperCase();
     if (tier === 'UNRANKED') continue;
@@ -96,6 +130,14 @@ export function calculateTeamAverageRank(
     }
   }
 
+  const avgWinrate = winrateList.length > 0
+    ? Math.round(winrateList.reduce((a, b) => a + b, 0) / winrateList.length)
+    : null;
+
+  const avgChampWinrate = champWinrateList.length > 0
+    ? Math.round(champWinrateList.reduce((a, b) => a + b, 0) / champWinrateList.length)
+    : null;
+
   if (pointsList.length === 0) {
     return null;
   }
@@ -110,6 +152,8 @@ export function calculateTeamAverageRank(
       formatted: `Challenger (${lp} LP)`,
       count: pointsList.length,
       totalPlayers: participants.length,
+      avgWinrate,
+      avgChampWinrate,
     };
   }
   if (avgPoints >= 3200) {
@@ -120,6 +164,8 @@ export function calculateTeamAverageRank(
       formatted: `Grandmaster (${lp} LP)`,
       count: pointsList.length,
       totalPlayers: participants.length,
+      avgWinrate,
+      avgChampWinrate,
     };
   }
   if (avgPoints >= 2800) {
@@ -130,6 +176,8 @@ export function calculateTeamAverageRank(
       formatted: `Master (${lp} LP)`,
       count: pointsList.length,
       totalPlayers: participants.length,
+      avgWinrate,
+      avgChampWinrate,
     };
   }
 
@@ -158,6 +206,8 @@ export function calculateTeamAverageRank(
         formatted: `${formattedTier} ${division} (${lp} LP)`,
         count: pointsList.length,
         totalPlayers: participants.length,
+        avgWinrate,
+        avgChampWinrate,
       };
     }
   }
@@ -169,5 +219,7 @@ export function calculateTeamAverageRank(
     formatted: 'Iron IV (0 LP)',
     count: pointsList.length,
     totalPlayers: participants.length,
+    avgWinrate,
+    avgChampWinrate,
   };
 }

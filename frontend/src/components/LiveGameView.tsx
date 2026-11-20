@@ -103,36 +103,54 @@ export default function LiveGameView({
               <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
             </div>
 
-            {/* Average Rank Badge */}
+            {/* Average Rank & Winrate Badge */}
             {teamAvg ? (
               <div
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 border shadow-sm backdrop-blur-sm ${
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1 border shadow-sm backdrop-blur-sm ${
                   isBlue
                     ? 'bg-blue-950/80 border-blue-500/40 text-blue-200'
                     : 'bg-rose-950/80 border-rose-500/40 text-rose-200'
                 }`}
-                title={`Team Average: ${teamAvg.formatted} (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
+                title={`Team Average: ${teamAvg.formatted} · Winrate: ${teamAvg.avgWinrate ?? '—'}% (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
               >
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                  {t('live.avgRank')}:
-                </span>
-                <div className="relative h-4 w-4 shrink-0">
-                  <Image
-                    src={getRankEmblemUrl(teamAvg.tier)}
-                    alt={teamAvg.tier}
-                    width={18}
-                    height={18}
-                    className="h-full w-full object-contain filter drop-shadow"
-                    unoptimized
-                  />
-                </div>
-                <span className={`text-xs font-black uppercase tracking-wide ${TIER_COLORS[teamAvg.tier]?.text || 'text-white'}`}>
-                  {teamAvg.tier} {teamAvg.division || ''}
-                </span>
-                {teamAvg.lp !== undefined && (
-                  <span className="text-[10px] font-semibold text-zinc-400">
-                    {teamAvg.lp} LP
+                {/* Rank Section */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                    {t('live.avgRank')}:
                   </span>
+                  <div className="relative h-4 w-4 shrink-0">
+                    <Image
+                      src={getRankEmblemUrl(teamAvg.tier)}
+                      alt={teamAvg.tier}
+                      width={18}
+                      height={18}
+                      className="h-full w-full object-contain filter drop-shadow"
+                      unoptimized
+                    />
+                  </div>
+                  <span className={`text-xs font-black uppercase tracking-wide ${TIER_COLORS[teamAvg.tier]?.text || 'text-white'}`}>
+                    {teamAvg.tier} {teamAvg.division || ''}
+                  </span>
+                  {teamAvg.lp !== undefined && (
+                    <span className="text-[10px] font-semibold text-zinc-400">
+                      {teamAvg.lp} LP
+                    </span>
+                  )}
+                </div>
+
+                {/* Average Win Rate Section */}
+                {teamAvg.avgWinrate !== null && teamAvg.avgWinrate !== undefined && (
+                  <>
+                    <span className="text-white/20 font-bold">•</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                        {t('live.avgWinrate')}:
+                      </span>
+                      <span className={`text-xs font-black ${getWinrateColor(teamAvg.avgWinrate)}`}>
+                        {teamAvg.avgWinrate}%
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
