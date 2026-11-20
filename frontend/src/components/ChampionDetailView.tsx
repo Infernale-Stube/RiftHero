@@ -356,6 +356,52 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     scrollThumbnailIntoView(next);
   };
 
+  const cleanKey = (data?.id || data?.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const metaItem = (championMetadataRaw as Record<string, any>)[cleanKey];
+
+  const rawRelDate = data?.releaseDate || metaItem?.d || data?.storeData?.releaseDate || '2011-12-14';
+  const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
+  const beCost = (metaItem?.be ?? data?.storeData?.ip ?? 4800).toLocaleString(
+    locale.startsWith('en') ? 'en-US' : 'de-DE'
+  );
+  const rpCost = (metaItem?.rp ?? data?.storeData?.rp ?? 880).toLocaleString(
+    locale.startsWith('en') ? 'en-US' : 'de-DE'
+  );
+  const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
+
+  const releaseYear = useMemo(() => {
+    if (rawRelDate) {
+      const y = parseInt(rawRelDate.slice(0, 4), 10);
+      if (!isNaN(y)) return y;
+    }
+    return metaItem?.y || 2011;
+  }, [rawRelDate, metaItem]);
+
+  const sameYearChampions = useMemo(() => {
+    if (!releaseYear) return [];
+    const currentKey = (data?.id || data?.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const metaRecords = championMetadataRaw as Record<string, any>;
+    return Object.values(metaRecords)
+      .filter(
+        (c) =>
+          c.y === releaseYear &&
+          c.key.toLowerCase().replace(/[^a-z0-9]/g, '') !== currentKey
+      )
+      .map((c) => {
+        const p =
+          (championPositionsMap as any)[c.key] ||
+          (championPositionsMap as any)[c.name] ||
+          {};
+        return {
+          id: c.key,
+          name: c.name,
+          title: p.title || '',
+          releaseDate: c.d,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [releaseYear, data?.id, data?.key, slug]);
+
   if (isLoading) {
     return (
       <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-12 sm:px-6 lg:px-8 animate-pulse space-y-6">
@@ -391,52 +437,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       </div>
     );
   }
-
-  const cleanKey = (data.id || data.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const metaItem = (championMetadataRaw as Record<string, any>)[cleanKey];
-
-  const rawRelDate = data.releaseDate || metaItem?.d || data.storeData?.releaseDate || '2011-12-14';
-  const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
-  const beCost = (metaItem?.be ?? data.storeData?.ip ?? 4800).toLocaleString(
-    locale.startsWith('en') ? 'en-US' : 'de-DE'
-  );
-  const rpCost = (metaItem?.rp ?? data.storeData?.rp ?? 880).toLocaleString(
-    locale.startsWith('en') ? 'en-US' : 'de-DE'
-  );
-  const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
-
-  const releaseYear = useMemo(() => {
-    if (rawRelDate) {
-      const y = parseInt(rawRelDate.slice(0, 4), 10);
-      if (!isNaN(y)) return y;
-    }
-    return metaItem?.y || 2011;
-  }, [rawRelDate, metaItem]);
-
-  const sameYearChampions = useMemo(() => {
-    if (!releaseYear) return [];
-    const currentKey = (data.id || data.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
-    const metaRecords = championMetadataRaw as Record<string, any>;
-    return Object.values(metaRecords)
-      .filter(
-        (c) =>
-          c.y === releaseYear &&
-          c.key.toLowerCase().replace(/[^a-z0-9]/g, '') !== currentKey
-      )
-      .map((c) => {
-        const p =
-          (championPositionsMap as any)[c.key] ||
-          (championPositionsMap as any)[c.name] ||
-          {};
-        return {
-          id: c.key,
-          name: c.name,
-          title: p.title || '',
-          releaseDate: c.d,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [releaseYear, data, slug]);
 
   // =========================================================================
   // SUB-RENDER: PROFILE HEADER (NO SKINS BADGE, NO LEADERBOARD BADGE)
