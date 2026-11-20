@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { getChampionNameById, getPreviousPatch } from '../riot/ddragon';
+import { getChampionNameById, getDDragonPatches, getPreviousPatch } from '../riot/ddragon';
 
 export interface MetaChampion {
   name: string;
@@ -43,13 +43,94 @@ const POSITION_MAP: Record<string, 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'>
 
 let cachedMeta: { data: Record<string, MetaChampion[]>; timestamp: number; patch: string } | null = null;
 let cachedTierList: { data: TierListChampion[]; totalMatches: number; timestamp: number; patch: string } | null = null;
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Minimum analyzed ranked matches required on the new patch before automatically
+ * switching from the previous patch to the new patch.
+ */
+export const MIN_NEW_PATCH_MATCHES = 30;
+
+/**
+ * Dynamically resolves which patch to use for meta & tier list analytics:
+ * - If the latest patch has enough matches (>= MIN_NEW_PATCH_MATCHES), switch to the latest patch.
+ * - If there are not enough matches on the new patch, stay on the previous patch from versions.json.
+ * - If neither has data, fallback to any available matches in the database.
+ */
+export async function resolveActiveMetaPatch(): Promise<{
+  patch: string;
+  isNewPatch: boolean;
+  matchCount: number;
+}> {
+  const patches = await getDDragonPatches();
+  const latestPatch = patches[0] || '16.23';
+  const previousPatch = patches[1] || '16.22';
+
+  try {
+    // 1. Check match count on the latest patch
+    const latestCount = await prisma.match.count({
+      where: {
+        queueId: { in: [420, 440] },
+        gameVersion: { startsWith: latestPatch },
+      },
+    });
+
+    if (latestCount >= MIN_NEW_PATCH_MATCHES) {
+      // Sufficient data collected -> automatically switch to the new patch!
+      return { patch: latestPatch, isNewPatch: true, matchCount: latestCount };
+    }
+
+    // 2. Check match count on the previous patch
+    const prevCount = await prisma.match.count({
+      where: {
+        queueId: { in: [420, 440] },
+        gameVersion: { startsWith: previousPatch },
+      },
+    });
+
+    if (prevCount > 0) {
+      // Too few matches on new patch, but previous patch has data -> serve previous patch!
+      return { patch: previousPatch, isNewPatch: false, matchCount: prevCount };
+    }
+
+    // 3. If latest has some matches (even if < 30) but previous has none
+    if (latestCount > 0) {
+      return { patch: latestPatch, isNewPatch: true, matchCount: latestCount };
+    }
+
+    // 4. Fallback: check most recent ranked match in DB if neither latest nor previous matches exist
+    const recentMatch = await prisma.match.findFirst({
+      where: { queueId: { in: [420, 440] } },
+      select: { gameVersion: true },
+      orderBy: { gameCreation: 'desc' },
+    });
+
+    if (recentMatch?.gameVersion) {
+      const parts = recentMatch.gameVersion.split('.');
+      if (parts.length >= 2) {
+        const fallbackPatch = `${parts[0]}.${parts[1]}`;
+        const fbCount = await prisma.match.count({
+          where: {
+            queueId: { in: [420, 440] },
+            gameVersion: { startsWith: fallbackPatch },
+          },
+        });
+        return { patch: fallbackPatch, isNewPatch: false, matchCount: fbCount };
+      }
+    }
+  } catch (err) {
+    console.warn('[MetaService] Error determining active meta patch:', (err as Error).message);
+  }
+
+  // Fallback when DB has no matches or is unreachable
+  return { patch: previousPatch, isNewPatch: false, matchCount: 0 };
+}
 
 /**
  * Returns top meta picks per role dynamically aggregated from database matches.
  */
 export async function getMetaChampions(): Promise<{ patch: string; champions: Record<string, MetaChampion[]> }> {
-  const patch = await getPreviousPatch();
+  const { patch } = await resolveActiveMetaPatch();
   const now = Date.now();
 
   if (cachedMeta && now - cachedMeta.timestamp < CACHE_TTL_MS && cachedMeta.patch === patch) {
@@ -65,10 +146,15 @@ export async function getMetaChampions(): Promise<{ patch: string; champions: Re
   };
 
   try {
-    // 1. Gather ban statistics from matches
+    const patchFilter = `${patch}%`;
+
+    // 1. Gather ban statistics from matches on this patch
     const banCounts = new Map<string, number>();
     const matchesWithBans = await prisma.match.findMany({
-      where: { queueId: { in: [420, 440] } },
+      where: {
+        queueId: { in: [420, 440] },
+        gameVersion: { startsWith: patch },
+      },
       select: { teamsJson: true },
       take: 250,
       orderBy: { gameCreation: 'desc' },
@@ -93,7 +179,7 @@ export async function getMetaChampions(): Promise<{ patch: string; champions: Re
       }
     }
 
-    // 2. Query participant performance by position and champion
+    // 2. Query participant performance by position and champion for this patch
     const rawStats = await prisma.$queryRaw<
       Array<{
         teamPosition: string;
@@ -110,6 +196,7 @@ export async function getMetaChampions(): Promise<{ patch: string; champions: Re
       FROM match_participants p
       JOIN matches m ON p."matchId" = m.id
       WHERE m."queueId" IN (420, 440)
+        AND m."gameVersion" LIKE ${patchFilter}
         AND p."teamPosition" IS NOT NULL
         AND p."teamPosition" != ''
         AND p."championName" IS NOT NULL
@@ -196,7 +283,7 @@ export async function getFullTierList(roleFilter?: string): Promise<{
   totalMatches: number;
   champions: TierListChampion[];
 }> {
-  const patch = await getPreviousPatch();
+  const { patch } = await resolveActiveMetaPatch();
   const now = Date.now();
 
   let allChampions: TierListChampion[] = [];
@@ -207,10 +294,15 @@ export async function getFullTierList(roleFilter?: string): Promise<{
     totalMatches = cachedTierList.totalMatches;
   } else {
     try {
-      // 1. Gather ban counts
+      const patchFilter = `${patch}%`;
+
+      // 1. Gather ban counts for this patch
       const banCounts = new Map<string, number>();
       const matchesWithBans = await prisma.match.findMany({
-        where: { queueId: { in: [420, 440] } },
+        where: {
+          queueId: { in: [420, 440] },
+          gameVersion: { startsWith: patch },
+        },
         select: { teamsJson: true },
         take: 300,
         orderBy: { gameCreation: 'desc' },
@@ -235,7 +327,7 @@ export async function getFullTierList(roleFilter?: string): Promise<{
         }
       }
 
-      // 2. Query participant aggregations
+      // 2. Query participant aggregations for this patch
       const rawStats = await prisma.$queryRaw<
         Array<{
           teamPosition: string;
@@ -252,6 +344,7 @@ export async function getFullTierList(roleFilter?: string): Promise<{
         FROM match_participants p
         JOIN matches m ON p."matchId" = m.id
         WHERE m."queueId" IN (420, 440)
+          AND m."gameVersion" LIKE ${patchFilter}
           AND p."teamPosition" IS NOT NULL
           AND p."teamPosition" != ''
           AND p."championName" IS NOT NULL
