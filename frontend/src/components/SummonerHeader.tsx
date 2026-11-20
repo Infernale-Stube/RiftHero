@@ -131,7 +131,7 @@ export default function SummonerHeader({
         <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           {/* Left Block: Avatar + Name + Pills + Ranks */}
           <div className="flex items-start gap-5">
-            {/* Circular Avatar with Account Level Badge */}
+            {/* Circular Avatar */}
             <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 shadow-xl">
               <Image
                 src={getProfileIconUrl(summoner.profileIconId)}
@@ -141,9 +141,6 @@ export default function SummonerHeader({
                 className="h-full w-full object-cover"
                 unoptimized
               />
-              <div className="absolute bottom-0 inset-x-0 bg-black/85 py-0.5 text-center text-[10px] font-black text-amber-300 border-t border-white/10">
-                {summoner.summonerLevel}
-              </div>
             </div>
 
             {/* Info Block */}
@@ -191,7 +188,7 @@ export default function SummonerHeader({
                   </div>
                 )}
 
-                {flexRank && (
+                {flexRank ? (
                   <div className="flex items-center gap-2">
                     <div className="relative h-4 w-4 shrink-0">
                       <Image
@@ -203,10 +200,15 @@ export default function SummonerHeader({
                         unoptimized
                       />
                     </div>
-                    <span className="text-zinc-400 font-medium">Flex</span>
+                    <span className="text-zinc-400 font-medium">Ranked 5s</span>
                     <span className="font-bold text-zinc-300 uppercase">
                       {flexRank.tier} {flexRank.rank} · {flexRank.leaguePoints} LP
                     </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <span className="text-zinc-500 font-medium">Ranked 5s</span>
+                    <span className="font-semibold">{t('summoner.unranked')}</span>
                   </div>
                 )}
               </div>

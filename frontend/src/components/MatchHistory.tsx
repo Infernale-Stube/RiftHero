@@ -21,7 +21,7 @@ interface MatchHistoryProps {
 const QUEUE_TABS = [
   { id: 'all', label: 'All' },
   { id: 'ranked_solo', label: 'Solo' },
-  { id: 'ranked_flex', label: 'Flex' },
+  { id: 'ranked_flex', label: 'Ranked 5s' },
   { id: 'aram', label: 'ARAM' },
   { id: 'arena', label: 'Arena' },
 ];
@@ -42,7 +42,7 @@ export default function MatchHistory({
   const queueTabs = [
     { id: 'all', label: locale === 'de' ? 'Alle' : 'All' },
     { id: 'ranked_solo', label: 'Solo' },
-    { id: 'ranked_flex', label: 'Flex' },
+    { id: 'ranked_flex', label: 'Ranked 5s' },
     { id: 'aram', label: 'ARAM' },
     { id: 'arena', label: 'Arena' },
   ];

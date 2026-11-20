@@ -185,13 +185,11 @@ export default function SummonerMatchesPage() {
           lpHistory={lpHistory}
         />
 
-        {/* Ranked Flex Card (if ranked) */}
-        {flexRank && (
-          <RankCard
-            title={t('summoner.flexRank')}
-            rankData={flexRank}
-          />
-        )}
+        {/* Ranked 5s Card */}
+        <RankCard
+          title={t('summoner.flexRank')}
+          rankData={flexRank}
+        />
 
         {/* Played With Synergy Widget (LoLDB Signature) */}
         <PlayedWithWidget

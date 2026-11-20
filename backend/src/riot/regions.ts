@@ -92,6 +92,8 @@ export function mapQueueFilterToId(filter?: string): number[] | undefined {
     case 'solo':
       return [420];
     case 'ranked_flex':
+    case 'ranked_5s':
+    case 'ranked5s':
     case 'flex':
       return [440];
     case 'aram':

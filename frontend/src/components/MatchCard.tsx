@@ -750,10 +750,23 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
           {/* Outcome & Queue & Duration & Surrender / LP */}
           <div className="flex flex-col justify-center min-w-[100px]">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
                 {outcomeText}
               </span>
+              {match.lpChange && (
+                <span
+                  className={`text-sm font-black tracking-tight ${
+                    match.lpChange.delta > 0
+                      ? 'text-emerald-400'
+                      : match.lpChange.delta < 0
+                      ? 'text-rose-400'
+                      : 'text-zinc-400'
+                  }`}
+                >
+                  {match.lpChange.delta > 0 ? `+${match.lpChange.delta}` : match.lpChange.delta} LP
+                </span>
+              )}
               {showNewBadge && (
                 <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none transition-opacity duration-300">
                   New
@@ -766,24 +779,13 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             <span className="text-xs text-zinc-400 mt-0.5 font-medium">
               {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime)}
             </span>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {isSurrender && !isRemake && (
+            {isSurrender && !isRemake && (
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <span className="rounded bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 uppercase tracking-wide">
                   Surrender
                 </span>
-              )}
-              {match.lpChange && (
-                <span
-                  className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-black tracking-tight ${
-                    match.lpChange.delta > 0
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                  }`}
-                >
-                  {match.lpChange.delta > 0 ? `+${match.lpChange.delta}` : match.lpChange.delta} LP
-                </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
