@@ -290,6 +290,27 @@ export interface TranslationDictionary {
     perLevel: string;
     defaultSkin: string;
     patchDataNotice: string;
+    breadcrumbHome: string;
+    breadcrumbChampions: string;
+    showingCount: string;
+    sortByNameAsc: string;
+    sortByNameDesc: string;
+    sortByDiffAsc: string;
+    sortByDiffDesc: string;
+    laneTop: string;
+    laneJungle: string;
+    laneMid: string;
+    laneAdc: string;
+    laneSupport: string;
+    allLanes: string;
+    allClasses: string;
+    resetFilters: string;
+    faqTitle1: string;
+    faqDesc1: string;
+    faqTitle2: string;
+    faqDesc2: string;
+    faqTitle3: string;
+    faqDesc3: string;
   };
 }
 
@@ -586,6 +607,27 @@ export const translations: Record<Locale, TranslationDictionary> = {
       perLevel: 'pro Stufe',
       defaultSkin: 'Standard-Skin',
       patchDataNotice: 'Aktuelle Patch-Daten direkt aus Riots Data Dragon',
+      breadcrumbHome: 'Startseite',
+      breadcrumbChampions: 'Champions',
+      showingCount: 'Zeige {filtered} von {total} Champions',
+      sortByNameAsc: 'Name (A-Z)',
+      sortByNameDesc: 'Name (Z-A)',
+      sortByDiffAsc: 'Schwierigkeit (Niedrig bis Hoch)',
+      sortByDiffDesc: 'Schwierigkeit (Hoch bis Niedrig)',
+      laneTop: 'Top',
+      laneJungle: 'Jungle',
+      laneMid: 'Mid',
+      laneAdc: 'Bot / ADC',
+      laneSupport: 'Support',
+      allLanes: 'Alle Positionen',
+      allClasses: 'Alle Klassen',
+      resetFilters: 'Filter zurücksetzen',
+      faqTitle1: 'Wie viele Champions gibt es in League of Legends?',
+      faqDesc1: 'League of Legends verfügt derzeit über {count} spielbare Champions. Riot Games veröffentlicht regelmäßig neue Champions und Reworks im Laufe des Jahres (typischerweise 3 bis 4 neue Champions jährlich, zuletzt Ambessa).',
+      faqTitle2: 'Champion-Verteilung nach Rollen',
+      faqDesc2: 'Champions auf Summoner\'s Rift verteilen sich auf die fünf Hauptpositionen Top, Jungle, Mid, Bot (ADC) und Support, wobei viele flexible Picks in mehreren Rollen glänzen.',
+      faqTitle3: 'Klassen & Spielstile',
+      faqDesc3: 'Jeder Champion gehört primären und sekundären Klassen wie Kämpfer (Fighter), Magier (Mage), Schützen (Marksman), Assassinen, Tanks oder Unterstützer an.',
     },
   },
   en: {
@@ -880,6 +922,27 @@ export const translations: Record<Locale, TranslationDictionary> = {
       perLevel: 'per level',
       defaultSkin: 'Default Skin',
       patchDataNotice: 'Active patch data directly from Riot Data Dragon',
+      breadcrumbHome: 'Homepage',
+      breadcrumbChampions: 'Champions',
+      showingCount: 'Showing {filtered} of {total} champions',
+      sortByNameAsc: 'Name (A-Z)',
+      sortByNameDesc: 'Name (Z-A)',
+      sortByDiffAsc: 'Difficulty (Low to High)',
+      sortByDiffDesc: 'Difficulty (High to Low)',
+      laneTop: 'Top',
+      laneJungle: 'Jungle',
+      laneMid: 'Mid',
+      laneAdc: 'Bot / ADC',
+      laneSupport: 'Support',
+      allLanes: 'All Positions',
+      allClasses: 'All Classes',
+      resetFilters: 'Reset filters',
+      faqTitle1: 'How Many Champions Are in League of Legends?',
+      faqDesc1: 'League of Legends currently features {count} playable champions. Riot Games regularly releases new champions and gameplay updates throughout the year (typically 3 to 4 annually, most recently Ambessa).',
+      faqTitle2: 'Champion Distribution by Role',
+      faqDesc2: 'Champions on Summoner\'s Rift are distributed across five primary lanes: Top, Jungle, Mid, Bot (ADC), and Support, with many versatile champions flexing across multiple positions.',
+      faqTitle3: 'Champion Classes & Playstyles',
+      faqDesc3: 'Every champion belongs to tactical classes including Fighters, Mages, Marksmen, Assassins, Tanks, and Supports, each bringing distinct playstyles and abilities to Summoner\'s Rift.',
     },
   },
 };
