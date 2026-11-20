@@ -9,6 +9,7 @@ import { searchRoutes } from './routes/search';
 import { metaRoutes } from './routes/meta';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
+import { initMetaAnalysisWorker } from '../services/metaService';
 
 // Polyfill BigInt JSON serialization for Fastify / Prisma responses
 (BigInt.prototype as any).toJSON = function () {
@@ -63,6 +64,9 @@ async function start() {
 
     // Start periodic League of Legends DDragon version checker (every 30m)
     initDDragonScheduler();
+
+    // Start 6-hour Meta & Tier List background analysis worker
+    initMetaAnalysisWorker();
 
     const shutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Shutting down API server gracefully...`);

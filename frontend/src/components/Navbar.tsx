@@ -23,13 +23,30 @@ export default function Navbar() {
   const pathname = usePathname();
   const { t, locale } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isRendered, setIsRendered] = useState(false);
   const [activePatch, setActivePatch] = useState(() => getMajorMinorPatch());
 
   const isHome = pathname === '/' || pathname === '/de' || pathname === '/en';
 
+  const handleOpen = () => {
+    setIsRendered(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setDrawerOpen(true);
+      });
+    });
+  };
+
+  const handleClose = () => {
+    setDrawerOpen(false);
+    setTimeout(() => {
+      setIsRendered(false);
+    }, 300);
+  };
+
   // Close drawer whenever the route changes
   useEffect(() => {
-    setDrawerOpen(false);
+    handleClose();
   }, [pathname]);
 
   // Sync active patch from DDragon
@@ -45,7 +62,7 @@ export default function Navbar() {
   // Close drawer on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
+      if (e.key === 'Escape') handleClose();
     };
     if (drawerOpen) {
       window.addEventListener('keydown', handleKeyDown);
@@ -89,7 +106,7 @@ export default function Navbar() {
             {/* Hamburger Button placed BEFORE the logo */}
             <button
               type="button"
-              onClick={() => setDrawerOpen(true)}
+              onClick={handleOpen}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-300 hover:text-white hover:bg-white/[0.08] border border-white/[0.06] hover:border-amber-500/30 transition-all cursor-pointer shadow-sm active:scale-95"
               aria-label="Menü öffnen"
               title="Navigation"
@@ -135,18 +152,26 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Side Navigation Drawer (Burgermenü) */}
-      {drawerOpen && (
+      {/* Side Navigation Drawer (Burgermenü with fade in & fade out) */}
+      {isRendered && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop Overlay */}
+          {/* Backdrop Overlay (smooth fade in and fade out) */}
           <div
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-300 animate-in fade-in"
-            onClick={() => setDrawerOpen(false)}
+            className={`fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+              drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+            onClick={handleClose}
             aria-hidden="true"
           />
 
-          {/* Slide-over Drawer Panel */}
-          <div className="relative flex w-80 max-w-[85vw] flex-col justify-between bg-[#0b0e14] border-r border-white/10 p-6 shadow-2xl z-50 animate-in slide-in-from-left duration-250">
+          {/* Slide-over & Fade Drawer Panel (smooth slide & fade in and out) */}
+          <div
+            className={`relative flex w-80 max-w-[85vw] flex-col justify-between bg-[#0b0e14] border-r border-white/10 p-6 shadow-2xl z-50 transition-all duration-300 ease-in-out transform ${
+              drawerOpen
+                ? 'translate-x-0 opacity-100'
+                : '-translate-x-full opacity-0'
+            }`}
+          >
             {/* Drawer Top */}
             <div className="flex flex-col">
               {/* Drawer Header with Logo and Close Button */}
@@ -174,7 +199,7 @@ export default function Navbar() {
 
                 <button
                   type="button"
-                  onClick={() => setDrawerOpen(false)}
+                  onClick={handleClose}
                   className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
                   aria-label="Menü schließen"
                 >
@@ -190,6 +215,7 @@ export default function Navbar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={handleClose}
                       className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all ${
                         item.isActive
                           ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
