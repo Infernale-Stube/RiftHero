@@ -144,6 +144,7 @@ export interface FormattedMatch {
   matchId: string;
   gameDuration: number;
   gameCreation: number;
+  gameEndTimestamp?: number;
   queueId: number;
   queueName: string;
   win: boolean;
@@ -368,6 +369,7 @@ export interface MatchDetailResponse {
   cluster: string;
   gameDuration: number;
   gameCreation: number;
+  gameEndTimestamp?: number;
   gameMode: string;
   gameVersion: string;
   queueId: number;

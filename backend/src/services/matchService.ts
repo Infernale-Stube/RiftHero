@@ -57,6 +57,7 @@ export interface FormattedMatch {
   matchId: string;
   gameDuration: number;
   gameCreation: number;
+  gameEndTimestamp?: number;
   queueId: number;
   queueName: string;
   win: boolean;
@@ -284,20 +285,21 @@ export async function getSummonerMatches(
       (up.challengesJson as any)?.gameEndedInSurrender ||
       (up.challengesJson as any)?.gameEndedInEarlySurrender
     );
-    const isNew =
-      (Date.now() - m.createdAt.getTime() < 2 * 3600 * 1000) ||
-      (Date.now() - Number(m.gameCreation) < 2 * 3600 * 1000);
+    const gameEndTimestamp = m.gameEndTimestamp
+      ? Number(m.gameEndTimestamp)
+      : Number(m.gameCreation) + m.gameDuration * 1000;
 
     return {
       matchId: m.id,
       gameDuration: m.gameDuration,
       gameCreation: Number(m.gameCreation),
+      gameEndTimestamp,
       queueId: m.queueId,
       queueName: getQueueName(m.queueId),
       win: up.win,
       isRemake,
       isSurrender,
-      isNew,
+      isNew: false,
       participant: currentFormatted,
       blueTeam,
       redTeam,

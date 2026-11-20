@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -132,18 +132,34 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
 
   const isNewMatch = isNew ?? match.isNew;
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  // Auto-dismiss the "New" badge after 30 seconds if left un-interacted
+  useEffect(() => {
+    if (isNewMatch && !isDismissed) {
+      const timer = setTimeout(() => {
+        setIsDismissed(true);
+      }, 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewMatch, isDismissed]);
+
+  const showNewBadge = Boolean(isNewMatch && !isDismissed);
 
   const {
     win,
     queueName,
     gameDuration,
     gameCreation,
+    gameEndTimestamp,
     participant,
     blueTeam,
     redTeam,
     blueTeamTotals,
     redTeamTotals,
   } = match;
+
+  const gameEndTime = gameEndTimestamp || (gameCreation + gameDuration * 1000);
 
   const durationMinutes = Math.max(gameDuration / 60, 1);
   const isRemake = Boolean(match.isRemake || gameDuration < 300 || participant.gameEndedInEarlySurrender);
@@ -738,8 +754,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
                 {outcomeText}
               </span>
-              {isNewMatch && (
-                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none">
+              {showNewBadge && (
+                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none transition-opacity duration-300">
                   New
                 </span>
               )}
@@ -748,7 +764,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               {queueName}
             </span>
             <span className="text-xs text-zinc-400 mt-0.5 font-medium">
-              {formatDuration(gameDuration)} · {formatTimeAgo(gameCreation)}
+              {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime)}
             </span>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {isSurrender && !isRemake && (
@@ -948,7 +964,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
           {/* Expand Details Arrow Button */}
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+              if (showNewBadge) setIsDismissed(true);
+              setIsExpanded(!isExpanded);
+            }}
             className="flex h-9 w-9 items-center justify-center text-zinc-400 hover:text-white transition-colors ml-1 shrink-0 cursor-pointer"
             aria-label="Toggle Match Details"
           >

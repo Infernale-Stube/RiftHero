@@ -50,9 +50,9 @@ export default function SummonerMatchesPage() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Track known matches to highlight newly discovered matches in the active session
-  const knownMatchIdsRef = useRef<Set<string>>(new Set());
-  const newMatchIdsRef = useRef<Set<string>>(new Set());
+  // Track newly loaded matches for the current session (shown once, then gone)
+  const sessionNewIdsRef = useRef<Set<string>>(new Set());
+  const storageKey = region && tag ? `rifthero_seen_matches_${region.toLowerCase()}_${tag.toLowerCase()}` : '';
 
   const loadMatchesAndStats = useCallback(
     async (queue: string, isSilent = false) => {
@@ -68,22 +68,51 @@ export default function SummonerMatchesPage() {
 
         const fetchedMatches = matchesRes.matches || [];
 
-        // If we already had known matches, any newly fetched match that wasn't known is new!
-        if (knownMatchIdsRef.current.size > 0) {
-          for (const m of fetchedMatches) {
-            if (!knownMatchIdsRef.current.has(m.matchId)) {
-              newMatchIdsRef.current.add(m.matchId);
+        // Check seen matches in localStorage
+        let storedSeenSet: Set<string> | null = null;
+        if (typeof window !== 'undefined' && storageKey) {
+          try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) storedSeenSet = new Set(parsed);
             }
-          }
+          } catch {}
         }
 
-        for (const m of fetchedMatches) {
-          knownMatchIdsRef.current.add(m.matchId);
+        if (storedSeenSet === null) {
+          // Cold start / first time user views this summoner: mark all existing matches as seen
+          // so existing history doesn't flash false "New" badges
+          const initialSeen = new Set(fetchedMatches.map((m) => m.matchId));
+          if (typeof window !== 'undefined' && storageKey) {
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(Array.from(initialSeen)));
+            } catch {}
+          }
+        } else {
+          // Returning user or live background refresh:
+          // A match is only marked "New" if the user has NOT seen it before!
+          for (const m of fetchedMatches) {
+            if (!storedSeenSet.has(m.matchId)) {
+              sessionNewIdsRef.current.add(m.matchId);
+            }
+          }
+
+          // Persist all known matches as seen so next visit/reload won't show "New" again
+          const updatedSeen = new Set(Array.from(storedSeenSet));
+          for (const m of fetchedMatches) {
+            updatedSeen.add(m.matchId);
+          }
+          if (typeof window !== 'undefined' && storageKey) {
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(Array.from(updatedSeen).slice(-300)));
+            } catch {}
+          }
         }
 
         const enrichedMatches = fetchedMatches.map((m) => ({
           ...m,
-          isNew: Boolean(m.isNew || newMatchIdsRef.current.has(m.matchId)),
+          isNew: sessionNewIdsRef.current.has(m.matchId),
         }));
 
         setMatches(enrichedMatches);
@@ -97,7 +126,7 @@ export default function SummonerMatchesPage() {
         if (!isSilent) setIsLoadingMatches(false);
       }
     },
-    [region, tag]
+    [region, tag, storageKey]
   );
 
   // Initial load when profile becomes available or when queue tab changes
@@ -123,10 +152,17 @@ export default function SummonerMatchesPage() {
     try {
       const res = await fetchSummonerMatches(region, tag, activeQueue, 10, matches.length);
       const moreMatches = res.matches || [];
-      for (const m of moreMatches) {
-        knownMatchIdsRef.current.add(m.matchId);
+      if (typeof window !== 'undefined' && storageKey) {
+        try {
+          const raw = localStorage.getItem(storageKey);
+          const currentSeen = raw ? new Set(JSON.parse(raw)) : new Set<string>();
+          for (const m of moreMatches) {
+            currentSeen.add(m.matchId);
+          }
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(currentSeen).slice(-300)));
+        } catch {}
       }
-      setMatches((prev) => [...prev, ...moreMatches]);
+      setMatches((prev) => [...prev, ...moreMatches.map((m) => ({ ...m, isNew: false }))]);
       setTotalMatches(res.total);
     } catch (err) {
       console.error('Failed to load more matches:', err);

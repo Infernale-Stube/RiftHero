@@ -36,6 +36,7 @@ export interface MatchDetailResponse {
   cluster: string;
   gameDuration: number;
   gameCreation: number;
+  gameEndTimestamp?: number;
   gameMode: string;
   gameVersion: string;
   queueId: number;
@@ -415,6 +416,9 @@ export async function getMatchDetails(
     cluster: match.cluster,
     gameDuration: match.gameDuration,
     gameCreation: Number(match.gameCreation),
+    gameEndTimestamp: match.gameEndTimestamp
+      ? Number(match.gameEndTimestamp)
+      : Number(match.gameCreation) + match.gameDuration * 1000,
     gameMode: match.gameMode,
     gameVersion: match.gameVersion,
     queueId: match.queueId,
