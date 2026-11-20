@@ -183,36 +183,25 @@ export default function SummonerMatchesPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
-      {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
+      {/* Left Sidebar: Ranked Modes Toggle Card + Most Played Champions + Party Members */}
       <div className="w-full lg:w-[350px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
-        {/* 1. Ranked Solo/Duo Card with LP History Graph */}
+        {/* 1. Ranked Card with Toggle between Solo/Duo and Flex */}
         <RankCard
-          title={t('summoner.soloRank')}
-          rankData={soloRank}
+          soloRank={soloRank}
+          flexRank={flexRank}
+          ranked5s={ranked5s}
           lpHistory={lpHistory}
         />
 
-        {/* 2. Ranked Flex Card */}
-        <RankCard
-          title={t('summoner.flexRank')}
-          rankData={flexRank}
+        {/* 2. Most Played Champions */}
+        <ChampionStats
+          stats={champStats}
         />
 
-        {/* 3. Ranked 5s Card */}
-        <RankCard
-          title={t('summoner.ranked5sRank')}
-          rankData={ranked5s}
-        />
-
-        {/* Played With Synergy Widget (LoLDB Signature) */}
+        {/* 3. Party Member (Played With Synergy) */}
         <PlayedWithWidget
           teammates={playedWith}
           region={region}
-        />
-
-        {/* Champion Stats */}
-        <ChampionStats
-          stats={champStats}
         />
       </div>
 
