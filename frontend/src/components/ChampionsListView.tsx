@@ -23,7 +23,6 @@ import {
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
   fetchDDragonChampionsList,
-  DDragonChampionSummary,
   getChampionIconUrl,
   getChampionLoadingUrl,
   getPositionIconUrl,
@@ -31,6 +30,7 @@ import {
   getDDragonVersion,
   PositionKey,
 } from '@/lib/ddragon';
+import { fetchChampionsRosterApi, ChampionRosterItem } from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
 
 type LaneFilter = 'ALL' | 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
@@ -84,7 +84,7 @@ const CLASS_OPTIONS: ClassOption[] = [
 
 export default function ChampionsListView() {
   const { t, locale } = useTranslation();
-  const [champions, setChampions] = useState<DDragonChampionSummary[]>([]);
+  const [champions, setChampions] = useState<ChampionRosterItem[]>([]);
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [isLoading, setIsLoading] = useState(true);
 
@@ -96,10 +96,23 @@ export default function ChampionsListView() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetchDDragonChampionsList(locale)
+    fetchChampionsRosterApi(locale)
       .then((res) => {
-        setChampions(res.champions);
-        if (res.version) setVersion(res.version);
+        if (res && res.champions && res.champions.length > 0) {
+          setChampions(res.champions);
+          if (res.version) setVersion(res.version);
+          return;
+        }
+        return fetchDDragonChampionsList(locale).then((fallbackRes) => {
+          setChampions(fallbackRes.champions as any);
+          if (fallbackRes.version) setVersion(fallbackRes.version);
+        });
+      })
+      .catch(() => {
+        return fetchDDragonChampionsList(locale).then((fallbackRes) => {
+          setChampions(fallbackRes.champions as any);
+          if (fallbackRes.version) setVersion(fallbackRes.version);
+        });
       })
       .finally(() => {
         setIsLoading(false);
@@ -518,11 +531,30 @@ export default function ChampionsListView() {
                       </span>
                     </div>
 
-                    {/* Difficulty Badge */}
-                    <div className="flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-md px-1.5 py-0.5 border border-white/10 shadow-sm">
-                      <span className="text-[9px] font-extrabold text-amber-400">
-                        Diff {difficulty}
-                      </span>
+                    {/* Meta Tier or Difficulty Badge */}
+                    <div className="flex items-center gap-1">
+                      {champ.meta ? (
+                        <div
+                          className={`flex items-center gap-1 rounded-md backdrop-blur-md px-1.5 py-0.5 border shadow-sm ${
+                            champ.meta.tier === 'S+'
+                              ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
+                              : champ.meta.tier === 'S'
+                              ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
+                              : champ.meta.tier === 'A'
+                              ? 'bg-sky-500/25 border-sky-500/50 text-sky-300'
+                              : 'bg-zinc-800/80 border-white/10 text-zinc-300'
+                          }`}
+                        >
+                          <span className="text-[9px] font-black">{champ.meta.tier}</span>
+                          <span className="text-[9px] font-semibold opacity-90">{champ.meta.winrate}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-md px-1.5 py-0.5 border border-white/10 shadow-sm">
+                          <span className="text-[9px] font-extrabold text-amber-400">
+                            Diff {difficulty}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

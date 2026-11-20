@@ -30,6 +30,7 @@ import {
   getMajorMinorPatch,
   getDDragonVersion,
 } from '@/lib/ddragon';
+import { fetchChampionDetailApi } from '@/lib/api';
 
 interface ChampionDetailViewProps {
   slug: string;
@@ -45,10 +46,23 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   useEffect(() => {
     setIsLoading(true);
-    fetchDDragonChampionDetail(slug, locale)
+    fetchChampionDetailApi(slug, locale)
       .then((res) => {
-        setData(res.champion);
-        if (res.version) setVersion(res.version);
+        if (res && res.champion) {
+          setData(res.champion);
+          if (res.version) setVersion(res.version);
+          return;
+        }
+        return fetchDDragonChampionDetail(slug, locale).then((fallback) => {
+          setData(fallback.champion);
+          if (fallback.version) setVersion(fallback.version);
+        });
+      })
+      .catch(() => {
+        return fetchDDragonChampionDetail(slug, locale).then((fallback) => {
+          setData(fallback.champion);
+          if (fallback.version) setVersion(fallback.version);
+        });
       })
       .finally(() => {
         setIsLoading(false);

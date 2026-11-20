@@ -1,5 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import { getMetaChampions, getFullTierList } from '../../services/metaService';
+import {
+  getMetaChampions,
+  getFullTierList,
+  getChampionsRoster,
+  getChampionDetail,
+} from '../../services/metaService';
 
 export async function metaRoutes(fastify: FastifyInstance) {
   // Top 4 meta picks per role
@@ -22,6 +27,34 @@ export async function metaRoutes(fastify: FastifyInstance) {
     } catch (err) {
       request.log.error(err, 'Failed to retrieve tier list');
       return reply.status(500).send({ error: 'Failed to retrieve tier list' });
+    }
+  });
+
+  // Full Champions Roster from 'meta_snapshots' table (0 client calls to Riot API!)
+  fastify.get('/champions', async (request, reply) => {
+    try {
+      const { locale } = request.query as { locale?: string };
+      const roster = await getChampionsRoster(locale || 'de');
+      return roster;
+    } catch (err) {
+      request.log.error(err, 'Failed to retrieve champions roster');
+      return reply.status(500).send({ error: 'Failed to retrieve champions roster' });
+    }
+  });
+
+  // Individual Champion Details (spells, passive, lore, skins) cached server-side
+  fastify.get('/champions/:slug', async (request, reply) => {
+    try {
+      const { slug } = request.params as { slug: string };
+      const { locale } = request.query as { locale?: string };
+      const detail = await getChampionDetail(slug, locale || 'de');
+      if (!detail.champion) {
+        return reply.status(404).send({ error: `Champion '${slug}' not found` });
+      }
+      return detail;
+    } catch (err) {
+      request.log.error(err, 'Failed to retrieve champion detail');
+      return reply.status(500).send({ error: 'Failed to retrieve champion detail' });
     }
   });
 }

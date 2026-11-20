@@ -316,3 +316,70 @@ export async function fetchTierList(role?: string): Promise<TierListResponse | n
   }
 }
 
+export interface ChampionRosterItem {
+  id: string;
+  key: string;
+  name: string;
+  title: string;
+  blurb: string;
+  info: { attack: number; defense: number; magic: number; difficulty: number };
+  image: { full: string; sprite: string; group: string };
+  tags: string[];
+  partype: string;
+  stats: Record<string, number>;
+  role: string;
+  class: string;
+  difficulty: number;
+  recommendedPositions: string[];
+  meta?: {
+    tier: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
+    winrate: string;
+    winrateNum: number;
+    pickrate: string;
+    pickrateNum: number;
+    banrate: string;
+    banrateNum: number;
+    rank: number;
+    score: number;
+    games: number;
+  } | null;
+}
+
+export interface ChampionsRosterResponse {
+  version: string;
+  patch: string;
+  totalMatches: number;
+  champions: ChampionRosterItem[];
+}
+
+export async function fetchChampionsRosterApi(locale = 'de'): Promise<ChampionsRosterResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/champions?locale=${locale}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchChampionDetailApi(
+  slug: string,
+  locale = 'de'
+): Promise<{
+  version: string;
+  patch: string;
+  champion: any;
+} | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/champions/${encodeURIComponent(slug)}?locale=${locale}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+

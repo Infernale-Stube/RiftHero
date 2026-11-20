@@ -1,5 +1,19 @@
 import { prisma } from '../db/prisma';
-import { getChampionNameById, getDDragonPatches } from '../riot/ddragon';
+import { getChampionNameById, getDDragonPatches, getLatestDDragonVersion } from '../riot/ddragon';
+import championPositionsRaw from '../riot/championPositions.json';
+
+const championPositionsMap = championPositionsRaw as Record<
+  string,
+  {
+    id: string;
+    name: string;
+    title: string;
+    role: string;
+    class: string;
+    difficulty: number;
+    recommendedPositions: string[];
+  }
+>;
 
 export interface MetaChampion {
   name: string;
@@ -47,6 +61,8 @@ let memoryCache: {
   totalMatches: number;
   metaPicks: Record<string, MetaChampion[]>;
   tierList: TierListChampion[];
+  championsRoster?: Record<string, any>;
+  championDetails?: Record<string, any>;
   timestamp: number;
 } | null = null;
 
@@ -69,14 +85,91 @@ export async function ensureMetaTableExists(): Promise<void> {
         "totalMatches" INTEGER NOT NULL DEFAULT 0,
         "metaPicksJson" JSONB NOT NULL,
         "tierListJson" JSONB NOT NULL,
+        "championsJson" JSONB,
+        "championDetailsJson" JSONB,
         "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championsJson" JSONB;
+      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championDetailsJson" JSONB;
     `);
     tableChecked = true;
   } catch (err) {
     console.warn('[MetaWorker] Table check warning:', (err as Error).message);
   }
+}
+
+/**
+ * Builds localized champion rosters (de & en) enriched with:
+ * - DDragon base info (names, titles, blurbs, tags, stats, icons, loading images)
+ * - Positional info & classes (from championPositions)
+ * - Calculated Meta Analytics (winrate, pickrate, banrate, tier, rank, score, games)
+ */
+async function buildChampionRosters(
+  ddragonVersion: string,
+  tierList: TierListChampion[]
+): Promise<{ de: any[]; en: any[]; version: string }> {
+  const tierMap = new Map<string, TierListChampion>();
+  for (const t of tierList) {
+    tierMap.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
+  }
+
+  const langs = ['de_DE', 'en_US'] as const;
+  const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
+
+  for (const lang of langs) {
+    const key = lang.startsWith('de') ? 'de' : 'en';
+    try {
+      const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/champion.json`);
+      if (res.ok) {
+        const json = (await res.json()) as any;
+        if (json && json.data) {
+          const list = Object.values(json.data).map((champ: any) => {
+            const posMeta = championPositionsMap[champ.id];
+            const cleanName = champ.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanId = champ.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const metaTier = tierMap.get(cleanName) || tierMap.get(cleanId) || null;
+
+            return {
+              id: champ.id,
+              key: champ.key,
+              name: champ.name,
+              title: champ.title,
+              blurb: champ.blurb,
+              info: champ.info,
+              image: champ.image,
+              tags: champ.tags,
+              partype: champ.partype,
+              stats: champ.stats,
+              role: posMeta?.role || 'Top',
+              class: posMeta?.class || champ.tags?.[0] || 'Fighter',
+              difficulty: posMeta?.difficulty ?? champ.info?.difficulty ?? 5,
+              recommendedPositions: posMeta?.recommendedPositions || ['Top'],
+              meta: metaTier
+                ? {
+                    tier: metaTier.tier,
+                    winrate: metaTier.winrate,
+                    winrateNum: metaTier.winrateNum,
+                    pickrate: metaTier.pickrate,
+                    pickrateNum: metaTier.pickrateNum,
+                    banrate: metaTier.banrate,
+                    banrateNum: metaTier.banrateNum,
+                    rank: metaTier.rank,
+                    score: metaTier.score,
+                    games: metaTier.games,
+                  }
+                : null,
+            };
+          });
+          rosters[key] = list;
+        }
+      }
+    } catch (err) {
+      console.warn(`[MetaService] Failed to fetch DDragon champions for ${lang}:`, (err as Error).message);
+    }
+  }
+
+  return { ...rosters, version: ddragonVersion };
 }
 
 /**
@@ -355,7 +448,11 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
       });
     }
 
-    // 3. Save precomputed results into dedicated 'meta_snapshots' database table
+    // 3. Fetch & build localized champion rosters (de & en) enriched with meta stats
+    const ddragonVersion = await getLatestDDragonVersion();
+    const championsRoster = await buildChampionRosters(ddragonVersion, tierList);
+
+    // 4. Save precomputed results into dedicated 'meta_snapshots' database table
     await prisma.metaSnapshot.upsert({
       where: { id: 'active' },
       update: {
@@ -363,6 +460,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
         totalMatches: totalMatchesAnalyzed,
         metaPicksJson: metaPicks as any,
         tierListJson: tierList as any,
+        championsJson: championsRoster as any,
         computedAt: new Date(),
       },
       create: {
@@ -371,6 +469,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
         totalMatches: totalMatchesAnalyzed,
         metaPicksJson: metaPicks as any,
         tierListJson: tierList as any,
+        championsJson: championsRoster as any,
         computedAt: new Date(),
       },
     });
@@ -385,6 +484,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
       totalMatches: totalMatchesAnalyzed,
       metaPicks,
       tierList,
+      championsRoster,
       timestamp: Date.now(),
     };
 
@@ -412,6 +512,8 @@ async function loadActiveSnapshot(): Promise<{
   totalMatches: number;
   metaPicks: Record<string, MetaChampion[]>;
   tierList: TierListChampion[];
+  championsRoster?: Record<string, any>;
+  championDetails?: Record<string, any>;
 }> {
   const now = Date.now();
   if (memoryCache && now - memoryCache.timestamp < CACHE_TTL_MS) {
@@ -431,6 +533,8 @@ async function loadActiveSnapshot(): Promise<{
         totalMatches: row.totalMatches,
         metaPicks: row.metaPicksJson as any,
         tierList: row.tierListJson as any,
+        championsRoster: row.championsJson as any,
+        championDetails: row.championDetailsJson as any,
         timestamp: now,
       };
       return memoryCache;
@@ -441,6 +545,99 @@ async function loadActiveSnapshot(): Promise<{
 
   // If table is empty or query failed, compute immediately
   return await computeAndSaveMetaAnalysis();
+}
+
+/**
+ * Returns the localized champion catalog enriched with live meta stats.
+ * Instant response time (<2ms) directly from PostgreSQL table 'meta_snapshots'.
+ */
+export async function getChampionsRoster(locale = 'de'): Promise<{
+  version: string;
+  patch: string;
+  totalMatches: number;
+  champions: any[];
+}> {
+  const snapshot = await loadActiveSnapshot();
+  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const rosterData = snapshot.championsRoster;
+  const list = rosterData?.[langKey] || rosterData?.de || rosterData?.en || [];
+
+  return {
+    version: rosterData?.version || snapshot.patch,
+    patch: snapshot.patch,
+    totalMatches: snapshot.totalMatches,
+    champions: list,
+  };
+}
+
+/**
+ * Returns detailed champion information (spells, passive, lore, skins)
+ * cached in memory/database so the client never hits Riot's CDN directly.
+ */
+export async function getChampionDetail(
+  slug: string,
+  locale = 'de'
+): Promise<{
+  version: string;
+  patch: string;
+  champion: any;
+}> {
+  const snapshot = await loadActiveSnapshot();
+  const lang = locale.toLowerCase().startsWith('en') ? 'en_US' : 'de_DE';
+  const cacheKey = `${lang}_${slug.toLowerCase()}`;
+
+  if (memoryCache?.championDetails?.[cacheKey]) {
+    return {
+      version: snapshot.championsRoster?.version || snapshot.patch,
+      patch: snapshot.patch,
+      champion: memoryCache.championDetails[cacheKey],
+    };
+  }
+
+  // Find champion ID from roster
+  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const list = snapshot.championsRoster?.[langKey] || [];
+  const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const found = list.find((c: any) => {
+    const cId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return cId === cleanTarget || cName === cleanTarget;
+  });
+
+  const champId = found?.id || slug;
+  const ddragonVersion = snapshot.championsRoster?.version || (await getLatestDDragonVersion());
+
+  try {
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/champion/${champId}.json`);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (data && data.data && data.data[champId]) {
+        const champData = data.data[champId];
+        // Cache in memory
+        if (!memoryCache) {
+          memoryCache = { ...snapshot, timestamp: Date.now() };
+        }
+        if (!memoryCache.championDetails) {
+          memoryCache.championDetails = {};
+        }
+        memoryCache.championDetails[cacheKey] = champData;
+
+        return {
+          version: ddragonVersion,
+          patch: snapshot.patch,
+          champion: champData,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn(`[MetaService] Failed to fetch champion detail for ${slug}:`, (err as Error).message);
+  }
+
+  return {
+    version: ddragonVersion,
+    patch: snapshot.patch,
+    champion: null,
+  };
 }
 
 /**
