@@ -1345,17 +1345,17 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     <div className="min-h-screen bg-[#06080c] text-zinc-100 pb-20">
       <div className="mx-auto max-w-[1600px] px-4 pt-6 sm:px-6 lg:px-8 space-y-8">
         {/* Top Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium">
-          <Link href={`/${locale}`} className="hover:text-zinc-300 transition-colors">
-            {t('navigation.home') || 'Homepage'}
+        <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
+          <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
+            {t('nav.home') || 'Startseite'}
           </Link>
-          <span>/</span>
-          <Link href={`/${locale}/champions`} className="hover:text-zinc-300 transition-colors">
-            {t('navigation.champions') || 'Champions'}
+          <span className="text-zinc-600">/</span>
+          <Link href={`/${locale}/champions`} className="hover:text-amber-400 transition-colors">
+            {t('nav.champions') || 'Champions'}
           </Link>
-          <span>/</span>
+          <span className="text-zinc-600">/</span>
           <span className="text-amber-400 font-bold">{data.name}</span>
-        </div>
+        </nav>
 
         {/* ========================================================================= */}
         {/* 2-COLUMN HERO AREA (PROFILE & STATS ON LEFT, SPOTLIGHT SPLASH ON RIGHT)    */}

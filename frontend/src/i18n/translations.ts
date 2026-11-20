@@ -21,6 +21,12 @@ export interface TranslationDictionary {
     items: string;
     home: string;
   };
+  navigation: {
+    home: string;
+    champions: string;
+    items: string;
+    tierList: string;
+  };
   home: {
     heroBadge: string;
     heroTitle1: string;
@@ -409,6 +415,12 @@ export const translations: Record<Locale, TranslationDictionary> = {
       items: 'Items',
       home: 'Startseite',
     },
+    navigation: {
+      home: 'Startseite',
+      champions: 'Champions',
+      items: 'Items',
+      tierList: 'Tier List',
+    },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
       heroTitle1: 'Finde jeden Spieler.',
@@ -795,7 +807,13 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tierList: 'Tier List',
       champions: 'Champions',
       items: 'Items',
-      home: 'Home',
+      home: 'Homepage',
+    },
+    navigation: {
+      home: 'Homepage',
+      champions: 'Champions',
+      items: 'Items',
+      tierList: 'Tier List',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',

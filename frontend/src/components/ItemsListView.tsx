@@ -301,9 +301,9 @@ export default function ItemsListView() {
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
         <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
-          {t('common.backToHome') || 'Startseite'}
+          {t('nav.home') || 'Startseite'}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-zinc-600" />
+        <span className="text-zinc-600">/</span>
         <span className="text-white font-semibold">{t('nav.items') || 'Items'}</span>
       </nav>
 

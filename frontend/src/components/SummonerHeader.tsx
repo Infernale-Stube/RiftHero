@@ -128,7 +128,7 @@ export default function SummonerHeader({
           className="flex items-center gap-1 hover:text-white transition-colors"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          <span>Homepage</span>
+          <span>{t('nav.home') || 'Startseite'}</span>
         </Link>
         <span className="text-zinc-600">/</span>
         <span className="font-bold text-orange-400">

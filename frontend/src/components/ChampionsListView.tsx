@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Search,
-  Sparkles,
   Shield,
   Swords,
   Wand2,
@@ -13,7 +12,6 @@ import {
   HeartHandshake,
   Skull,
   Layers,
-  ChevronRight,
   RotateCcw,
   X,
   HelpCircle,
@@ -26,7 +24,6 @@ import {
   getChampionIconUrl,
   getChampionLoadingUrl,
   getPositionIconUrl,
-  getMajorMinorPatch,
   getDDragonVersion,
   PositionKey,
 } from '@/lib/ddragon';
@@ -35,7 +32,6 @@ import championPositionsRaw from '@/lib/championPositions.json';
 
 type LaneFilter = 'ALL' | 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
 type ClassFilter = 'ALL' | 'Fighter' | 'Mage' | 'Assassin' | 'Marksman' | 'Tank' | 'Support';
-type SortOption = 'name-asc' | 'name-desc' | 'diff-asc' | 'diff-desc';
 
 interface ChampionPosInfo {
   id: string;
@@ -88,11 +84,10 @@ export default function ChampionsListView() {
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filters & Sorting state
+  // Filters state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLane, setSelectedLane] = useState<LaneFilter>('ALL');
   const [selectedClass, setSelectedClass] = useState<ClassFilter>('ALL');
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
 
   useEffect(() => {
     setIsLoading(true);
@@ -119,21 +114,17 @@ export default function ChampionsListView() {
       });
   }, [locale]);
 
-  const patchString = getMajorMinorPatch(version);
-
   // Reset all filters
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedLane('ALL');
     setSelectedClass('ALL');
-    setSortBy('name-asc');
   };
 
   const isFilterActive =
     searchQuery.trim().length > 0 ||
     selectedLane !== 'ALL' ||
-    selectedClass !== 'ALL' ||
-    sortBy !== 'name-asc';
+    selectedClass !== 'ALL';
 
   // Filter & Sort champions
   const filteredChampions = useMemo(() => {
@@ -189,27 +180,9 @@ export default function ChampionsListView() {
       return true;
     });
 
-    // Sorting
-    return list.sort((a, b) => {
-      const aMeta = championPositionsMap[a.id];
-      const bMeta = championPositionsMap[b.id];
-      const aDiff = aMeta?.difficulty ?? a.info?.difficulty ?? 5;
-      const bDiff = bMeta?.difficulty ?? b.info?.difficulty ?? 5;
-
-      switch (sortBy) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'diff-asc':
-          return aDiff !== bDiff ? aDiff - bDiff : a.name.localeCompare(b.name);
-        case 'diff-desc':
-          return aDiff !== bDiff ? bDiff - aDiff : a.name.localeCompare(b.name);
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
-  }, [champions, selectedLane, selectedClass, searchQuery, sortBy]);
+    // Always alphabetical A-Z
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [champions, selectedLane, selectedClass, searchQuery]);
 
   // Statistics calculation for FAQ section
   const stats = useMemo(() => {
@@ -248,56 +221,22 @@ export default function ChampionsListView() {
   }, [champions]);
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
-      {/* Breadcrumb Navigation (LoLDB inspired) */}
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+      {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
         <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
-          {t('championWiki.breadcrumbHome')}
+          {t('nav.home') || 'Startseite'}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-zinc-600" />
+        <span className="text-zinc-600">/</span>
         <span className="text-white font-semibold">
-          {t('championWiki.breadcrumbChampions')}
+          {t('nav.champions') || 'Champions'}
         </span>
       </nav>
 
-      {/* Hero Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-white/[0.08] pb-6">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Patch {patchString} Champions</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
-            {t('championWiki.pageTitle')}
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-zinc-400 max-w-2xl leading-relaxed">
-            {t('championWiki.pageSubtitle', {
-              count: champions.length || 173,
-              patch: patchString,
-            })}
-          </p>
-        </div>
-
-        {/* Counter Badge */}
-        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 px-4 py-3 shrink-0 shadow-lg backdrop-blur-md">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <Shield className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-              {t('championWiki.role')}
-            </span>
-            <span className="text-lg font-black text-white">
-              {isLoading ? '...' : `${filteredChampions.length} / ${champions.length}`}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Filter Bar (LoLDB Style Sticky-like Container) */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-4">
-        {/* Top Controls: Search Input + Sort Dropdown + Reset Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {/* Top Controls: Search Input + Reset Button */}
+        <div className="flex items-center gap-3">
           {/* Search Box */}
           <div className="group relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 transition-colors group-focus-within:text-amber-400 pointer-events-none" />
@@ -320,31 +259,17 @@ export default function ChampionsListView() {
             )}
           </div>
 
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-2 shrink-0">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="h-10 rounded-xl border border-white/[0.08] bg-[#10141f] px-3.5 text-xs sm:text-sm font-semibold text-zinc-200 focus:outline-none focus:border-amber-400/60 transition-all cursor-pointer shadow-sm"
+          {/* Reset Filters Button */}
+          {isFilterActive && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer shadow-sm"
+              title={t('championWiki.resetFilters')}
             >
-              <option value="name-asc">{t('championWiki.sortByNameAsc')}</option>
-              <option value="name-desc">{t('championWiki.sortByNameDesc')}</option>
-              <option value="diff-asc">{t('championWiki.sortByDiffAsc')}</option>
-              <option value="diff-desc">{t('championWiki.sortByDiffDesc')}</option>
-            </select>
-
-            {/* Reset Filters Button */}
-            {isFilterActive && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer shadow-sm"
-                title={t('championWiki.resetFilters')}
-              >
-                <RotateCcw className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Lane / Role Filters (with League position icons) */}
@@ -480,7 +405,6 @@ export default function ChampionsListView() {
             const slug = champ.id.toLowerCase();
             const meta = championPositionsMap[champ.id];
             const primaryPos = meta?.recommendedPositions?.[0] || meta?.role || 'Top';
-            const difficulty = meta?.difficulty ?? champ.info?.difficulty ?? 5;
 
             // Map position to PositionKey for icon
             const posKey: PositionKey = (() => {
@@ -531,31 +455,23 @@ export default function ChampionsListView() {
                       </span>
                     </div>
 
-                    {/* Meta Tier or Difficulty Badge */}
-                    <div className="flex items-center gap-1">
-                      {champ.meta ? (
-                        <div
-                          className={`flex items-center gap-1 rounded-md backdrop-blur-md px-1.5 py-0.5 border shadow-sm ${
-                            champ.meta.tier === 'S+'
-                              ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
-                              : champ.meta.tier === 'S'
-                              ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
-                              : champ.meta.tier === 'A'
-                              ? 'bg-sky-500/25 border-sky-500/50 text-sky-300'
-                              : 'bg-zinc-800/80 border-white/10 text-zinc-300'
-                          }`}
-                        >
-                          <span className="text-[9px] font-black">{champ.meta.tier}</span>
-                          <span className="text-[9px] font-semibold opacity-90">{champ.meta.winrate}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-md px-1.5 py-0.5 border border-white/10 shadow-sm">
-                          <span className="text-[9px] font-extrabold text-amber-400">
-                            Diff {difficulty}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {/* Meta Tier Badge (only if available) */}
+                    {champ.meta ? (
+                      <div
+                        className={`flex items-center gap-1 rounded-md backdrop-blur-md px-1.5 py-0.5 border shadow-sm ${
+                          champ.meta.tier === 'S+'
+                            ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
+                            : champ.meta.tier === 'S'
+                            ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
+                            : champ.meta.tier === 'A'
+                            ? 'bg-sky-500/25 border-sky-500/50 text-sky-300'
+                            : 'bg-zinc-800/80 border-white/10 text-zinc-300'
+                        }`}
+                      >
+                        <span className="text-[9px] font-black">{champ.meta.tier}</span>
+                        <span className="text-[9px] font-semibold opacity-90">{champ.meta.winrate}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Bottom Content Area */}
