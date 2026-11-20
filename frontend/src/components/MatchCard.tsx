@@ -368,7 +368,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </button>
             <span className="w-14 text-center">VISION</span>
             <span className="w-16 text-right pr-1">GOLD</span>
-            <span className="w-12 text-center">SCORE</span>
+            <span className="w-16 text-center text-[10px] font-bold tracking-tight" title="Hero Score">HERO SCORE</span>
           </div>
         </div>
 
@@ -610,8 +610,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                     <Coins className="h-2.5 w-2.5 text-amber-400" />
                   </div>
 
-                  {/* SCORE (0-100 rounded integer) */}
-                  <div className="w-12 text-center shrink-0">
+                  {/* HERO SCORE (0-100 rounded integer) */}
+                  <div className="w-16 text-center shrink-0">
                     <span
                       className={`text-xs font-black ${
                         rankInfo.isMvp
@@ -855,8 +855,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 <span>ACE {formatScore(participant.score)}</span>
               </span>
             ) : (
-              <span className="rounded-lg bg-white/[0.08] border border-white/15 px-3 py-1.5 text-sm font-black text-zinc-100 shadow-sm tracking-tight">
-                Score {formatScore(participant.score)}
+              <span className="rounded-lg bg-white/[0.08] border border-white/15 px-3 py-1.5 text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap">
+                Hero Score {formatScore(participant.score)}
               </span>
             )}
           </div>
