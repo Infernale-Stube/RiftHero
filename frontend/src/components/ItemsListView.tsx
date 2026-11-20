@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Sparkles,
@@ -149,6 +150,7 @@ function getTierStyle(tier: string) {
 
 export default function ItemsListView() {
   const { t, locale } = useTranslation();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<ItemRosterItem[]>([]);
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [isLoading, setIsLoading] = useState(true);
@@ -163,6 +165,21 @@ export default function ItemsListView() {
 
   // Active item detail modal
   const [activeItem, setActiveItem] = useState<ItemRosterItem | null>(null);
+
+  // Read URL search query and active item id from query params
+  useEffect(() => {
+    const q = searchParams.get('search');
+    const itId = searchParams.get('item');
+    if (q) {
+      setSearchQuery(q);
+    }
+    if (itId && items.length > 0) {
+      const found = items.find((it) => it.id === itId || it.name.toLowerCase() === itId.toLowerCase());
+      if (found) {
+        setActiveItem(found);
+      }
+    }
+  }, [searchParams, items]);
 
   // Load items from API with DDragon fallback
   useEffect(() => {

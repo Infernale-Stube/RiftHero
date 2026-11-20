@@ -14,9 +14,6 @@ import {
   Layers,
   RotateCcw,
   X,
-  HelpCircle,
-  BarChart2,
-  Compass,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
@@ -183,42 +180,6 @@ export default function ChampionsListView() {
     // Always alphabetical A-Z
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [champions, selectedLane, selectedClass, searchQuery]);
-
-  // Statistics calculation for FAQ section
-  const stats = useMemo(() => {
-    let topCount = 0;
-    let jngCount = 0;
-    let midCount = 0;
-    let adcCount = 0;
-    let supCount = 0;
-
-    champions.forEach((c) => {
-      const m = championPositionsMap[c.id];
-      const positions = m?.recommendedPositions || [];
-      const role = (m?.role || '').toUpperCase();
-
-      const hasTop = positions.some((p) => p.toUpperCase() === 'TOP') || role === 'TOP';
-      const hasJng = positions.some((p) => p.toUpperCase() === 'JUNGLE') || role === 'JUNGLE';
-      const hasMid = positions.some((p) => p.toUpperCase() === 'MIDDLE' || p.toUpperCase() === 'MID') || role === 'MIDDLE';
-      const hasAdc = positions.some((p) => p.toUpperCase() === 'BOTTOM' || p.toUpperCase() === 'ADC') || role === 'BOTTOM';
-      const hasSup = positions.some((p) => p.toUpperCase() === 'SUPPORT') || role === 'SUPPORT';
-
-      if (hasTop) topCount++;
-      if (hasJng) jngCount++;
-      if (hasMid) midCount++;
-      if (hasAdc) adcCount++;
-      if (hasSup) supCount++;
-    });
-
-    return {
-      total: champions.length || 173,
-      topCount,
-      jngCount,
-      midCount,
-      adcCount,
-      supCount,
-    };
-  }, [champions]);
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
@@ -524,73 +485,6 @@ export default function ChampionsListView() {
           </button>
         </div>
       )}
-
-      {/* LoLDB-Style Information & FAQ Section */}
-      <section className="border-t border-white/[0.08] pt-12 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Champion Total Count & Release Info */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-lg backdrop-blur-md space-y-3">
-            <div className="flex items-center gap-2.5 text-amber-400">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <HelpCircle className="h-4 w-4" />
-              </div>
-              <h2 className="text-base font-bold text-white">
-                {t('championWiki.faqTitle1')}
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              {t('championWiki.faqDesc1', { count: stats.total })}
-            </p>
-          </div>
-
-          {/* Card 2: Distribution by Role */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-lg backdrop-blur-md space-y-3">
-            <div className="flex items-center gap-2.5 text-amber-400">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <BarChart2 className="h-4 w-4" />
-              </div>
-              <h2 className="text-base font-bold text-white">
-                {t('championWiki.faqTitle2')}
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              {t('championWiki.faqDesc2')}
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/[0.06] text-xs">
-              <div className="flex items-center gap-1.5 text-zinc-300">
-                <span className="font-bold text-amber-400">{stats.topCount}</span> Top
-              </div>
-              <div className="flex items-center gap-1.5 text-zinc-300">
-                <span className="font-bold text-amber-400">{stats.jngCount}</span> Jungle
-              </div>
-              <div className="flex items-center gap-1.5 text-zinc-300">
-                <span className="font-bold text-amber-400">{stats.midCount}</span> Mid
-              </div>
-              <div className="flex items-center gap-1.5 text-zinc-300">
-                <span className="font-bold text-amber-400">{stats.adcCount}</span> ADC
-              </div>
-              <div className="flex items-center gap-1.5 text-zinc-300 col-span-2">
-                <span className="font-bold text-amber-400">{stats.supCount}</span> Support
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Classes & Playstyles */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-lg backdrop-blur-md space-y-3">
-            <div className="flex items-center gap-2.5 text-amber-400">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <Compass className="h-4 w-4" />
-              </div>
-              <h2 className="text-base font-bold text-white">
-                {t('championWiki.faqTitle3')}
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              {t('championWiki.faqDesc3')}
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

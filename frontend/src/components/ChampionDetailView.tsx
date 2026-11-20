@@ -20,6 +20,7 @@ import {
   Gem,
   Palette,
   RotateCcw,
+  Award,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
@@ -1209,6 +1210,70 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
+  // SUB-RENDER: GAMEPLAY TIPS & STRATEGY (ALLY & ENEMY TIPS)
+  // =========================================================================
+  const renderTipsCard = () => {
+    const allyTipsList = data.allytips || [];
+    const enemyTipsList = data.enemytips || [];
+    const hasAllyTips = allyTipsList.length > 0;
+    const hasEnemyTips = enemyTipsList.length > 0;
+    if (!hasAllyTips && !hasEnemyTips) return null;
+
+    return (
+      <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 sm:p-7 shadow-xl backdrop-blur-md space-y-6">
+        <div className="flex items-center gap-2 pb-3 border-b border-white/[0.06]">
+          <Award className="h-5 w-5 text-amber-400" />
+          <h2 className="text-lg sm:text-xl font-black text-white">
+            {t('championWiki.tips') || 'Tipps & Strategie'}
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Ally Tips */}
+          {hasAllyTips && (
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-5 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <Shield className="h-4 w-4" />
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-300">
+                  {t('championWiki.allyTipsTitle', { name: data.name }) || `Tipps als ${data.name}`}
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-zinc-300">
+                {allyTipsList.map((tip, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mt-2 shrink-0" />
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Enemy Tips / Counterplay */}
+          {hasEnemyTips && (
+            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-5 space-y-3">
+              <div className="flex items-center gap-2 text-rose-400">
+                <Swords className="h-4 w-4" />
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-300">
+                  {t('championWiki.enemyTipsTitle', { name: data.name }) || `Tipps gegen ${data.name} (Counterplay)`}
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-zinc-300">
+                {enemyTipsList.map((tip, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 mt-2 shrink-0" />
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // =========================================================================
   // SUB-RENDER: CHAMPIONS FROM SAME RELEASE YEAR (CAROUSEL)
   // =========================================================================
   const renderSameYearChampionsCard = () => {
@@ -1399,6 +1464,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         {/* ABILITIES & PASSIVE                                                       */}
         {/* ========================================================================= */}
         {renderAbilitiesCard()}
+
+        {/* ========================================================================= */}
+        {/* GAMEPLAY TIPS & COUNTERPLAY STRATEGY                                      */}
+        {/* ========================================================================= */}
+        {renderTipsCard()}
 
         {/* ========================================================================= */}
         {/* CHAMPIONS FROM SAME RELEASE YEAR (CAROUSEL)                               */}
