@@ -149,6 +149,7 @@ export interface FormattedMatch {
   win: boolean;
   isRemake?: boolean;
   isSurrender?: boolean;
+  isNew?: boolean;
   participant: MatchParticipant;
   blueTeam: MatchParticipant[];
   redTeam: MatchParticipant[];

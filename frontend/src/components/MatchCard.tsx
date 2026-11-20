@@ -32,6 +32,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 interface MatchCardProps {
   match: FormattedMatch;
   region: string;
+  isNew?: boolean;
 }
 
 function getMultiKillText(p: MatchParticipant): string | null {
@@ -125,10 +126,12 @@ function BanSlot({ champId }: { champId?: number | null }) {
   );
 }
 
-export default function MatchCard({ match, region }: MatchCardProps) {
+export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const { locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
+
+  const isNewMatch = isNew ?? match.isNew;
 
   const {
     win,
@@ -731,9 +734,16 @@ export default function MatchCard({ match, region }: MatchCardProps) {
 
           {/* Outcome & Queue & Duration & Surrender / LP */}
           <div className="flex flex-col justify-center min-w-[100px]">
-            <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
-              {outcomeText}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
+                {outcomeText}
+              </span>
+              {isNewMatch && (
+                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none">
+                  New
+                </span>
+              )}
+            </div>
             <span className="text-xs font-bold text-zinc-200 truncate mt-0.5">
               {queueName}
             </span>

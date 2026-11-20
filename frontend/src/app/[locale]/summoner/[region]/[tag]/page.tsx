@@ -50,6 +50,10 @@ export default function SummonerMatchesPage() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Track known matches to highlight newly discovered matches in the active session
+  const knownMatchIdsRef = useRef<Set<string>>(new Set());
+  const newMatchIdsRef = useRef<Set<string>>(new Set());
+
   const loadMatchesAndStats = useCallback(
     async (queue: string, isSilent = false) => {
       if (!region || !tag) return;
@@ -61,7 +65,28 @@ export default function SummonerMatchesPage() {
           fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
           fetchPlayedWith(region, tag, 5),
         ]);
-        setMatches(matchesRes.matches);
+
+        const fetchedMatches = matchesRes.matches || [];
+
+        // If we already had known matches, any newly fetched match that wasn't known is new!
+        if (knownMatchIdsRef.current.size > 0) {
+          for (const m of fetchedMatches) {
+            if (!knownMatchIdsRef.current.has(m.matchId)) {
+              newMatchIdsRef.current.add(m.matchId);
+            }
+          }
+        }
+
+        for (const m of fetchedMatches) {
+          knownMatchIdsRef.current.add(m.matchId);
+        }
+
+        const enrichedMatches = fetchedMatches.map((m) => ({
+          ...m,
+          isNew: Boolean(m.isNew || newMatchIdsRef.current.has(m.matchId)),
+        }));
+
+        setMatches(enrichedMatches);
         setTotalMatches(matchesRes.total);
         setChampStats(statsRes);
         setLpHistory(lpHRes);
@@ -97,7 +122,11 @@ export default function SummonerMatchesPage() {
     setIsLoadingMore(true);
     try {
       const res = await fetchSummonerMatches(region, tag, activeQueue, 10, matches.length);
-      setMatches((prev) => [...prev, ...res.matches]);
+      const moreMatches = res.matches || [];
+      for (const m of moreMatches) {
+        knownMatchIdsRef.current.add(m.matchId);
+      }
+      setMatches((prev) => [...prev, ...moreMatches]);
       setTotalMatches(res.total);
     } catch (err) {
       console.error('Failed to load more matches:', err);

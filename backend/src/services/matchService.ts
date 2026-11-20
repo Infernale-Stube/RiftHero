@@ -62,6 +62,7 @@ export interface FormattedMatch {
   win: boolean;
   isRemake?: boolean;
   isSurrender?: boolean;
+  isNew?: boolean;
   participant: FormattedMatchParticipant;
   blueTeam: FormattedMatchParticipant[];
   redTeam: FormattedMatchParticipant[];
@@ -283,6 +284,9 @@ export async function getSummonerMatches(
       (up.challengesJson as any)?.gameEndedInSurrender ||
       (up.challengesJson as any)?.gameEndedInEarlySurrender
     );
+    const isNew =
+      (Date.now() - m.createdAt.getTime() < 2 * 3600 * 1000) ||
+      (Date.now() - Number(m.gameCreation) < 2 * 3600 * 1000);
 
     return {
       matchId: m.id,
@@ -293,6 +297,7 @@ export async function getSummonerMatches(
       win: up.win,
       isRemake,
       isSurrender,
+      isNew,
       participant: currentFormatted,
       blueTeam,
       redTeam,

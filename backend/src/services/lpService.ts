@@ -396,50 +396,127 @@ export async function getMatchesLpChanges(
     return map;
   }
 
+  // Also query recent ranked matches for this summoner from DB to ensure complete match context
+  const dbMatches = await prisma.matchParticipant.findMany({
+    where: {
+      puuid,
+      match: {
+        queueId: { in: [420, 440] },
+      },
+    },
+    select: {
+      matchId: true,
+      win: true,
+      match: {
+        select: {
+          id: true,
+          queueId: true,
+          gameCreation: true,
+        },
+      },
+    },
+    orderBy: {
+      match: {
+        gameCreation: 'asc',
+      },
+    },
+    take: 100,
+  });
+
   for (const qId of [420, 440]) {
     const queueType = qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
     const queueSnapshots = summoner.lpSnapshots.filter((s) => s.queueType === queueType);
     if (queueSnapshots.length < 2) continue;
 
-    const qMatches = rankedMatches
-      .filter((m) => m.queueId === qId)
+    // Build chronological list of known matches for this queue
+    const allQueueMatches = dbMatches
+      .filter((m) => m.match.queueId === qId)
       .map((m) => ({
-        id: m.id,
-        time: Number(m.gameCreation),
+        id: m.match.id,
+        time: Number(m.match.gameCreation),
         win: m.win,
       }))
-      .sort((a, b) => a.time - b.time); // chronological
+      .sort((a, b) => a.time - b.time);
 
-    // Walk through snapshot transitions
+    // If dbMatches didn't have matches, fallback to matches passed in
+    const pool =
+      allQueueMatches.length > 0
+        ? allQueueMatches
+        : rankedMatches
+            .filter((m) => m.queueId === qId)
+            .map((m) => ({
+              id: m.id,
+              time: Number(m.gameCreation),
+              win: m.win,
+            }))
+            .sort((a, b) => a.time - b.time);
+
+    const assignedMatchIds = new Set<string>();
+
+    // Walk through snapshot transitions chronologically
     for (let i = 1; i < queueSnapshots.length; i++) {
       const prev = queueSnapshots[i - 1];
       const curr = queueSnapshots[i];
 
       const gamesDiff = (curr.wins + curr.losses) - (prev.wins + prev.losses);
       const delta = curr.delta ?? (curr.totalLp - prev.totalLp);
+      if (delta === null || delta === undefined) continue;
 
-      // If exactly 1 game was recorded between these snapshots and delta is known
-      if (gamesDiff === 1 && delta !== null && delta !== undefined) {
-        const prevTime = prev.recordedAt.getTime();
-        const currTime = curr.recordedAt.getTime();
+      const prevTime = prev.recordedAt.getTime();
+      const currTime = curr.recordedAt.getTime();
 
-        // Find candidate matches that finished between prev and curr
-        const candidates = qMatches.filter(
-          (m) => m.time >= prevTime - 15 * 60 * 1000 && m.time <= currTime + 10 * 60 * 1000
-        );
+      // Find candidate matches that finished between prev and curr
+      // Allow up to 90 minutes before prev in case prev was recorded while match was in progress
+      const candidates = pool.filter(
+        (m) =>
+          !assignedMatchIds.has(m.id) &&
+          m.time >= prevTime - 90 * 60 * 1000 &&
+          m.time <= currTime + 15 * 60 * 1000
+      );
 
+      if (candidates.length === 0) continue;
+
+      if (gamesDiff === 1) {
         const expectedWin = curr.wins > prev.wins;
         const matchingMatch =
-          candidates.find((m) => m.win === expectedWin) ||
-          (candidates.length === 1 ? candidates[0] : null);
+          candidates.find((m) => m.win === expectedWin) || candidates[candidates.length - 1];
 
         if (matchingMatch) {
+          assignedMatchIds.add(matchingMatch.id);
           map.set(matchingMatch.id, {
             delta,
             tier: curr.tier,
             rank: curr.rank,
             leaguePoints: curr.leaguePoints,
           });
+        }
+      } else if (gamesDiff > 1) {
+        // Multiple games between snapshots (e.g. user played several games before sync)
+        if (candidates.length === gamesDiff) {
+          const avgDelta = Math.round(delta / gamesDiff);
+          for (let c = 0; c < candidates.length; c++) {
+            const cand = candidates[c];
+            assignedMatchIds.add(cand.id);
+            const matchDelta = c === candidates.length - 1 ? delta - avgDelta * (gamesDiff - 1) : avgDelta;
+            map.set(cand.id, {
+              delta: matchDelta,
+              tier: curr.tier,
+              rank: curr.rank,
+              leaguePoints: curr.leaguePoints,
+            });
+          }
+        } else {
+          const latestCand = candidates[candidates.length - 1];
+          if (latestCand) {
+            assignedMatchIds.add(latestCand.id);
+            const avgDelta = Math.round(delta / Math.max(1, gamesDiff));
+            map.set(latestCand.id, {
+              delta: avgDelta,
+              tier: curr.tier,
+              rank: curr.rank,
+              leaguePoints: curr.leaguePoints,
+            });
+          }
         }
       }
     }
