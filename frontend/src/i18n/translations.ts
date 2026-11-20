@@ -322,6 +322,14 @@ export interface TranslationDictionary {
     detailFaqRoleDesc: string;
     detailFaqSkins: string;
     detailFaqSkinsDesc: string;
+    detailFaqCost: string;
+    detailFaqCostDesc: string;
+    skinTimeline: string;
+    regular: string;
+    epic: string;
+    legendary: string;
+    mythic: string;
+    transcendent: string;
   };
 }
 
@@ -645,11 +653,19 @@ export const translations: Record<Locale, TranslationDictionary> = {
       pricingBE: 'BE',
       pricingRP: 'RP',
       detailFaqRelease: 'Wann wurde {name} veröffentlicht?',
-      detailFaqReleaseDesc: '{name} ist ein fester Bestandteil des League of Legends Champion-Rosters und wird regelmäßig mit Patches und Balance-Updates auf aktuellem Stand gehalten.',
+      detailFaqReleaseDesc: '{name} wurde am {date} veröffentlicht. Spieler konnten den Champion direkt nach Release mit Blauen Essenzen oder Riot Points erwerben.',
       detailFaqRole: 'Auf welcher Position wird {name} gespielt?',
       detailFaqRoleDesc: '{name} wird primär auf {role} gespielt{flex}, wo die einzigartige Skill-Kombination und Stärken am besten zum Tragen kommen.',
       detailFaqSkins: 'Wie viele Skins besitzt {name}?',
       detailFaqSkinsDesc: '{name} verfügt aktuell über {count} verschiedene Skins und Artworks im Spiel, inklusive des Basis-Klassikers.',
+      detailFaqCost: 'Wie viel kostet {name}?',
+      detailFaqCostDesc: '{name} kostet {be} Blaue Essenzen oder {rp} Riot Points. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden.',
+      skinTimeline: 'Skin Timeline',
+      regular: 'Regular',
+      epic: 'Epic',
+      legendary: 'Legendary',
+      mythic: 'Mythic',
+      transcendent: 'Transcendent',
     },
   },
   en: {
@@ -971,11 +987,19 @@ export const translations: Record<Locale, TranslationDictionary> = {
       pricingBE: 'BE',
       pricingRP: 'RP',
       detailFaqRelease: 'When Was {name} Released?',
-      detailFaqReleaseDesc: '{name} is part of the League of Legends champion roster and actively balanced with regular patch updates.',
-      detailFaqRole: 'What Lane Is {name} Played In?',
-      detailFaqRoleDesc: '{name} is primarily played in the {role} lane{flex}, leveraging their distinct ability kit and team fight utility.',
+      detailFaqReleaseDesc: '{name} was released on {date}. Players could purchase them with Riot Points or Blue Essence as soon as it dropped in-game.',
+      detailFaqRole: 'What Lane Is {name}?',
+      detailFaqRoleDesc: '{name} is primarily played in the {role} lane{flex}, leveraging their distinct ability kit and playstyle where they can maximize their impact throughout the game.',
       detailFaqSkins: 'How Many Skins Does {name} Have?',
-      detailFaqSkinsDesc: '{name} currently features {count} distinct skins and splash artworks in the game, including the base classic skin.',
+      detailFaqSkinsDesc: 'Currently, there are {count} {name} Skins available in the game. This includes all cosmetic variants released since their launch, the base skin is not included.',
+      detailFaqCost: 'How Much Is {name}?',
+      detailFaqCostDesc: '{name} costs {be} Blue Essence or {rp} Riot Points. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.',
+      skinTimeline: 'Skin Timeline',
+      regular: 'Regular',
+      epic: 'Epic',
+      legendary: 'Legendary',
+      mythic: 'Mythic',
+      transcendent: 'Transcendent',
     },
   },
 };

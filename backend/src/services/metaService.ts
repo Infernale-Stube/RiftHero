@@ -99,38 +99,162 @@ export async function ensureMetaTableExists(): Promise<void> {
   }
 }
 
+function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor: string } {
+  if (!rawRarity) return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+  const r = rawRarity.toLowerCase().replace(/[^a-z]/g, '');
+  if (r.includes('epic')) return { rarity: 'Epic', rarityColor: '#0FAEB6' };
+  if (r.includes('legendary')) return { rarity: 'Legendary', rarityColor: '#DB1523' };
+  if (r.includes('mythic')) return { rarity: 'Mythic', rarityColor: '#B034B6' };
+  if (r.includes('transcendent') || r.includes('ultimate') || r.includes('exalted')) {
+    return { rarity: 'Transcendent', rarityColor: '#C7A8DD' };
+  }
+  return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+}
+
+function normalizeSkinName(name: string, champName: string): string {
+  return (name || '')
+    .toLowerCase()
+    .replace(new RegExp(champName.toLowerCase(), 'g'), '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
 /**
- * Builds localized champion rosters (de & en) enriched with:
- * - DDragon base info (names, titles, blurbs, tags, stats, icons, loading images)
+ * Builds localized champion rosters and full champion details (de & en) enriched with:
+ * - DDragon base info & full details (spells, passives, stats, lore, skins)
  * - Positional info & classes (from championPositions)
- * - Calculated Meta Analytics (winrate, pickrate, banrate, tier, rank, score, games)
+ * - Meraki store pricing (Blue Essence / RP), release dates, skin rarities & release years
+ * - Live Meta Analytics (winrate, pickrate, banrate, tier, rank, score, games)
+ * Everything is precomputed and saved directly in PostgreSQL, eliminating all external Riot calls on page views!
  */
-async function buildChampionRosters(
+async function buildChampionRostersAndDetails(
   ddragonVersion: string,
   tierList: TierListChampion[]
-): Promise<{ de: any[]; en: any[]; version: string }> {
+): Promise<{
+  rosters: { de: any[]; en: any[]; version: string };
+  details: { de: Record<string, any>; en: Record<string, any> };
+}> {
   const tierMap = new Map<string, TierListChampion>();
   for (const t of tierList) {
     tierMap.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
   }
 
+  // 1. Fetch Meraki champions catalog for store pricing (BE/RP), release dates, and skin rarities
+  const merakiMap = new Map<string, any>();
+  try {
+    const merakiRes = await fetch(
+      'https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json'
+    );
+    if (merakiRes.ok) {
+      const merakiJson = (await merakiRes.json()) as Record<string, any>;
+      for (const [k, v] of Object.entries(merakiJson)) {
+        merakiMap.set(k.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+        if (v.id) merakiMap.set(String(v.id), v);
+        if (v.key) merakiMap.set(String(v.key), v);
+        if (v.name) merakiMap.set(v.name.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+      }
+    }
+  } catch (err) {
+    console.warn('[MetaService] Meraki fetch warning (will use defaults):', (err as Error).message);
+  }
+
   const langs = ['de_DE', 'en_US'] as const;
   const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
+  const details: { de: Record<string, any>; en: Record<string, any> } = { de: {}, en: {} };
 
   for (const lang of langs) {
     const key = lang.startsWith('de') ? 'de' : 'en';
     try {
-      const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/champion.json`);
+      const res = await fetch(
+        `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/championFull.json`
+      );
       if (res.ok) {
         const json = (await res.json()) as any;
         if (json && json.data) {
-          const list = Object.values(json.data).map((champ: any) => {
+          const champEntries = Object.values(json.data) as any[];
+
+          for (const champ of champEntries) {
             const posMeta = championPositionsMap[champ.id];
             const cleanName = champ.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const cleanId = champ.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanKey = String(champ.key);
             const metaTier = tierMap.get(cleanName) || tierMap.get(cleanId) || null;
 
-            return {
+            // Meraki match for store pricing and release dates
+            const merakiChamp =
+              merakiMap.get(cleanId) || merakiMap.get(cleanName) || merakiMap.get(cleanKey) || null;
+
+            const storePrice = {
+              ip: merakiChamp?.price?.blueEssence ?? 4800,
+              rp: merakiChamp?.price?.rp ?? 880,
+              releaseDate: merakiChamp?.releaseDate || '2012-01-01',
+            };
+
+            const metaBlock = metaTier
+              ? {
+                  tier: metaTier.tier,
+                  winrate: metaTier.winrate,
+                  winrateNum: metaTier.winrateNum,
+                  pickrate: metaTier.pickrate,
+                  pickrateNum: metaTier.pickrateNum,
+                  banrate: metaTier.banrate,
+                  banrateNum: metaTier.banrateNum,
+                  rank: metaTier.rank,
+                  score: metaTier.score,
+                  games: metaTier.games,
+                }
+              : null;
+
+            // Process skins: filter out chromas, match with Meraki for timeline, rarities, and release years
+            const rawSkins = Array.isArray(champ.skins) ? champ.skins : [];
+            const processedSkins = rawSkins
+              .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
+              .map((s: any) => {
+                if (s.num === 0) {
+                  const baseYear = storePrice.releaseDate
+                    ? new Date(storePrice.releaseDate).getFullYear()
+                    : 2011;
+                  return {
+                    id: String(s.id),
+                    num: 0,
+                    name: s.name,
+                    rarity: 'Regular',
+                    rarityColor: '#2E8D4C',
+                    releaseDate: storePrice.releaseDate,
+                    releaseYear: isNaN(baseYear) ? 2011 : baseYear,
+                    cost: 0,
+                  };
+                }
+
+                const ddNorm = normalizeSkinName(s.name, champ.name);
+                let matchedMerakiSkin = merakiChamp?.skins?.find(
+                  (m: any) => normalizeSkinName(m.name, champ.name) === ddNorm
+                );
+                if (!matchedMerakiSkin) {
+                  matchedMerakiSkin = merakiChamp?.skins?.find((m: any) => {
+                    const mNorm = normalizeSkinName(m.name, champ.name);
+                    return mNorm.length > 3 && (ddNorm.includes(mNorm) || mNorm.includes(ddNorm));
+                  });
+                }
+
+                const rarityInfo = mapSkinRarity(matchedMerakiSkin?.rarity);
+                const relDate = matchedMerakiSkin?.release || storePrice.releaseDate;
+                const dObj = relDate ? new Date(relDate) : new Date();
+                const relYear = isNaN(dObj.getFullYear()) ? 2020 : dObj.getFullYear();
+
+                return {
+                  id: String(s.id),
+                  num: s.num,
+                  name: s.name,
+                  rarity: rarityInfo.rarity,
+                  rarityColor: rarityInfo.rarityColor,
+                  releaseDate: relDate,
+                  releaseYear: relYear,
+                  cost: matchedMerakiSkin?.cost ?? 975,
+                };
+              });
+
+            // 1. Roster Item (for /champions list)
+            const rosterItem = {
               id: champ.id,
               key: champ.key,
               name: champ.name,
@@ -145,31 +269,54 @@ async function buildChampionRosters(
               class: posMeta?.class || champ.tags?.[0] || 'Fighter',
               difficulty: posMeta?.difficulty ?? champ.info?.difficulty ?? 5,
               recommendedPositions: posMeta?.recommendedPositions || ['Top'],
-              meta: metaTier
-                ? {
-                    tier: metaTier.tier,
-                    winrate: metaTier.winrate,
-                    winrateNum: metaTier.winrateNum,
-                    pickrate: metaTier.pickrate,
-                    pickrateNum: metaTier.pickrateNum,
-                    banrate: metaTier.banrate,
-                    banrateNum: metaTier.banrateNum,
-                    rank: metaTier.rank,
-                    score: metaTier.score,
-                    games: metaTier.games,
-                  }
-                : null,
+              storeData: storePrice,
+              releaseDate: storePrice.releaseDate,
+              meta: metaBlock,
             };
-          });
-          rosters[key] = list;
+            rosters[key].push(rosterItem);
+
+            // 2. Full Detail Item (for /champions/:slug)
+            const detailItem = {
+              id: champ.id,
+              key: champ.key,
+              name: champ.name,
+              title: champ.title,
+              blurb: champ.blurb,
+              lore: champ.lore || champ.blurb,
+              info: champ.info,
+              image: champ.image,
+              tags: champ.tags,
+              partype: champ.partype,
+              stats: champ.stats,
+              spells: champ.spells || [],
+              passive: champ.passive || null,
+              allytips: champ.allytips || [],
+              enemytips: champ.enemytips || [],
+              skins: processedSkins,
+              role: posMeta?.role || 'Top',
+              class: posMeta?.class || champ.tags?.[0] || 'Fighter',
+              difficulty: posMeta?.difficulty ?? champ.info?.difficulty ?? 5,
+              recommendedPositions: posMeta?.recommendedPositions || ['Top'],
+              storeData: storePrice,
+              releaseDate: storePrice.releaseDate,
+              meta: metaBlock,
+            };
+
+            // Index by lowercase id and clean name for O(1) instant lookup
+            details[key][cleanId] = detailItem;
+            details[key][cleanName] = detailItem;
+          }
         }
       }
     } catch (err) {
-      console.warn(`[MetaService] Failed to fetch DDragon champions for ${lang}:`, (err as Error).message);
+      console.warn(`[MetaService] Failed to fetch DDragon championFull for ${lang}:`, (err as Error).message);
     }
   }
 
-  return { ...rosters, version: ddragonVersion };
+  return {
+    rosters: { ...rosters, version: ddragonVersion },
+    details,
+  };
 }
 
 /**
@@ -448,9 +595,9 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
       });
     }
 
-    // 3. Fetch & build localized champion rosters (de & en) enriched with meta stats
+    // 3. Fetch & build localized champion rosters (de & en) enriched with meta stats and full champion details
     const ddragonVersion = await getLatestDDragonVersion();
-    const championsRoster = await buildChampionRosters(ddragonVersion, tierList);
+    const { rosters, details } = await buildChampionRostersAndDetails(ddragonVersion, tierList);
 
     // 4. Save precomputed results into dedicated 'meta_snapshots' database table
     await prisma.metaSnapshot.upsert({
@@ -460,7 +607,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
         totalMatches: totalMatchesAnalyzed,
         metaPicksJson: metaPicks as any,
         tierListJson: tierList as any,
-        championsJson: championsRoster as any,
+        championsJson: rosters as any,
+        championDetailsJson: details as any,
         computedAt: new Date(),
       },
       create: {
@@ -469,7 +617,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
         totalMatches: totalMatchesAnalyzed,
         metaPicksJson: metaPicks as any,
         tierListJson: tierList as any,
-        championsJson: championsRoster as any,
+        championsJson: rosters as any,
+        championDetailsJson: details as any,
         computedAt: new Date(),
       },
     });
@@ -484,7 +633,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
       totalMatches: totalMatchesAnalyzed,
       metaPicks,
       tierList,
-      championsRoster,
+      championsRoster: rosters,
+      championDetails: details,
       timestamp: Date.now(),
     };
 
@@ -583,21 +733,33 @@ export async function getChampionDetail(
   champion: any;
 }> {
   const snapshot = await loadActiveSnapshot();
-  const lang = locale.toLowerCase().startsWith('en') ? 'en_US' : 'de_DE';
-  const cacheKey = `${lang}_${slug.toLowerCase()}`;
+  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  if (memoryCache?.championDetails?.[cacheKey]) {
+  // 1. Direct hit in precomputed snapshot / memory cache (0ms, 0 external calls)
+  const cached = snapshot.championDetails?.[langKey]?.[cleanTarget];
+  if (cached) {
     return {
       version: snapshot.championsRoster?.version || snapshot.patch,
       patch: snapshot.patch,
-      champion: memoryCache.championDetails[cacheKey],
+      champion: cached,
     };
   }
 
-  // Find champion ID from roster
-  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  // Check alternative language in snapshot as fallback
+  const altLangKey = langKey === 'de' ? 'en' : 'de';
+  const altCached = snapshot.championDetails?.[altLangKey]?.[cleanTarget];
+  if (altCached) {
+    return {
+      version: snapshot.championsRoster?.version || snapshot.patch,
+      patch: snapshot.patch,
+      champion: altCached,
+    };
+  }
+
+  // 2. Fallback on demand if somehow snapshot was missing this champion
+  const lang = locale.toLowerCase().startsWith('en') ? 'en_US' : 'de_DE';
   const list = snapshot.championsRoster?.[langKey] || [];
-  const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
   const found = list.find((c: any) => {
     const cId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
     const cName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -624,9 +786,12 @@ export async function getChampionDetail(
           memoryCache = { ...snapshot, timestamp: Date.now() };
         }
         if (!memoryCache.championDetails) {
-          memoryCache.championDetails = {};
+          memoryCache.championDetails = { de: {}, en: {} };
         }
-        memoryCache.championDetails[cacheKey] = champData;
+        if (!memoryCache.championDetails[langKey]) {
+          memoryCache.championDetails[langKey] = {};
+        }
+        memoryCache.championDetails[langKey][cleanTarget] = champData;
 
         return {
           version: ddragonVersion,
@@ -636,7 +801,7 @@ export async function getChampionDetail(
       }
     }
   } catch (err) {
-    console.warn(`[MetaService] Failed to fetch champion detail for ${slug}:`, (err as Error).message);
+    console.warn(`[MetaService] Failed to fetch champion detail fallback for ${slug}:`, (err as Error).message);
   }
 
   return {

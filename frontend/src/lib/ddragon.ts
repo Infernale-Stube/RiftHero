@@ -234,6 +234,11 @@ export interface DDragonSkin {
   name: string;
   chromas: boolean;
   parentSkin?: number;
+  rarity?: 'Regular' | 'Epic' | 'Legendary' | 'Mythic' | 'Transcendent' | string;
+  rarityColor?: string;
+  releaseDate?: string;
+  releaseYear?: number;
+  cost?: number | string;
 }
 
 export interface DDragonChampionDetail extends DDragonChampionSummary {
@@ -247,6 +252,20 @@ export interface DDragonChampionDetail extends DDragonChampionSummary {
   };
   allytips?: string[];
   enemytips?: string[];
+  storeData?: { ip: number; rp: number; releaseDate?: string };
+  releaseDate?: string;
+  meta?: {
+    tier?: string;
+    winrate?: string;
+    winrateNum?: number;
+    pickrate?: string;
+    pickrateNum?: number;
+    banrate?: string;
+    banrateNum?: number;
+    rank?: number;
+    score?: number;
+    games?: number;
+  } | null;
 }
 
 export async function fetchDDragonChampionsList(locale = 'de'): Promise<{
