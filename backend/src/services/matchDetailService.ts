@@ -6,6 +6,29 @@ import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
 import { calculateMatchScores, calculateScoreTimeline, DeepLolScore, ScoreTimelinePoint } from './scoreService';
 
+// In-memory volatile cache for live match timelines (TTL: 5 minutes)
+// Keeps database size at 0 KB while preventing duplicate Riot API requests during active viewing
+const timelineMemoryCache = new Map<string, { data: any; expiresAt: number }>();
+
+function getCachedTimeline(matchId: string): any | null {
+  const entry = timelineMemoryCache.get(matchId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    timelineMemoryCache.delete(matchId);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedTimeline(matchId: string, data: any, ttlMs = 5 * 60 * 1000): void {
+  // Prune if cache grows too large
+  if (timelineMemoryCache.size > 200) {
+    const oldestKey = timelineMemoryCache.keys().next().value;
+    if (oldestKey) timelineMemoryCache.delete(oldestKey);
+  }
+  timelineMemoryCache.set(matchId, { data, expiresAt: Date.now() + ttlMs });
+}
+
 export interface ObjectiveDetail {
   first: boolean;
   kills: number;
@@ -154,7 +177,6 @@ export async function getMatchDetails(
                 primaryStyle: p.perks?.styles?.[0]?.style || null,
                 secondaryStyle: p.perks?.styles?.[1]?.style || null,
                 perksJson: p.perks as any || null,
-                challengesJson: p.challenges as any || null,
               };
             }),
           },
@@ -169,21 +191,24 @@ export async function getMatchDetails(
     }
   }
 
-  // 2. Fetch Timeline if not cached in DB
-  let timeline = (match as any).timelineJson;
+  if (!match) {
+    return null;
+  }
+
+  // 2. Fetch Timeline LIVE on-the-fly from Riot API (NEVER persisted to PostgreSQL!)
+  let timeline = getCachedTimeline(matchId);
   if (!timeline) {
     try {
       timeline = await rApi.matchV5.getMatchTimelineById({
         cluster: cluster as any,
         matchId,
       });
-      // Save timeline to DB
-      await prisma.match.update({
-        where: { id: matchId },
-        data: { timelineJson: timeline as any },
-      });
-    } catch {
+      if (timeline) {
+        setCachedTimeline(matchId, timeline);
+      }
+    } catch (err: any) {
       // Timeline might not be available for very old matches
+      console.warn(`[MatchDetails] Live timeline fetch failed for ${matchId}:`, err?.message || err);
     }
   }
 

@@ -16,12 +16,10 @@ import {
   Target,
   Clock,
   Layers,
-  Award,
-  HelpCircle,
   Coins,
   Gem,
-  ExternalLink,
-  SlidersHorizontal,
+  Palette,
+  RotateCcw,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
@@ -30,12 +28,16 @@ import {
   DDragonSkin,
   getChampionIconUrl,
   getChampionSkinSplashUrl,
+  getChampionLoadingUrl,
   getChampionPassiveIconUrl,
   getChampionSpellIconUrl,
   getPositionIconUrl,
   getMajorMinorPatch,
   getDDragonVersion,
   PositionKey,
+  CDragonChroma,
+  fetchCDragonChampionChromas,
+  getCDragonChromaImageUrl,
 } from '@/lib/ddragon';
 import { fetchChampionDetailApi, fetchTierList, TierListChampionItem } from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
@@ -60,12 +62,33 @@ const ALL_RARITIES = ['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'] 
 type RarityTier = (typeof ALL_RARITIES)[number];
 
 const RARITY_COLORS: Record<RarityTier, string> = {
-  Regular: '#2E8D4C',
-  Epic: '#0FAEB6',
-  Legendary: '#DB1523',
-  Mythic: '#B034B6',
-  Transcendent: '#C7A8DD',
+  Regular: '#22c55e',
+  Epic: '#06b6d4',
+  Legendary: '#ef4444',
+  Mythic: '#d946ef',
+  Transcendent: '#a855f7',
 };
+
+// Formats YYYY-MM-DD into "December 14, 2011" (en) or "14. Dezember 2011" (de)
+function formatReleaseDate(dateStr?: string, locale = 'de'): string {
+  if (!dateStr) return locale.startsWith('en') ? 'Unknown' : 'Unbekannt';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const date = new Date(Date.UTC(y, m, d));
+    if (!isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat(locale.startsWith('en') ? 'en-US' : 'de-DE', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(date);
+    }
+  }
+  return dateStr;
+}
 
 export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const { t, locale } = useTranslation();
@@ -73,21 +96,26 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [tierInfo, setTierInfo] = useState<TierListChampionItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Spells & Skins interaction
   const [selectedSpellIndex, setSelectedSpellIndex] = useState<number>(-1); // -1 = passive, 0 = Q, 1 = W, 2 = E, 3 = R
   const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'build'>('overview');
 
-  // Interactive Rarity Filters for Skin Timeline (User requirement: clickable, strikethrough when disabled)
-  const [enabledRarities, setEnabledRarities] = useState<Set<string>>(
-    () => new Set(['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'])
+  // Chromas State
+  const [chromasMap, setChromasMap] = useState<Record<string, CDragonChroma[]>>({});
+  const [selectedChromaId, setSelectedChromaId] = useState<number | null>(null);
+
+  // Interactive Rarity Filters for Skin Timeline
+  const [enabledRarities, setEnabledRarities] = useState<Set<RarityTier>>(
+    () => new Set<RarityTier>(['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'])
   );
 
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
 
+  // Fetch Champion Details (Instant from PostgreSQL cache / bundled metadata with DDragon fallback)
   useEffect(() => {
     setIsLoading(true);
-    // 1. Fetch champion detail from our backend database/cache (with fallback to client DDragon with Meraki enrichment)
     fetchChampionDetailApi(slug, locale)
       .then((res) => {
         if (res && res.champion) {
@@ -110,7 +138,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         setIsLoading(false);
       });
 
-    // 2. Fetch tier list to display live meta stats if available
+    // Optional Tier List stats
     fetchTierList()
       .then((tierRes) => {
         if (tierRes && tierRes.champions) {
@@ -124,6 +152,20 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       .catch(() => {});
   }, [slug, locale]);
 
+  // Fetch CommunityDragon Chromas
+  useEffect(() => {
+    if (data?.key) {
+      fetchCDragonChampionChromas(data.key).then((res) => {
+        setChromasMap(res);
+      });
+    }
+  }, [data?.key]);
+
+  // Reset chroma when skin changes
+  useEffect(() => {
+    setSelectedChromaId(null);
+  }, [selectedSkinIndex]);
+
   const patchString = getMajorMinorPatch(version);
 
   // Position & class metadata
@@ -132,7 +174,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     return championPositionsMap[data.id] || null;
   }, [data]);
 
-  const primaryRole = metaPos?.recommendedPositions?.[0] || metaPos?.role || 'Top';
+  const primaryRole = metaPos?.recommendedPositions?.[0] || metaPos?.role || 'Mid';
   const posKey: PositionKey = (() => {
     const up = primaryRole.toUpperCase();
     if (up === 'TOP') return 'TOP';
@@ -140,193 +182,146 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     if (up === 'MIDDLE' || up === 'MID') return 'MID';
     if (up === 'BOTTOM' || up === 'BOT' || up === 'ADC') return 'ADC';
     if (up === 'SUPPORT') return 'SUPPORT';
-    return 'TOP';
+    return 'MID';
   })();
 
-  // Filter out chromas (entries with parentSkin)
-  const skins = useMemo(() => {
-    if (!data?.skins) return [];
+  const skins: DDragonSkin[] = useMemo(() => {
+    if (!data || !data.skins) return [];
     return data.skins.filter((s) => s.parentSkin === undefined || s.parentSkin === null);
-  }, [data?.skins]);
+  }, [data]);
 
-  const activeSkin = skins[selectedSkinIndex] || skins[0] || data?.skins?.[0];
+  const activeSkin = skins[selectedSkinIndex] || skins[0] || null;
+  const currentSkinChromas = chromasMap[String(activeSkin?.id)] || [];
+  const activeChroma = selectedChromaId
+    ? currentSkinChromas.find((c) => c.id === selectedChromaId)
+    : null;
 
-  const handleNextSkin = () => {
-    if (skins.length === 0) return;
-    const nextIdx = (selectedSkinIndex + 1) % skins.length;
-    setSelectedSkinIndex(nextIdx);
-    scrollThumbnailIntoView(nextIdx);
-  };
-
-  const handlePrevSkin = () => {
-    if (skins.length === 0) return;
-    const prevIdx = (selectedSkinIndex - 1 + skins.length) % skins.length;
-    setSelectedSkinIndex(prevIdx);
-    scrollThumbnailIntoView(prevIdx);
-  };
-
-  const scrollThumbnailIntoView = (idx: number) => {
-    if (!thumbnailStripRef.current) return;
-    const items = thumbnailStripRef.current.children;
-    if (items && items[idx]) {
-      (items[idx] as HTMLElement).scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
-      });
+  // Selected spell
+  const selectedSpell = useMemo(() => {
+    if (!data || selectedSpellIndex < 0 || selectedSpellIndex >= data.spells.length) {
+      return null;
     }
-  };
+    return data.spells[selectedSpellIndex];
+  }, [data, selectedSpellIndex]);
 
-  // Toggle Rarity Filter in Timeline
-  const toggleRarity = (rarity: string) => {
+  // Dynamic Level Stats Calculation (League Standard Formula)
+  const calcStats = useMemo(() => {
+    if (!data || !data.stats) return null;
+    const s = data.stats;
+    const lvl = selectedLevel;
+    const growthCoeff = (lvl - 1) * (0.7025 + 0.0175 * (lvl - 1));
+
+    const calc = (base: number, growth: number) => {
+      if (!growth || lvl === 1) return base;
+      return Math.round((base + growth * growthCoeff) * 10) / 10;
+    };
+
+    const calcAS = (base: number, growthPercent: number) => {
+      if (!growthPercent || lvl === 1) return base;
+      const totalBonusPercent = (growthPercent * growthCoeff) / 100;
+      return Math.round(base * (1 + totalBonusPercent) * 1000) / 1000;
+    };
+
+    return {
+      hp: calc(s.hp, s.hpperlevel),
+      mp: calc(s.mp, s.mpperlevel),
+      ad: calc(s.attackdamage, s.attackdamageperlevel),
+      armor: calc(s.armor, s.armorperlevel),
+      mr: calc(s.spellblock, s.spellblockperlevel),
+      as: calcAS(s.attackspeed, s.attackspeedperlevel),
+      hpregen: calc(s.hpregen, s.hpregenperlevel),
+      mpregen: calc(s.mpregen, s.mpregenperlevel),
+    };
+  }, [data, selectedLevel]);
+
+  // Skin Timeline Data Grouping (excludes base skin num 0)
+  const timelineData = useMemo(() => {
+    if (!data || !skins || skins.length === 0) return [];
+
+    const cosmeticSkins = skins.filter((s) => s.num !== 0);
+    const yearMap = new Map<number, Map<RarityTier, DDragonSkin[]>>();
+
+    for (const s of cosmeticSkins) {
+      const rawRarity = (s.rarity || 'Regular') as RarityTier;
+      const tier: RarityTier = ALL_RARITIES.includes(rawRarity) ? rawRarity : 'Regular';
+
+      if (!enabledRarities.has(tier)) continue;
+
+      const y = s.releaseYear && !isNaN(s.releaseYear) ? s.releaseYear : 2020;
+      if (!yearMap.has(y)) {
+        yearMap.set(y, new Map());
+      }
+      const tierMap = yearMap.get(y)!;
+      if (!tierMap.has(tier)) {
+        tierMap.set(tier, []);
+      }
+      tierMap.get(tier)!.push(s);
+    }
+
+    const sortedYears = Array.from(yearMap.keys()).sort((a, b) => a - b);
+
+    return sortedYears.map((year) => {
+      const tierMap = yearMap.get(year)!;
+      const nodes = Array.from(tierMap.entries()).map(([tier, skinList]) => ({
+        tier,
+        rarityColor: RARITY_COLORS[tier],
+        skins: skinList,
+      }));
+      return { year, nodes };
+    });
+  }, [data, skins, enabledRarities]);
+
+  const toggleRarity = (tier: RarityTier) => {
     setEnabledRarities((prev) => {
       const next = new Set(prev);
-      if (next.has(rarity)) {
-        next.delete(rarity);
+      if (next.has(tier)) {
+        if (next.size > 1) next.delete(tier);
       } else {
-        next.add(rarity);
+        next.add(tier);
       }
       return next;
     });
   };
 
-  // Recalculate stats dynamically for selected level 1..18 using Riot's exact formula
-  const calcStats = useMemo(() => {
-    if (!data?.stats) return null;
-    const s = data.stats;
-    const lvl = selectedLevel;
-    const mult = lvl === 1 ? 0 : (lvl - 1) * (0.7025 + 0.0175 * (lvl - 1));
-
-    const hp = Math.round(s.hp + s.hpperlevel * mult);
-    const mp = s.mp > 0 ? Math.round(s.mp + s.mpperlevel * mult) : 0;
-    const ad = Math.round((s.attackdamage + s.attackdamageperlevel * mult) * 10) / 10;
-    const armor = Math.round((s.armor + s.armorperlevel * mult) * 10) / 10;
-    const mr = Math.round((s.spellblock + s.spellblockperlevel * mult) * 10) / 10;
-    const hpregen = Math.round((s.hpregen + s.hpregenperlevel * mult) * 10) / 10;
-    const mpregen = s.mpregen > 0 ? Math.round((s.mpregen + s.mpregenperlevel * mult) * 10) / 10 : 0;
-    const as = s.attackspeed * (1 + (s.attackspeedperlevel / 100) * mult);
-
-    return {
-      hp,
-      mp,
-      ad,
-      armor,
-      mr,
-      hpregen,
-      mpregen,
-      as: as.toFixed(3),
-      movespeed: s.movespeed,
-      range: s.attackrange,
-    };
-  }, [data?.stats, selectedLevel]);
-
-  // Base Champion Release Year (fallback if skin releaseYear is missing)
-  const champBaseYear = useMemo(() => {
-    const relStr = data?.storeData?.releaseDate || data?.releaseDate;
-    if (relStr) {
-      const y = new Date(relStr).getFullYear();
-      if (!isNaN(y) && y >= 2009) return y;
-    }
-    return 2011;
-  }, [data]);
-
-  // Group non-base skins by release year & rarity for the Skin Timeline (Base skin excluded per LoLDB)
-  const timelineData = useMemo(() => {
-    if (!skins || skins.length === 0) return [];
-
-    const map = new Map<
-      number,
-      Map<string, { tier: string; rarityColor: string; skins: DDragonSkin[] }>
-    >();
-
-    for (const s of skins) {
-      if (s.num === 0) continue; // Base skin excluded from timeline per LoLDB & screenshot
-
-      // Accurate year: use releaseYear or parse releaseDate, or fallback to champion release year
-      let year = s.releaseYear;
-      if (!year && s.releaseDate) {
-        const parsed = new Date(s.releaseDate).getFullYear();
-        if (!isNaN(parsed) && parsed >= 2009) year = parsed;
-      }
-      if (!year) year = champBaseYear;
-
-      const tier = s.rarity || 'Regular';
-      const rarityColor =
-        s.rarityColor || RARITY_COLORS[tier as RarityTier] || '#2E8D4C';
-
-      // Skip if this rarity is currently toggled off by the user filter!
-      if (!enabledRarities.has(tier)) continue;
-
-      if (!map.has(year)) {
-        map.set(year, new Map());
-      }
-      const yearMap = map.get(year)!;
-      if (!yearMap.has(tier)) {
-        yearMap.set(tier, { tier, rarityColor, skins: [] });
-      }
-      yearMap.get(tier)!.skins.push(s);
-    }
-
-    const sortedYears = Array.from(map.keys()).sort((a, b) => a - b);
-    return sortedYears.map((year) => {
-      const tierMap = map.get(year)!;
-      return {
-        year,
-        nodes: Array.from(tierMap.values()),
-      };
-    });
-  }, [skins, enabledRarities, champBaseYear]);
-
-  // Formatted release date for FAQ & Hero
-  const formattedReleaseDate = useMemo(() => {
-    const dStr = data?.storeData?.releaseDate || data?.releaseDate;
-    if (!dStr) return locale === 'de' ? 'Unbekannt' : 'Unknown';
-    try {
-      const d = new Date(dStr);
-      return d.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+  const scrollThumbnailIntoView = (index: number) => {
+    if (!thumbnailStripRef.current) return;
+    const container = thumbnailStripRef.current;
+    const items = container.querySelectorAll<HTMLElement>('[data-skin-index]');
+    if (items[index]) {
+      items[index].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
       });
-    } catch {
-      return dStr;
     }
-  }, [data, locale]);
+  };
 
-  // Store Pricing (Blue Essence & RP)
-  const beCost = useMemo(() => {
-    if (data?.storeData?.ip) {
-      return Number(data.storeData.ip).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US');
-    }
-    return '1,575';
-  }, [data, locale]);
+  const handlePrevSkin = () => {
+    if (skins.length === 0) return;
+    const prev = selectedSkinIndex > 0 ? selectedSkinIndex - 1 : skins.length - 1;
+    setSelectedSkinIndex(prev);
+    scrollThumbnailIntoView(prev);
+  };
 
-  const rpCost = useMemo(() => {
-    if (data?.storeData?.rp) {
-      return Number(data.storeData.rp).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US');
-    }
-    return '790';
-  }, [data, locale]);
-
-  // Non-base skins count (for FAQ)
-  const nonBaseSkinsCount = useMemo(() => {
-    const nb = skins.filter((s) => s.num !== 0);
-    return nb.length > 0 ? nb.length : skins.length;
-  }, [skins]);
+  const handleNextSkin = () => {
+    if (skins.length === 0) return;
+    const next = selectedSkinIndex < skins.length - 1 ? selectedSkinIndex + 1 : 0;
+    setSelectedSkinIndex(next);
+    scrollThumbnailIntoView(next);
+  };
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex max-w-7xl flex-col px-4 py-8 sm:px-6 lg:px-8 animate-pulse space-y-6">
-        <div className="h-5 w-40 bg-white/5 rounded-md" />
+      <div className="mx-auto flex max-w-7xl flex-col px-4 py-12 sm:px-6 lg:px-8 animate-pulse space-y-6">
+        <div className="h-5 w-48 bg-white/5 rounded-md" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-6 space-y-4">
             <div className="h-28 rounded-2xl bg-white/5" />
-            <div className="h-32 rounded-2xl bg-white/5" />
-            <div className="h-64 rounded-2xl bg-white/5" />
+            <div className="h-40 rounded-2xl bg-white/5" />
+            <div className="h-80 rounded-2xl bg-white/5" />
           </div>
           <div className="lg:col-span-6 space-y-4">
-            <div className="h-[360px] rounded-2xl bg-white/5" />
-            <div className="h-16 rounded-xl bg-white/5" />
+            <div className="h-96 rounded-2xl bg-white/5" />
           </div>
         </div>
       </div>
@@ -339,1045 +334,984 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <Shield className="h-16 w-16 text-zinc-600 mb-4 opacity-40" />
         <h1 className="text-2xl font-black text-white mb-2">{t('common.error')}</h1>
         <p className="text-zinc-400 mb-6">
-          Champion &quot;{slug}&quot; konnte nicht im Data Dragon für Patch {patchString} gefunden werden.
+          Champion &quot;{slug}&quot; konnte nicht geladen werden.
         </p>
         <Link
           href={`/${locale}/champions`}
-          className="inline-flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-500/30 px-5 py-2.5 text-sm font-bold text-amber-300 hover:bg-amber-500/30 transition-all shadow-md"
+          className="rounded-xl bg-amber-500 px-6 py-2.5 font-bold text-black transition-colors hover:bg-amber-400"
         >
-          <ChevronLeft className="h-4 w-4" />
-          <span>{t('championWiki.backToList')}</span>
+          {t('championWiki.backToChampions')}
         </Link>
       </div>
     );
   }
 
-  const selectedSpell = selectedSpellIndex === -1 ? null : data.spells[selectedSpellIndex];
+  const rawRelDate = data.releaseDate || data.storeData?.releaseDate || '2011-12-14';
+  const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
+  const beCost = (data.storeData?.ip ?? 4800).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
+  const rpCost = (data.storeData?.rp ?? 880).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
+  const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
 
-  return (
-    <div className="relative min-h-screen">
-      {/* Ambient Blurred Background (matching LoLDB hero atmosphere) */}
-      <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none select-none">
-        <Image
-          src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
-          alt={data.name}
-          fill
-          className="object-cover object-top blur-3xl opacity-20 brightness-75 scale-110 transition-all duration-700"
-          unoptimized
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#06080b]/75 via-[#06080b]/90 to-[#06080b]" />
+  const spotlightImageSrc = activeChroma?.chromaPath
+    ? getCDragonChromaImageUrl(activeChroma.chromaPath)
+    : getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0);
+
+  // =========================================================================
+  // SUB-RENDER: PROFILE HEADER (NO SKINS BADGE, NO LEADERBOARD BADGE)
+  // =========================================================================
+  const renderProfileHeader = () => (
+    <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full overflow-hidden border-2 border-amber-400 shadow-[0_0_20px_rgba(251,146,60,0.3)] bg-zinc-950">
+          <Image
+            src={getChampionIconUrl(data.id, version)}
+            alt={data.name}
+            width={80}
+            height={80}
+            className="h-full w-full object-cover scale-110"
+            priority
+            unoptimized
+          />
+        </div>
+
+        <div className="flex flex-col min-w-0">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+            {data.name}
+          </h1>
+          <p className="text-sm font-semibold text-amber-400 capitalize mt-0.5">
+            {data.title}
+          </p>
+        </div>
       </div>
 
-      <div className="mx-auto flex max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 space-y-6">
-        {/* Breadcrumb Navigation (Exact LoLDB Style: Homepage / Champions / Champion) */}
-        <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-          <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
-            {t('championWiki.breadcrumbHome')}
-          </Link>
-          <span className="text-zinc-600">/</span>
-          <Link href={`/${locale}/champions`} className="hover:text-amber-400 transition-colors">
-            {t('championWiki.breadcrumbChampions')}
-          </Link>
-          <span className="text-zinc-600">/</span>
-          <span className="text-amber-400 font-semibold">{data.name}</span>
-        </nav>
-
-        {/* Subnav Tabs: Overview / Build (LoLDB Style) */}
-        <div className="flex items-center gap-6 border-b border-white/10 pb-0.5">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('overview')}
-            className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer border-b-2 ${
-              activeSubTab === 'overview'
-                ? 'border-amber-400 text-white shadow-sm'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('build')}
-            className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer border-b-2 ${
-              activeSubTab === 'build'
-                ? 'border-amber-400 text-white shadow-sm'
-                : 'border-transparent text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            Build
-          </button>
+      {/* Badges Row: BE, RP, RELEASED (NO Skins badge, NO Leaderboard badge) */}
+      <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+        {/* Blue Essence */}
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-bold text-cyan-300 shadow-sm">
+          <Coins className="h-3.5 w-3.5 text-cyan-400" />
+          <span>{beCost}</span>
         </div>
 
-        {/* ========================================================================= */}
-        {/* MAIN 2-COLUMN HERO AREA (Exact LoLDB Layout from Screenshot media_1795174016268_37174975.jpg) */}
-        {/* ========================================================================= */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* ----------------------------------------------------------------------- */}
-          {/* LEFT COLUMN: Profile Header + Badges + Brief Bio + Compact Base Stats   */}
-          {/* ----------------------------------------------------------------------- */}
-          <div className="lg:col-span-6 flex flex-col gap-4">
-            {/* Champion Profile Header with Badges */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-4">
-                {/* Circular Champion Portrait Avatar with subtle ring */}
-                <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full overflow-hidden border-2 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.25)] bg-zinc-950">
-                  <Image
-                    src={getChampionIconUrl(data.id, version)}
-                    alt={data.name}
-                    width={80}
-                    height={80}
-                    className="h-full w-full object-cover scale-110"
-                    priority
-                    unoptimized
-                  />
-                </div>
-
-                <div className="flex flex-col min-w-0">
-                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-                    {data.name}
-                  </h1>
-                  <p className="text-sm font-semibold text-amber-400 capitalize mt-0.5">
-                    {data.title}
-                  </p>
-                </div>
-              </div>
-
-              {/* LoLDB-Style Badges Row: BE, RP, SKINS, RELEASED, LEADERBOARD */}
-              <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
-                {/* Currency: Blue Essence */}
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-bold text-cyan-300 shadow-sm">
-                  <Coins className="h-3 w-3 text-cyan-400" />
-                  <span>{beCost}</span>
-                </div>
-
-                {/* Currency: RP */}
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 font-bold text-yellow-300 shadow-sm">
-                  <Gem className="h-3 w-3 text-yellow-400" />
-                  <span>{rpCost}</span>
-                </div>
-
-                {/* Total Skins Badge */}
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 font-bold text-zinc-300 shadow-sm">
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider">SKINS</span>
-                  <span className="text-amber-400">{skins.length}</span>
-                  <ExternalLink className="h-3 w-3 text-zinc-500" />
-                </div>
-
-                {/* Release Date Badge */}
-                <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 font-bold text-zinc-300 shadow-sm">
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider">RELEASED</span>
-                  <span className="text-zinc-200">{formattedReleaseDate}</span>
-                </div>
-
-                {/* Leaderboard Badge */}
-                <Link
-                  href={`/${locale}/tier-list`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-bold text-amber-300 hover:bg-amber-500/20 transition-all shadow-sm"
-                >
-                  <span className="text-[10px] uppercase tracking-wider">LEADERBOARD</span>
-                  <span className="text-xs text-amber-400">View</span>
-                  <ExternalLink className="h-3 w-3 text-amber-400" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Brief Bio Card */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md">
-              <h2 className="text-sm font-bold text-white mb-2">Brief Bio</h2>
-              <p className="text-xs text-zinc-300 leading-relaxed font-normal whitespace-pre-line">
-                {data.lore || data.blurb}
-              </p>
-            </div>
-
-            {/* Base Stats Card (Compact 2-Column Layout matching screenshot) */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md space-y-3">
-              {/* Header: Base Stats and LVL Indicator */}
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-                <h2 className="text-sm font-bold text-white">Base Stats</h2>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                    LVL
-                  </span>
-                  <span className="text-lg font-black text-[#fb923c] [text-shadow:0_0_12px_rgba(251,146,60,0.6)]">
-                    {selectedLevel}
-                  </span>
-                </div>
-              </div>
-
-              {/* 18 Diamond Level Buttons with Milestone numbers 1, 6, 11, 16, 18 */}
-              <div className="px-1 pb-2 border-b border-white/[0.06]">
-                <div className="flex mb-1">
-                  {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
-                    const isMilestone = lvl === 1 || lvl === 6 || lvl === 11 || lvl === 16 || lvl === 18;
-                    const isCurrent = lvl === selectedLevel;
-                    return (
-                      <div key={lvl} className="flex justify-center flex-1">
-                        {isMilestone && (
-                          <span
-                            className={`text-[8px] font-bold tabular-nums select-none ${
-                              isCurrent ? 'text-amber-400 font-extrabold' : 'text-white/20'
-                            }`}
-                          >
-                            {lvl}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex gap-[3px] items-center">
-                  {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
-                    const isSelected = selectedLevel === lvl;
-                    return (
-                      <button
-                        key={lvl}
-                        type="button"
-                        title={`Level ${lvl}`}
-                        onClick={() => setSelectedLevel(lvl)}
-                        className="relative flex-1 flex justify-center items-center h-5 cursor-pointer group outline-none"
-                      >
-                        <div
-                          className={`transition-all duration-150 rotate-45 ${
-                            isSelected
-                              ? 'w-2.5 h-2.5 bg-[#fb923c] shadow-[0_0_0_1.5px_rgba(251,146,60,0.4),0_0_10px_rgba(251,146,60,0.7)] scale-110'
-                              : 'w-1.5 h-1.5 bg-white/10 group-hover:bg-[#fb923c]/50 group-hover:scale-125'
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 10 Stat Rows: EXACT 2 Columns of 5 stats matching screenshot */}
-              <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs">
-                {/* ----------------- COLUMN 1 (Left 5 stats) ----------------- */}
-                {/* 1. HEALTH */}
-                <div className="flex items-center gap-2">
-                  <Heart className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    HEALTH
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-red-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, ((calcStats?.hp ?? data.stats.hp) / 2800) * 100)}%`,
-                        boxShadow: '0 0 5px #ef444450',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.hpperlevel}/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-red-400 shrink-0 w-9 text-right">
-                    {calcStats?.hp ?? data.stats.hp}
-                  </span>
-                </div>
-
-                {/* ----------------- COLUMN 2 (Right 5 stats) ----------------- */}
-                {/* 2. MANA */}
-                <div className="flex items-center gap-2">
-                  <Zap className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    MANA
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${data.stats.mp > 0 ? Math.min(100, ((calcStats?.mp ?? data.stats.mp) / 2000) * 100) : 0}%`,
-                        boxShadow: '0 0 5px #3b82f650',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    {data.stats.mp > 0 ? `+${data.stats.mpperlevel}/lvl` : '-'}
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-blue-400 shrink-0 w-9 text-right">
-                    {data.stats.mp > 0 ? (calcStats?.mp ?? data.stats.mp) : '0'}
-                  </span>
-                </div>
-
-                {/* 3. ATTACK DMG */}
-                <div className="flex items-center gap-2">
-                  <Swords className="h-3.5 w-3.5 text-orange-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    ATTACK DMG
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-orange-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, ((calcStats?.ad ?? data.stats.attackdamage) / 160) * 100)}%`,
-                        boxShadow: '0 0 5px #f9731650',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.attackdamageperlevel}/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-orange-400 shrink-0 w-9 text-right">
-                    {calcStats?.ad ?? data.stats.attackdamage}
-                  </span>
-                </div>
-
-                {/* 4. ATK SPEED */}
-                <div className="flex items-center gap-2">
-                  <Activity className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    ATK SPEED
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-yellow-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (parseFloat(calcStats?.as ?? String(data.stats.attackspeed)) / 1.5) * 100)}%`,
-                        boxShadow: '0 0 5px #eab30850',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.attackspeedperlevel}%/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-yellow-400 shrink-0 w-9 text-right">
-                    {calcStats?.as ?? data.stats.attackspeed}
-                  </span>
-                </div>
-
-                {/* 5. ARMOR */}
-                <div className="flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    ARMOR
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, ((calcStats?.armor ?? data.stats.armor) / 120) * 100)}%`,
-                        boxShadow: '0 0 5px #f59e0b50',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.armorperlevel}/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-amber-400 shrink-0 w-9 text-right">
-                    {calcStats?.armor ?? data.stats.armor}
-                  </span>
-                </div>
-
-                {/* 6. MAGIC RESIST */}
-                <div className="flex items-center gap-2">
-                  <Shield className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    MAGIC RESIST
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-purple-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, ((calcStats?.mr ?? data.stats.spellblock) / 90) * 100)}%`,
-                        boxShadow: '0 0 5px #a855f750',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.spellblockperlevel}/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-purple-400 shrink-0 w-9 text-right">
-                    {calcStats?.mr ?? data.stats.spellblock}
-                  </span>
-                </div>
-
-                {/* 7. HP REGEN */}
-                <div className="flex items-center gap-2">
-                  <Heart className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    HP REGEN
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, ((calcStats?.hpregen ?? data.stats.hpregen) / 25) * 100)}%`,
-                        boxShadow: '0 0 5px #10b98150',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    +{data.stats.hpregenperlevel}/lvl
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-emerald-400 shrink-0 w-9 text-right">
-                    {calcStats?.hpregen ?? data.stats.hpregen}
-                  </span>
-                </div>
-
-                {/* 8. MANA REGEN */}
-                <div className="flex items-center gap-2">
-                  <Zap className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    MANA REGEN
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${data.stats.mp > 0 ? Math.min(100, ((calcStats?.mpregen ?? data.stats.mpregen) / 25) * 100) : 0}%`,
-                        boxShadow: '0 0 5px #06b6d450',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">
-                    {data.stats.mp > 0 ? `+${data.stats.mpregenperlevel}/lvl` : '-'}
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-cyan-400 shrink-0 w-9 text-right">
-                    {data.stats.mp > 0 ? (calcStats?.mpregen ?? data.stats.mpregen) : '0'}
-                  </span>
-                </div>
-
-                {/* 9. MOVE SPEED */}
-                <div className="flex items-center gap-2">
-                  <Wind className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    MOVE SPEED
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (data.stats.movespeed / 400) * 100)}%`,
-                        boxShadow: '0 0 5px #38bdf850',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">Flat</span>
-                  <span className="text-xs font-bold tabular-nums text-sky-400 shrink-0 w-9 text-right">
-                    {data.stats.movespeed}
-                  </span>
-                </div>
-
-                {/* 10. ATK RANGE */}
-                <div className="flex items-center gap-2">
-                  <Target className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
-                    ATK RANGE
-                  </span>
-                  <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-slate-400 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (data.stats.attackrange / 700) * 100)}%`,
-                        boxShadow: '0 0 5px #94a3b850',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] text-zinc-500 shrink-0 w-11 text-right">Flat</span>
-                  <span className="text-xs font-bold tabular-nums text-slate-300 shrink-0 w-9 text-right">
-                    {data.stats.attackrange}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ----------------------------------------------------------------------- */}
-          {/* RIGHT COLUMN: Splash Art Card + Skin Thumbnail Strip (Matching LoLDB)    */}
-          {/* ----------------------------------------------------------------------- */}
-          <div className="lg:col-span-6 flex flex-col gap-3">
-            {/* Top Bar above Splash Art: Chromas toggle & mode pills */}
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-1.5 text-zinc-400">
-                <span className="h-3.5 w-3.5 rounded-full border border-white/20 bg-gradient-to-tr from-cyan-400 via-purple-400 to-amber-400 inline-block" />
-                <span>No Chromas</span>
-              </div>
-
-              <div className="flex items-center gap-1 rounded-lg bg-black/40 border border-white/10 p-0.5">
-                <button
-                  type="button"
-                  disabled
-                  className="px-2.5 py-1 rounded-md text-[10px] font-bold text-zinc-500 cursor-not-allowed opacity-50"
-                >
-                  Chromas
-                </button>
-                <button
-                  type="button"
-                  className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white/10 text-white shadow-sm"
-                >
-                  Splash Art
-                </button>
-              </div>
-            </div>
-
-            {/* Main Spotlight Splash Art Card */}
-            <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-white/[0.08] bg-black shadow-2xl group">
-              <Image
-                src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
-                alt={activeSkin?.name ?? data.name}
-                fill
-                className="object-cover object-top brightness-95 group-hover:scale-[1.02] transition-transform duration-700"
-                priority
-                unoptimized
-              />
-
-              {/* Top-Left Skin Name Pill Badge (e.g. "Base Skin" or active skin name) */}
-              <div className="absolute top-4 left-4 z-10">
-                <div className="rounded-lg bg-black/70 border border-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md">
-                  {activeSkin?.num === 0
-                    ? 'Base Skin'
-                    : activeSkin?.name === 'default'
-                    ? t('championWiki.defaultSkin')
-                    : activeSkin?.name}
-                </div>
-              </div>
-
-              {/* Prev / Next Chevrons on Splash hover */}
-              <button
-                type="button"
-                onClick={handlePrevSkin}
-                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
-                title="Vorheriger Skin"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleNextSkin}
-                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
-                title="Nächster Skin"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Divider: ─── CHAMPION NAME ─── */}
-            <div className="flex items-center gap-3 my-1">
-              <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-amber-500/50" />
-              <span className="text-xs font-black tracking-widest text-amber-400 uppercase">
-                {data.name}
-              </span>
-              <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-500/30 to-amber-500/50" />
-            </div>
-
-            {/* Horizontal Thumbnail Strip with Left/Right arrows */}
-            <div className="relative flex items-center">
-              <button
-                type="button"
-                onClick={handlePrevSkin}
-                className="shrink-0 p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                title="Previous"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <div
-                ref={thumbnailStripRef}
-                className="flex items-center gap-2 overflow-x-auto py-1 px-1 scrollbar-none scroll-smooth flex-1"
-                style={{ scrollbarWidth: 'none' }}
-              >
-                {skins.map((skin, idx) => {
-                  const isSelected = selectedSkinIndex === idx;
-                  return (
-                    <button
-                      key={skin.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSkinIndex(idx);
-                        scrollThumbnailIntoView(idx);
-                      }}
-                      className={`relative h-12 w-12 shrink-0 rounded-xl overflow-hidden border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-amber-400 ring-2 ring-amber-400/50 shadow-md scale-105'
-                          : 'border-white/10 opacity-60 hover:opacity-100 hover:border-white/30'
-                      }`}
-                    >
-                      <Image
-                        src={getChampionSkinSplashUrl(data.id, skin.num)}
-                        alt={skin.name}
-                        fill
-                        className="object-cover object-top"
-                        unoptimized
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNextSkin}
-                className="shrink-0 p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                title="Next"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Counter centered: 1 / 22 */}
-            <div className="text-center text-xs font-mono font-bold text-zinc-500">
-              {selectedSkinIndex + 1} / {skins.length}
-            </div>
-          </div>
+        {/* RP */}
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 font-bold text-yellow-300 shadow-sm">
+          <Gem className="h-3.5 w-3.5 text-yellow-400" />
+          <span>{rpCost}</span>
         </div>
 
-        {/* ========================================================================= */}
-        {/* SKIN TIMELINE (Clickable Filter Legend with Strikethrough & Timeline Grid) */}
-        {/* ========================================================================= */}
-        <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-400" />
-              <h2 className="text-lg font-black text-white">{t('championWiki.skinTimeline')}</h2>
-            </div>
+        {/* Release Date */}
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 font-bold text-zinc-300 shadow-sm">
+          <span className="text-zinc-500 text-[10px] uppercase tracking-wider font-extrabold">RELEASED</span>
+          <span className="text-zinc-200">{formattedReleaseDate}</span>
+        </div>
+      </div>
+    </div>
+  );
 
-            {/* Interactive Clickable Legend Filters (User Requirement: crossed out when deactivated) */}
-            <div className="flex flex-wrap items-center gap-3.5 text-xs font-semibold select-none">
-              {ALL_RARITIES.map((tier) => {
-                const isEnabled = enabledRarities.has(tier);
-                const color = RARITY_COLORS[tier];
+  // =========================================================================
+  // SUB-RENDER: BRIEF BIO CARD
+  // =========================================================================
+  const renderBioCard = () => (
+    <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md">
+      <h2 className="text-sm font-bold text-white mb-2">Brief Bio</h2>
+      <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+        {data.lore || data.blurb}
+      </p>
+    </div>
+  );
+
+  // =========================================================================
+  // SUB-RENDER: BASE STATS CARD (REVERTED TO PREVIOUS CARD GRID WITH ICONS)
+  // =========================================================================
+  const renderBaseStatsCard = () => (
+    <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md space-y-4">
+      {/* Header: Base Stats and LVL Indicator */}
+      <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+        <h2 className="text-sm font-bold text-white">Base Stats</h2>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+            LVL
+          </span>
+          <span className="text-lg font-black text-[#fb923c] [text-shadow:0_0_12px_rgba(251,146,60,0.6)]">
+            {selectedLevel}
+          </span>
+        </div>
+      </div>
+
+      {/* 18 Diamond Level Buttons with Milestone numbers 1, 6, 11, 16, 18 */}
+      <div className="px-1 pb-3 border-b border-white/[0.06]">
+        <div className="flex mb-1">
+          {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
+            const isMilestone = lvl === 1 || lvl === 6 || lvl === 11 || lvl === 16 || lvl === 18;
+            const isCurrent = lvl === selectedLevel;
+            return (
+              <div key={lvl} className="flex justify-center flex-1">
+                {isMilestone && (
+                  <span
+                    className={`text-[8px] font-bold tabular-nums select-none ${
+                      isCurrent ? 'text-amber-400 font-extrabold' : 'text-white/20'
+                    }`}
+                  >
+                    {lvl}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-[3px] items-center">
+          {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
+            const isSelected = selectedLevel === lvl;
+            return (
+              <button
+                key={lvl}
+                type="button"
+                title={`Level ${lvl}`}
+                onClick={() => setSelectedLevel(lvl)}
+                className="relative flex-1 flex justify-center items-center h-5 cursor-pointer group outline-none"
+              >
+                <div
+                  className={`transition-all duration-150 rotate-45 ${
+                    isSelected
+                      ? 'w-2.5 h-2.5 bg-[#fb923c] shadow-[0_0_0_1.5px_rgba(251,146,60,0.4),0_0_10px_rgba(251,146,60,0.7)] scale-110'
+                      : 'w-1.5 h-1.5 bg-white/10 group-hover:bg-[#fb923c]/50 group-hover:scale-125'
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Reverted Card Grid: 10 Stats with Colored Icons, bold value & growth */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* 1. HEALTH */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-rose-400 font-bold mb-1">
+            <Heart className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.hp') || 'Health'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.hp ?? data.stats.hp}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.hpperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 2. MANA / RESOURCE */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-sky-400 font-bold mb-1">
+            <Zap className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{data.partype || t('championWiki.mana') || 'Mana'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {data.stats.mp > 0 ? (calcStats?.mp ?? data.stats.mp) : '0'}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            {data.stats.mp > 0 ? `+${data.stats.mpperlevel} ${t('championWiki.perLevel') || 'pro Stufe'}` : 'Keine Kosten'}
+          </span>
+        </div>
+
+        {/* 3. ATTACK DAMAGE */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-orange-400 font-bold mb-1">
+            <Swords className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.attackDamage') || 'Attack Dmg'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.ad ?? data.stats.attackdamage}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.attackdamageperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 4. ATTACK SPEED */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-yellow-400 font-bold mb-1">
+            <Activity className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.attackSpeed') || 'Atk Speed'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.as ?? data.stats.attackspeed}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.attackspeedperlevel}% {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 5. ARMOR */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold mb-1">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.armor') || 'Armor'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.armor ?? data.stats.armor}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.armorperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 6. MAGIC RESIST */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-indigo-400 font-bold mb-1">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.mr') || 'Magic Resist'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.mr ?? data.stats.spellblock}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.spellblockperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 7. HP REGEN */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold mb-1">
+            <Heart className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.hpRegen') || 'HP Regen'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {calcStats?.hpregen ?? data.stats.hpregen}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            +{data.stats.hpregenperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
+          </span>
+        </div>
+
+        {/* 8. MANA REGEN */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-cyan-400 font-bold mb-1">
+            <Zap className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.manaRegen') || 'Mana Regen'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {data.stats.mp > 0 ? (calcStats?.mpregen ?? data.stats.mpregen) : '0'}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            {data.stats.mp > 0 ? `+${data.stats.mpregenperlevel} ${t('championWiki.perLevel') || 'pro Stufe'}` : '—'}
+          </span>
+        </div>
+
+        {/* 9. MOVE SPEED */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-teal-400 font-bold mb-1">
+            <Wind className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.movementSpeed') || 'Move Speed'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {data.stats.movespeed}
+          </span>
+          <span className="text-[10px] text-zinc-500">Basiswert</span>
+        </div>
+
+        {/* 10. ATK RANGE */}
+        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
+          <div className="flex items-center gap-1.5 text-rose-400 font-bold mb-1">
+            <Target className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.range') || 'Atk Range'}</span>
+          </div>
+          <span className="text-base font-black text-white tabular-nums">
+            {data.stats.attackrange}
+          </span>
+          <span className="text-[10px] text-zinc-500">
+            {data.stats.attackrange > 300 ? 'Fernkampf' : 'Nahkampf'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // SUB-RENDER: SPOTLIGHT SPLASH CARD (CHROMAS BAR + SPLASH ART + CAROUSEL)
+  // =========================================================================
+  const renderSpotlightSplashCard = () => (
+    <div className="flex flex-col gap-3">
+      {/* Top Bar above Splash: Chromas Control matching screenshot */}
+      <div className="flex items-center justify-between text-xs font-bold min-h-[32px]">
+        <div className="flex items-center gap-2">
+          {/* Chromatic Color Wheel Button with Glowing Amber Ring */}
+          <div
+            className="relative flex h-7 w-7 items-center justify-center rounded-full p-1 bg-gradient-to-tr from-amber-500/20 to-orange-500/20 ring-2 ring-orange-500 shadow-[0_0_10px_rgba(251,146,60,0.4)] shrink-0"
+            title={currentSkinChromas.length > 0 ? `${currentSkinChromas.length} Chromas verfügbar` : 'Keine Chromas'}
+          >
+            <svg viewBox="0 0 24 24" className="w-full h-full" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="url(#chromaGrad)" strokeWidth="3" />
+              <defs>
+                <linearGradient id="chromaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="25%" stopColor="#f59e0b" />
+                  <stop offset="50%" stopColor="#10b981" />
+                  <stop offset="75%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          {/* Chromas Capsule or "No Chromas" Text */}
+          {currentSkinChromas.length === 0 ? (
+            <span className="text-xs font-semibold text-zinc-400">No Chromas</span>
+          ) : (
+            <div className="flex items-center gap-1.5 rounded-full bg-[#0c1017] border border-white/10 px-2 py-1 shadow-md">
+              {/* Swatch 0: Base / No Chroma */}
+              <button
+                type="button"
+                onClick={() => setSelectedChromaId(null)}
+                title="Basis-Splashart (Kein Chroma)"
+                className={`relative h-4 w-4 rounded-full overflow-hidden bg-white border border-white/20 transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                  selectedChromaId === null
+                    ? 'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.7)]'
+                    : 'hover:scale-110 opacity-80 hover:opacity-100'
+                }`}
+              >
+                <span className="absolute w-full h-[1.5px] bg-red-600 rotate-45" />
+              </button>
+
+              {/* Chroma Swatches */}
+              {currentSkinChromas.map((chroma) => {
+                const isSelected = selectedChromaId === chroma.id;
+                const bg =
+                  chroma.colors.length >= 2
+                    ? `linear-gradient(90deg, ${chroma.colors[0]} 50%, ${chroma.colors[1]} 50%)`
+                    : chroma.colors[0] || '#666';
+
                 return (
                   <button
-                    key={tier}
+                    key={chroma.id}
                     type="button"
-                    onClick={() => toggleRarity(tier)}
-                    className={`flex items-center gap-1.5 transition-all cursor-pointer ${
-                      isEnabled
-                        ? 'opacity-100 text-zinc-200 hover:text-white'
-                        : 'opacity-40 text-zinc-500 line-through hover:opacity-60'
+                    onClick={() => setSelectedChromaId(chroma.id)}
+                    title={chroma.name}
+                    className={`relative h-4 w-4 rounded-full border border-white/20 transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.7)] scale-110'
+                        : 'hover:scale-110 opacity-90 hover:opacity-100'
                     }`}
-                    title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
-                  >
-                    <span
-                      className="h-2.5 w-2.5 rounded-full transition-transform"
-                      style={{
-                        backgroundColor: color,
-                        boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
-                        transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
-                      }}
-                    />
-                    <span>{t(`championWiki.${tier.toLowerCase()}` as any) || tier}</span>
-                  </button>
+                    style={{ background: bg }}
+                  />
                 );
               })}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Spotlight Splash Art Card */}
+      <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-white/[0.08] bg-black shadow-2xl group">
+        <Image
+          src={spotlightImageSrc}
+          alt={activeChroma?.name || activeSkin?.name || data.name}
+          fill
+          className="object-cover object-top brightness-95 group-hover:scale-[1.02] transition-transform duration-700"
+          priority
+          unoptimized
+        />
+
+        {/* Top-Left Badges on Splash: Cost + Rarity */}
+        <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
+          {/* Top Badge: Cost */}
+          <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
+            <Gem className="h-3 w-3 text-amber-400" />
+            <span>{activeSkin?.num === 0 ? 'Base Skin' : `${activeSkin?.cost || 975} RP`}</span>
           </div>
 
-          {/* Horizontal Timeline Scroll Canvas */}
-          <div className="overflow-x-auto pb-4 scrollbar-thin">
-            <div className="relative min-w-[860px] h-[280px] bg-black/40 rounded-2xl border border-white/[0.06] p-4 flex">
-              {/* Left Y-Axis: Rarity Icons from Top (Transcendent) to Bottom (Regular) */}
-              <div className="w-14 shrink-0 flex flex-col justify-between py-2 items-center border-r border-white/[0.06]">
-                {/* Transcendent */}
-                <div
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    enabledRarities.has('Transcendent') ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title="Transcendent"
-                >
-                  <span className="h-3.5 w-3.5 rotate-45 border border-[#C7A8DD] bg-[#C7A8DD]/40 shadow-[0_0_8px_#C7A8DD]" />
-                </div>
-                {/* Mythic */}
-                <div
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    enabledRarities.has('Mythic') ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title="Mythic"
-                >
-                  <span className="h-3.5 w-3.5 rotate-45 border border-[#B034B6] bg-[#B034B6]/40 shadow-[0_0_8px_#B034B6]" />
-                </div>
-                {/* Legendary */}
-                <div
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    enabledRarities.has('Legendary') ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title="Legendary"
-                >
-                  <span className="h-3.5 w-3.5 rotate-45 border border-[#DB1523] bg-[#DB1523]/40 shadow-[0_0_8px_#DB1523]" />
-                </div>
-                {/* Epic */}
-                <div
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    enabledRarities.has('Epic') ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title="Epic"
-                >
-                  <span className="h-3.5 w-3.5 rotate-45 border border-[#0FAEB6] bg-[#0FAEB6]/40 shadow-[0_0_8px_#0FAEB6]" />
-                </div>
-                {/* Regular */}
-                <div
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    enabledRarities.has('Regular') ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title="Regular"
-                >
-                  <span className="h-3.5 w-3.5 rounded-full border border-[#2E8D4C] bg-[#2E8D4C]/40 shadow-[0_0_8px_#2E8D4C]" />
-                </div>
-                {/* Spacer matching bottom baseline */}
-                <div className="h-6" />
+          {/* Bottom Badge: Rarity */}
+          <div
+            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
+            style={{
+              backgroundColor: `${activeSkin?.rarityColor || '#2E8D4C'}33`,
+              borderColor: activeSkin?.rarityColor || '#2E8D4C',
+            }}
+          >
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: activeSkin?.rarityColor || '#2E8D4C' }}
+            />
+            <span>{activeSkin?.rarity || 'Regular'}</span>
+          </div>
+        </div>
+
+        {/* Prev / Next Chevrons on Splash hover */}
+        <button
+          type="button"
+          onClick={handlePrevSkin}
+          className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
+          title="Vorheriger Skin"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={handleNextSkin}
+          className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
+          title="Nächster Skin"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Divider: ─── CHAMPION NAME ─── */}
+      <div className="flex items-center gap-3 my-1">
+        <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-amber-500/50" />
+        <span className="text-xs font-black tracking-widest text-amber-400 uppercase">
+          {data.name}
+        </span>
+        <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-500/30 to-amber-500/50" />
+      </div>
+
+      {/* Horizontal Thumbnail Strip with Left/Right arrows */}
+      <div className="relative flex items-center">
+        <button
+          type="button"
+          onClick={handlePrevSkin}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer mr-2 shadow-md"
+          title="Vorheriger Skin"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div
+          ref={thumbnailStripRef}
+          className="flex gap-2 overflow-x-auto py-1 scrollbar-none scroll-smooth flex-1"
+        >
+          {skins.map((skin, idx) => {
+            const isSelected = idx === selectedSkinIndex;
+            return (
+              <button
+                key={skin.id}
+                data-skin-index={idx}
+                type="button"
+                onClick={() => setSelectedSkinIndex(idx)}
+                className={`group relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-amber-400 ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,146,60,0.6)] scale-105'
+                    : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                }`}
+                title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
+              >
+                <Image
+                  src={getChampionLoadingUrl(data.id, skin.num)}
+                  alt={skin.name}
+                  width={56}
+                  height={56}
+                  className="h-full w-full object-cover object-top"
+                  unoptimized
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleNextSkin}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer ml-2 shadow-md"
+          title="Nächster Skin"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Skin Counter */}
+      <div className="text-center">
+        <span className="text-[11px] font-bold text-zinc-400">
+          {selectedSkinIndex + 1} / {skins.length}
+        </span>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // SUB-RENDER: SKIN TIMELINE CARD (FULL GRAPH MATCHING REFERENCE SCREENSHOT)
+  // =========================================================================
+  const renderTimelineCard = () => (
+    <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-amber-400" />
+          <h2 className="text-lg font-black text-white">{t('championWiki.skinTimeline') || 'Skin Timeline'}</h2>
+        </div>
+
+        {/* Interactive Clickable Legend Filters */}
+        <div className="flex flex-wrap items-center gap-3.5 text-xs font-semibold select-none">
+          {ALL_RARITIES.map((tier) => {
+            const isEnabled = enabledRarities.has(tier);
+            const color = RARITY_COLORS[tier];
+            return (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => toggleRarity(tier)}
+                className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isEnabled
+                    ? 'opacity-100 text-zinc-200 hover:text-white'
+                    : 'opacity-40 text-zinc-500 line-through hover:opacity-60'
+                }`}
+                title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full transition-transform"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
+                    transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
+                  }}
+                />
+                <span>{tier}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Horizontal Timeline Scroll Canvas */}
+      <div className="overflow-x-auto pb-4 scrollbar-thin">
+        <div className="relative min-w-[860px] h-[280px] bg-black/40 rounded-2xl border border-white/[0.06] p-4 flex">
+          {/* Left Y-Axis: Rarity Icons from Top (Transcendent) to Bottom (Regular) */}
+          <div className="w-14 shrink-0 flex flex-col justify-between py-2 items-center border-r border-white/[0.06]">
+            {/* Transcendent: Star Gem */}
+            <div
+              className={`flex items-center justify-center h-8 transition-opacity ${
+                enabledRarities.has('Transcendent') ? 'opacity-100' : 'opacity-25'
+              }`}
+              title="Transcendent"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#a855f7">
+                <path d="M12 2l2.4 6.9 7.1.3-5.5 4.5 1.9 6.9-5.9-4-5.9 4 1.9-6.9-5.5-4.5 7.1-.3z" />
+              </svg>
+            </div>
+            {/* Mythic: Hexagon Gem */}
+            <div
+              className={`flex items-center justify-center h-8 transition-opacity ${
+                enabledRarities.has('Mythic') ? 'opacity-100' : 'opacity-25'
+              }`}
+              title="Mythic"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#d946ef">
+                <polygon points="6,3 18,3 22,12 18,21 6,21 2,12" />
+              </svg>
+            </div>
+            {/* Legendary: Ruby Diamond */}
+            <div
+              className={`flex items-center justify-center h-8 transition-opacity ${
+                enabledRarities.has('Legendary') ? 'opacity-100' : 'opacity-25'
+              }`}
+              title="Legendary"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#ef4444">
+                <polygon points="12,2 22,9 12,22 2,9" />
+              </svg>
+            </div>
+            {/* Epic: Pyramid / Triangle */}
+            <div
+              className={`flex items-center justify-center h-8 transition-opacity ${
+                enabledRarities.has('Epic') ? 'opacity-100' : 'opacity-25'
+              }`}
+              title="Epic"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#06b6d4">
+                <polygon points="12,3 22,20 2,20" />
+              </svg>
+            </div>
+            {/* Regular: Sphere / Circle */}
+            <div
+              className={`flex items-center justify-center h-8 transition-opacity ${
+                enabledRarities.has('Regular') ? 'opacity-100' : 'opacity-25'
+              }`}
+              title="Regular"
+            >
+              <span className="h-4 w-4 rounded-full border-2 border-[#22c55e] bg-[#22c55e]/50 shadow-[0_0_8px_#22c55e]" />
+            </div>
+            <div className="h-6" />
+          </div>
+
+          {/* Main Timeline Grid */}
+          <div className="relative flex-1 h-full pl-2">
+            {/* Subtle horizontal dashed lines for each tier row */}
+            <div className="absolute inset-x-0 top-[20px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            <div className="absolute inset-x-0 top-[68px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            <div className="absolute inset-x-0 top-[116px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            <div className="absolute inset-x-0 top-[164px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            <div className="absolute inset-x-0 top-[212px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            {/* Bottom axis line */}
+            <div className="absolute inset-x-0 bottom-6 border-b border-white/[0.1] pointer-events-none" />
+
+            {timelineData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
+                Keine Skins für die ausgewählten Filterkriterien vorhanden.
               </div>
+            ) : (
+              <div className="absolute inset-x-0 inset-y-0 flex">
+                {timelineData.map((col) => (
+                  <div
+                    key={col.year}
+                    className="relative flex-1 flex flex-col justify-between items-center h-full group/col"
+                  >
+                    {/* Vertical subtle line */}
+                    <div className="absolute inset-x-0 top-0 bottom-6 flex justify-center pointer-events-none">
+                      <div className="w-[1px] h-full bg-gradient-to-b from-white/[0.02] via-white/[0.06] to-white/[0.2]" />
+                    </div>
 
-              {/* Main Timeline Grid */}
-              <div className="relative flex-1 h-full pl-2">
-                {/* 5 Horizontal Guideline Dashes for the 5 tiers */}
-                <div className="absolute inset-x-0 top-[20px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-                <div className="absolute inset-x-0 top-[68px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-                <div className="absolute inset-x-0 top-[116px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-                <div className="absolute inset-x-0 top-[164px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-                <div className="absolute inset-x-0 top-[212px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+                    {/* Nodes in this year */}
+                    <div className="relative w-full h-[224px]">
+                      {col.nodes.map((node) => {
+                        const yTop =
+                          node.tier === 'Transcendent'
+                            ? 2
+                            : node.tier === 'Mythic'
+                            ? 50
+                            : node.tier === 'Legendary'
+                            ? 98
+                            : node.tier === 'Epic'
+                            ? 146
+                            : 194;
 
-                {/* Bottom X-Axis baseline */}
-                <div className="absolute inset-x-0 bottom-6 border-b border-white/[0.1] pointer-events-none" />
+                        const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
 
-                {/* Year Columns & Nodes */}
-                {timelineData.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
-                    Keine Skins für die ausgewählten Filterkriterien vorhanden.
-                  </div>
-                ) : (
-                  <div className="absolute inset-x-0 inset-y-0 flex">
-                    {timelineData.map((col) => (
-                      <div
-                        key={col.year}
-                        className="relative flex-1 flex flex-col justify-between items-center h-full group/col"
-                      >
-                        {/* Vertical connector guide down to diamond marker */}
-                        <div className="absolute inset-x-0 top-0 bottom-6 flex justify-center pointer-events-none">
-                          <div className="w-[1px] h-full bg-gradient-to-b from-white/[0.02] via-white/[0.06] to-white/[0.2]" />
-                        </div>
+                        return (
+                          <div
+                            key={node.tier}
+                            className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10"
+                            style={{ top: `${yTop}px` }}
+                            onClick={() => {
+                              const targetSkin = node.skins[0];
+                              const idx = skins.findIndex((s) => s.id === targetSkin.id);
+                              if (idx !== -1) {
+                                setSelectedSkinIndex(idx);
+                                scrollThumbnailIntoView(idx);
+                              }
+                            }}
+                          >
+                            <div
+                              className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 group-hover:scale-125 ${
+                                isCurrentActive
+                                  ? 'ring-2 ring-white scale-110'
+                                  : 'hover:ring-2 hover:ring-amber-400'
+                              }`}
+                              style={{
+                                border: `2.5px solid ${node.rarityColor}`,
+                                boxShadow: `0 0 14px ${node.rarityColor}90`,
+                              }}
+                            >
+                              <Image
+                                src={getChampionLoadingUrl(data.id, node.skins[0].num)}
+                                alt={node.skins[0].name}
+                                fill
+                                className="object-cover object-top"
+                                unoptimized
+                              />
+                            </div>
 
-                        {/* Nodes positioned at their tier height */}
-                        <div className="relative w-full h-[224px]">
-                          {col.nodes.map((node) => {
-                            const yTop =
-                              node.tier === 'Transcendent'
-                                ? 2
-                                : node.tier === 'Mythic'
-                                ? 50
-                                : node.tier === 'Legendary'
-                                ? 98
-                                : node.tier === 'Epic'
-                                ? 146
-                                : 194;
-
-                            const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
-
-                            return (
+                            {/* Badge with count if multiple skins exist in this node */}
+                            {node.skins.length > 1 && (
                               <div
-                                key={node.tier}
-                                className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10"
-                                style={{ top: `${yTop}px` }}
-                                onClick={() => {
-                                  const targetSkin = node.skins[0];
-                                  const idx = skins.findIndex((s) => s.id === targetSkin.id);
-                                  if (idx !== -1) {
-                                    setSelectedSkinIndex(idx);
-                                    scrollThumbnailIntoView(idx);
-                                  }
+                                className="absolute -top-1 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-md pointer-events-none"
+                                style={{
+                                  backgroundColor: node.rarityColor,
+                                  border: '1.5px solid #0c1017',
                                 }}
                               >
-                                {/* Circular Avatar */}
-                                <div
-                                  className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 group-hover:scale-125 ${
-                                    isCurrentActive
-                                      ? 'ring-2 ring-white scale-110'
-                                      : 'hover:ring-2 hover:ring-amber-400'
-                                  }`}
-                                  style={{
-                                    border: `2.5px solid ${node.rarityColor}`,
-                                    boxShadow: `0 0 14px ${node.rarityColor}90`,
-                                  }}
-                                >
-                                  <Image
-                                    src={getChampionSkinSplashUrl(data.id, node.skins[0].num)}
-                                    alt={node.skins[0].name}
-                                    fill
-                                    className="object-cover object-top"
-                                    unoptimized
-                                  />
-                                </div>
-
-                                {/* Multi-skin counter badge (matching user screenshot green bubble '2') */}
-                                {node.skins.length > 1 && (
-                                  <div
-                                    className="absolute -top-1 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-md pointer-events-none"
-                                    style={{
-                                      backgroundColor: node.rarityColor,
-                                      border: '1.5px solid #0c1017',
-                                    }}
-                                  >
-                                    {node.skins.length}
-                                  </div>
-                                )}
-
-                                {/* Tooltip on hover */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-30 pointer-events-none min-w-[150px]">
-                                  <div className="rounded-xl bg-black/95 border border-white/20 p-2.5 text-center shadow-2xl backdrop-blur-md">
-                                    <span
-                                      className="text-[10px] font-bold uppercase tracking-wider block"
-                                      style={{ color: node.rarityColor }}
-                                    >
-                                      {node.tier}
-                                    </span>
-                                    {node.skins.map((sk) => (
-                                      <span
-                                        key={sk.id}
-                                        className="text-xs font-black text-white block mt-0.5 truncate"
-                                      >
-                                        {sk.name === 'default' ? t('championWiki.defaultSkin') : sk.name}
-                                      </span>
-                                    ))}
-                                    <span className="text-[10px] text-zinc-400 block mt-1">
-                                      {node.skins[0].releaseDate || col.year}
-                                    </span>
-                                  </div>
-                                  <div className="w-2 h-2 rotate-45 bg-black/95 border-r border-b border-white/20 -mt-1" />
-                                </div>
+                                {node.skins.length}
                               </div>
-                            );
-                          })}
-                        </div>
+                            )}
 
-                        {/* Bottom Diamond Marker & Year Label */}
-                        <div className="flex flex-col items-center justify-center h-6 z-10">
-                          <div className="w-2 h-2 rotate-45 bg-amber-400/80 shadow-[0_0_6px_rgba(251,146,60,0.6)] mb-1" />
-                          <span className="text-[10px] font-mono font-bold text-zinc-400 group-hover/col:text-amber-400 transition-colors">
-                            {col.year}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                            {/* Tooltip on hover */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30 whitespace-nowrap">
+                              <div className="rounded-lg bg-black/90 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl backdrop-blur-md space-y-0.5">
+                                {node.skins.map((s) => (
+                                  <div key={s.id} className="flex items-center gap-1.5">
+                                    <span
+                                      className="h-1.5 w-1.5 rounded-full"
+                                      style={{ backgroundColor: node.rarityColor }}
+                                    />
+                                    <span>{s.name === 'default' ? t('championWiki.defaultSkin') : s.name}</span>
+                                    <span className="text-[9px] text-zinc-400">({col.year})</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Bottom Year Label with Diamond Marker */}
+                    <div className="h-6 flex flex-col items-center justify-end z-10">
+                      <div className="w-2 h-2 rotate-45 bg-zinc-600 group-hover/col:bg-amber-400 transition-colors shadow-sm -mb-1" />
+                      <span className="text-[10px] font-bold text-zinc-400 group-hover/col:text-amber-400 transition-colors mt-2 select-none">
+                        {col.year}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // SUB-RENDER: ABILITIES & PASSIVE SECTION
+  // =========================================================================
+  const renderAbilitiesCard = () => (
+    <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-xl backdrop-blur-md space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <Swords className="h-5 w-5 text-amber-400" />
+          <h2 className="text-lg font-black text-white">{t('championWiki.abilities')}</h2>
+        </div>
+      </div>
+
+      {/* Spell Icon Buttons (Passive, Q, W, E, R) */}
+      <div className="grid grid-cols-5 gap-3">
+        {/* Passive */}
+        <button
+          type="button"
+          onClick={() => setSelectedSpellIndex(-1)}
+          className={`group flex flex-col items-center gap-2 p-2 rounded-xl transition-all border cursor-pointer ${
+            selectedSpellIndex === -1
+              ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_12px_rgba(251,146,60,0.3)]'
+              : 'border-white/5 hover:border-white/20 bg-white/[0.02]'
+          }`}
+        >
+          <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
+            <Image
+              src={getChampionPassiveIconUrl(data.passive.image.full, version)}
+              alt={data.passive.name}
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+          <span
+            className={`text-[10px] font-black uppercase tracking-wider ${
+              selectedSpellIndex === -1 ? 'text-amber-400' : 'text-zinc-500'
+            }`}
+          >
+            {t('championWiki.passive')}
+          </span>
+        </button>
+
+        {/* Q, W, E, R */}
+        {data.spells.map((spell, idx) => {
+          const isSelected = selectedSpellIndex === idx;
+          const keyLabel = ['Q', 'W', 'E', 'R'][idx];
+          return (
+            <button
+              key={spell.id}
+              type="button"
+              onClick={() => setSelectedSpellIndex(idx)}
+              className={`group flex flex-col items-center gap-2 p-2 rounded-xl transition-all border cursor-pointer ${
+                isSelected
+                  ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_12px_rgba(251,146,60,0.3)]'
+                  : 'border-white/5 hover:border-white/20 bg-white/[0.02]'
+              }`}
+            >
+              <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
+                <Image
+                  src={getChampionSpellIconUrl(spell.image.full, version)}
+                  alt={spell.name}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <span
+                className={`text-[10px] font-black uppercase tracking-wider ${
+                  isSelected ? 'text-amber-400' : 'text-zinc-500'
+                }`}
+              >
+                {keyLabel}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected Spell Detail Box */}
+      <div className="rounded-2xl border border-white/[0.06] bg-black/40 p-4 sm:p-5 space-y-3">
+        {selectedSpellIndex === -1 ? (
+          <>
+            <div className="flex items-center gap-3 pb-3 border-b border-white/[0.06]">
+              <span className="rounded-md bg-zinc-800 text-zinc-300 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
+                {t('championWiki.passive')}
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                {data.passive.name}
+              </h3>
+            </div>
+            <div
+              className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
+              dangerouslySetInnerHTML={{ __html: data.passive.description }}
+            />
+          </>
+        ) : selectedSpell ? (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <span className="rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
+                  {['Q', 'W', 'E', 'R'][selectedSpellIndex]}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  {selectedSpell.name}
+                </h3>
+              </div>
+
+              {/* Cooldown, Cost & Range */}
+              <div className="flex items-center gap-4 text-xs font-medium text-zinc-400 flex-wrap">
+                {selectedSpell.cooldownBurn && selectedSpell.cooldownBurn !== '0' && (
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-amber-400" />
+                    <span>{selectedSpell.cooldownBurn}s CD</span>
+                  </div>
+                )}
+                {selectedSpell.costBurn && selectedSpell.costBurn !== '0' && (
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-sky-400" />
+                    <span>
+                      {selectedSpell.costBurn} {data.partype || 'Mana'}
+                    </span>
+                  </div>
+                )}
+                {selectedSpell.rangeBurn && selectedSpell.rangeBurn !== '0' && (
+                  <div className="flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-rose-400" />
+                    <span>{selectedSpell.rangeBurn} Range</span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+
+            <div
+              className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
+              dangerouslySetInnerHTML={{
+                __html: selectedSpell.description || selectedSpell.tooltip,
+              }}
+            />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // SUB-RENDER: FAQ CARD (4 QUESTIONS MATCHING REFERENCE SCREENSHOT)
+  // =========================================================================
+  const renderFaqCard = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 1. Release Date */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
+        <h3 className="text-base font-bold text-white">
+          {t('championWiki.detailFaqRelease', { name: data.name })}
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+          {t('championWiki.detailFaqReleaseDesc', {
+            name: data.name,
+            date: formattedReleaseDate,
+          })}
+        </p>
+      </div>
+
+      {/* 2. Lane & Class */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
+        <h3 className="text-base font-bold text-white">
+          {t('championWiki.detailFaqRole', { name: data.name })}
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+          {t('championWiki.detailFaqRoleDesc', {
+            name: data.name,
+            role: primaryRole,
+            flex:
+              metaPos?.recommendedPositions && metaPos.recommendedPositions.length > 1
+                ? ` und ${metaPos.recommendedPositions.slice(1).join(', ')}`
+                : '',
+          })}
+        </p>
+      </div>
+
+      {/* 3. Skins Count */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
+        <h3 className="text-base font-bold text-white">
+          {t('championWiki.detailFaqSkins', { name: data.name })}
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+          {t('championWiki.detailFaqSkinsDesc', {
+            name: data.name,
+            count: nonBaseSkinsCount,
+          })}
+        </p>
+      </div>
+
+      {/* 4. Pricing (BE & RP) */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
+        <h3 className="text-base font-bold text-white">
+          {t('championWiki.detailFaqCost', { name: data.name })}
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+          {t('championWiki.detailFaqCostDesc', {
+            name: data.name,
+            be: beCost,
+            rp: rpCost,
+          })}
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#06080c] text-zinc-100 pb-20">
+      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 space-y-8">
+        {/* Top Breadcrumb Navigation */}
+        <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium">
+          <Link href={`/${locale}`} className="hover:text-zinc-300 transition-colors">
+            {t('navigation.home') || 'Homepage'}
+          </Link>
+          <span>/</span>
+          <Link href={`/${locale}/champions`} className="hover:text-zinc-300 transition-colors">
+            {t('navigation.champions') || 'Champions'}
+          </Link>
+          <span>/</span>
+          <span className="text-amber-400 font-bold">{data.name}</span>
         </div>
 
         {/* ========================================================================= */}
-        {/* ABILITIES & FAQ SECTION                                                   */}
+        {/* 2-COLUMN HERO AREA (PROFILE & STATS ON LEFT, SPOTLIGHT SPLASH ON RIGHT)    */}
         {/* ========================================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Abilities Skillset */}
-          <div className="lg:col-span-7 flex flex-col gap-6">
-            <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 sm:p-8 shadow-xl backdrop-blur-md">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.06]">
-                <div>
-                  <h2 className="text-lg font-black text-white">
-                    {t('championWiki.abilities')}
-                  </h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    Wähle eine Fähigkeit aus, um Skalierungen, Abklingzeiten und Effekte anzuzeigen.
-                  </p>
-                </div>
-                <span className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-                  Skillset
-                </span>
-              </div>
-
-              {/* Spell Selector Buttons: Passive, Q, W, E, R */}
-              <div className="flex items-center gap-3 sm:gap-4 mb-6 overflow-x-auto pb-2">
-                {/* Passive */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedSpellIndex(-1)}
-                  className={`relative flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all cursor-pointer shrink-0 ${
-                    selectedSpellIndex === -1
-                      ? 'border-amber-500 bg-amber-500/20 shadow-[0_0_16px_rgba(245,158,11,0.3)] scale-105'
-                      : 'border-white/10 bg-black/40 hover:border-white/20'
-                  }`}
-                >
-                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden border border-white/10">
-                    <Image
-                      src={getChampionPassiveIconUrl(data.passive.image.full, version)}
-                      alt={data.passive.name}
-                      width={56}
-                      height={56}
-                      className="h-full w-full object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                    {t('championWiki.passive')}
-                  </span>
-                </button>
-
-                {/* Spells Q, W, E, R */}
-                {data.spells.map((spell, idx) => {
-                  const keys = ['Q', 'W', 'E', 'R'];
-                  const isSelected = selectedSpellIndex === idx;
-                  return (
-                    <button
-                      key={spell.id}
-                      type="button"
-                      onClick={() => setSelectedSpellIndex(idx)}
-                      className={`relative flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all cursor-pointer shrink-0 ${
-                        isSelected
-                          ? 'border-amber-500 bg-amber-500/20 shadow-[0_0_16px_rgba(245,158,11,0.3)] scale-105'
-                          : 'border-white/10 bg-black/40 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl overflow-hidden border border-white/10">
-                        <Image
-                          src={getChampionSpellIconUrl(spell.image.full, version)}
-                          alt={spell.name}
-                          width={56}
-                          height={56}
-                          className="h-full w-full object-cover"
-                          unoptimized
-                        />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-white">
-                        {keys[idx]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Selected Ability Details Card */}
-              <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-5 flex flex-col gap-3.5">
-                {selectedSpellIndex === -1 ? (
-                  // Passive Details
-                  <>
-                    <div className="flex items-center gap-3">
-                      <span className="rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
-                        {t('championWiki.passive')}
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-white">
-                        {data.passive.name}
-                      </h3>
-                    </div>
-                    <div
-                      className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
-                      dangerouslySetInnerHTML={{ __html: data.passive.description }}
-                    />
-                  </>
-                ) : selectedSpell ? (
-                  // Q, W, E, R Details
-                  <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
-                      <div className="flex items-center gap-3">
-                        <span className="rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
-                          {['Q', 'W', 'E', 'R'][selectedSpellIndex]}
-                        </span>
-                        <h3 className="text-base sm:text-lg font-black text-white">
-                          {selectedSpell.name}
-                        </h3>
-                      </div>
-
-                      {/* Cooldown, Cost & Range */}
-                      <div className="flex items-center gap-4 text-xs font-medium text-zinc-400 flex-wrap">
-                        {selectedSpell.cooldownBurn && selectedSpell.cooldownBurn !== '0' && (
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-amber-400" />
-                            <span>{selectedSpell.cooldownBurn}s CD</span>
-                          </div>
-                        )}
-                        {selectedSpell.costBurn && selectedSpell.costBurn !== '0' && (
-                          <div className="flex items-center gap-1.5">
-                            <Zap className="h-3.5 w-3.5 text-sky-400" />
-                            <span>
-                              {selectedSpell.costBurn} {data.partype || 'Mana'}
-                            </span>
-                          </div>
-                        )}
-                        {selectedSpell.rangeBurn && selectedSpell.rangeBurn !== '0' && (
-                          <div className="flex items-center gap-1.5">
-                            <Target className="h-3.5 w-3.5 text-rose-400" />
-                            <span>{selectedSpell.rangeBurn} Range</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Rich Description */}
-                    <div
-                      className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
-                      dangerouslySetInnerHTML={{
-                        __html: selectedSpell.description || selectedSpell.tooltip,
-                      }}
-                    />
-                  </>
-                ) : null}
-              </div>
-            </div>
+          {/* Left Column: Profile Header + Brief Bio + Reverted Base Stats */}
+          <div className="lg:col-span-6 flex flex-col gap-4">
+            {renderProfileHeader()}
+            {renderBioCard()}
+            {renderBaseStatsCard()}
           </div>
 
-          {/* Right Column: FAQ Section */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            {/* Question 1: Release Date */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <HelpCircle className="h-4 w-4" />
-                <h3 className="text-sm font-bold text-white">
-                  {t('championWiki.detailFaqRelease', { name: data.name })}
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {t('championWiki.detailFaqReleaseDesc', {
-                  name: data.name,
-                  date: formattedReleaseDate,
-                })}
-              </p>
-            </div>
-
-            {/* Question 2: Role / Lane */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <HelpCircle className="h-4 w-4" />
-                <h3 className="text-sm font-bold text-white">
-                  {t('championWiki.detailFaqRole', { name: data.name })}
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {t('championWiki.detailFaqRoleDesc', {
-                  name: data.name,
-                  role: primaryRole,
-                  flex:
-                    metaPos?.recommendedPositions && metaPos.recommendedPositions.length > 1
-                      ? ` und ${metaPos.recommendedPositions.slice(1).join(', ')}`
-                      : '',
-                })}
-              </p>
-            </div>
-
-            {/* Question 3: Skins Count */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <Layers className="h-4 w-4" />
-                <h3 className="text-sm font-bold text-white">
-                  {t('championWiki.detailFaqSkins', { name: data.name })}
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {t('championWiki.detailFaqSkinsDesc', {
-                  name: data.name,
-                  count: nonBaseSkinsCount,
-                })}
-              </p>
-            </div>
-
-            {/* Question 4: Store Pricing (BE & RP) */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <Coins className="h-4 w-4" />
-                <h3 className="text-sm font-bold text-white">
-                  {t('championWiki.detailFaqCost', { name: data.name })}
-                </h3>
-              </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {t('championWiki.detailFaqCostDesc', {
-                  name: data.name,
-                  be: beCost,
-                  rp: rpCost,
-                })}
-              </p>
-            </div>
+          {/* Right Column: Spotlight Splash Art + Chromas + Strip */}
+          <div className="lg:col-span-6 flex flex-col gap-3">
+            {renderSpotlightSplashCard()}
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* SKIN TIMELINE GRAPH                                                       */}
+        {/* ========================================================================= */}
+        {renderTimelineCard()}
+
+        {/* ========================================================================= */}
+        {/* ABILITIES & PASSIVE                                                       */}
+        {/* ========================================================================= */}
+        {renderAbilitiesCard()}
+
+        {/* ========================================================================= */}
+        {/* FAQ SECTION                                                               */}
+        {/* ========================================================================= */}
+        {renderFaqCard()}
       </div>
     </div>
   );

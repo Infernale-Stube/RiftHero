@@ -348,16 +348,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               primaryStyle: p.perks?.styles?.[0]?.style || null,
               secondaryStyle: p.perks?.styles?.[1]?.style || null,
               perksJson: p.perks as any || null,
-              challengesJson: {
-                ...((p.challenges as any) || {}),
-                doubleKills: (p as any).doubleKills ?? 0,
-                tripleKills: (p as any).tripleKills ?? 0,
-                quadraKills: (p as any).quadraKills ?? 0,
-                pentaKills: (p as any).pentaKills ?? 0,
-                largestMultiKill: (p as any).largestMultiKill ?? 0,
-                gameEndedInSurrender: (p as any).gameEndedInSurrender ?? false,
-                gameEndedInEarlySurrender: (p as any).gameEndedInEarlySurrender ?? false,
-              } as any,
             },
             update: {
               summonerId: isMainPlayer ? savedSummoner.id : undefined,
@@ -375,16 +365,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               item4: p.item4,
               item5: p.item5,
               item6: p.item6,
-              challengesJson: {
-                ...((p.challenges as any) || {}),
-                doubleKills: (p as any).doubleKills ?? 0,
-                tripleKills: (p as any).tripleKills ?? 0,
-                quadraKills: (p as any).quadraKills ?? 0,
-                pentaKills: (p as any).pentaKills ?? 0,
-                largestMultiKill: (p as any).largestMultiKill ?? 0,
-                gameEndedInSurrender: (p as any).gameEndedInSurrender ?? false,
-                gameEndedInEarlySurrender: (p as any).gameEndedInEarlySurrender ?? false,
-              } as any,
             },
           });
 

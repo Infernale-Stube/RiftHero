@@ -331,6 +331,9 @@ export interface TranslationDictionary {
     legendary: string;
     mythic: string;
     transcendent: string;
+    allSkinsGallery: string;
+    allyTipsTitle: string;
+    enemyTipsTitle: string;
   };
   itemsWiki: {
     pageTitle: string;
@@ -717,6 +720,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       legendary: 'Legendary',
       mythic: 'Mythic',
       transcendent: 'Transcendent',
+      allSkinsGallery: 'Alle Skins & Artworks',
+      allyTipsTitle: 'Tipps beim Spielen mit {name}',
+      enemyTipsTitle: 'Tipps beim Spielen gegen {name} (Counterplay)',
     },
     itemsWiki: {
       pageTitle: 'Item Enzyklopädie & Rezepte',
@@ -1101,6 +1107,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       legendary: 'Legendary',
       mythic: 'Mythic',
       transcendent: 'Transcendent',
+      allSkinsGallery: 'All Skins & Splash Artworks',
+      allyTipsTitle: 'Playing as {name} (Tips & Strategy)',
+      enemyTipsTitle: 'Playing against {name} (Counterplay)',
     },
     itemsWiki: {
       pageTitle: 'Item Encyclopedia & Build Paths',

@@ -735,6 +735,16 @@ async function loadActiveSnapshot(): Promise<{
   return await computeAndSaveMetaAnalysis();
 }
 
+export function toDDragonLocale(locale = 'de'): 'de_DE' | 'en_US' {
+  const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
+  return l.startsWith('en') ? 'en_US' : 'de_DE';
+}
+
+export function toLangKey(locale = 'de'): 'de' | 'en' {
+  const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
+  return l.startsWith('en') ? 'en' : 'de';
+}
+
 /**
  * Returns the localized champion catalog enriched with live meta stats.
  * Instant response time (<2ms) directly from PostgreSQL table 'meta_snapshots'.
@@ -746,7 +756,7 @@ export async function getChampionsRoster(locale = 'de'): Promise<{
   champions: any[];
 }> {
   const snapshot = await loadActiveSnapshot();
-  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const langKey = toLangKey(locale);
   const rosterData = snapshot.championsRoster;
   const list = rosterData?.[langKey] || rosterData?.de || rosterData?.en || [];
 
@@ -771,7 +781,7 @@ export async function getChampionDetail(
   champion: any;
 }> {
   const snapshot = await loadActiveSnapshot();
-  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const langKey = toLangKey(locale);
   const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // 1. Direct hit in precomputed snapshot / memory cache (0ms, 0 external calls)
@@ -796,7 +806,7 @@ export async function getChampionDetail(
   }
 
   // 2. Fallback on demand if somehow snapshot was missing this champion
-  const lang = locale.toLowerCase().startsWith('en') ? 'en_US' : 'de_DE';
+  const lang = toDDragonLocale(locale);
   const list = snapshot.championsRoster?.[langKey] || [];
   const found = list.find((c: any) => {
     const cId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');

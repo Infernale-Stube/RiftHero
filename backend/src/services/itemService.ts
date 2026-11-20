@@ -506,6 +506,16 @@ export async function loadActiveItemSnapshot(): Promise<ItemMemoryCache> {
   return await computeAndSaveItemSnapshot();
 }
 
+export function toDDragonLocale(locale = 'de'): 'de_DE' | 'en_US' {
+  const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
+  return l.startsWith('en') ? 'en_US' : 'de_DE';
+}
+
+export function toLangKey(locale = 'de'): 'de' | 'en' {
+  const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
+  return l.startsWith('en') ? 'en' : 'de';
+}
+
 /**
  * Retrieves the full item roster for a given locale (de / en)
  */
@@ -517,7 +527,7 @@ export async function getItemsRoster(locale = 'de'): Promise<{
   tree: any[];
 }> {
   const snapshot = await loadActiveItemSnapshot();
-  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const langKey = toLangKey(locale);
   const list = snapshot.items?.[langKey] || snapshot.items?.de || snapshot.items?.en || [];
 
   return {
@@ -541,7 +551,7 @@ export async function getItemDetail(
   item: ItemRecord | null;
 }> {
   const snapshot = await loadActiveItemSnapshot();
-  const langKey = locale.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const langKey = toLangKey(locale);
   const detail = snapshot.details?.[langKey]?.[id] || snapshot.details?.de?.[id] || snapshot.details?.en?.[id] || null;
 
   return {
