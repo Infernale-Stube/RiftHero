@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import RiftHeroIcon from './RiftHeroIcon';
 import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -18,7 +18,15 @@ export default function Navbar() {
         {/* Brand Logo */}
         <Link href={`/${locale}`} className="flex items-center gap-3 group">
           <div className="relative flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-            <RiftHeroIcon className="h-10 w-10 transition-all duration-300 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)] group-hover:drop-shadow-[0_0_18px_rgba(249,115,22,0.8)]" />
+            <Image
+              src="/logo.png"
+              alt="RiftHero Logo"
+              width={44}
+              height={44}
+              className="h-10 w-10 object-contain drop-shadow-[0_0_12px_rgba(245,158,11,0.5)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(249,115,22,0.85)]"
+              priority
+              unoptimized
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-white transition-colors">
