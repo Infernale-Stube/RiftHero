@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
-  ExternalLink,
   Trophy,
   Award,
 } from 'lucide-react';
@@ -963,24 +962,54 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             })}
           </div>
 
-          {/* Expand Details Arrow Button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (showNewBadge) setIsDismissed(true);
-              setIsExpanded(!isExpanded);
-            }}
-            className="flex h-9 w-9 items-center justify-center text-zinc-400 hover:text-white transition-colors ml-1 shrink-0 cursor-pointer"
-            aria-label="Toggle Match Details"
-          >
-            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </button>
+          {/* Right Actions Column: Match Details Icon (top) + Expand Arrow Button (bottom) */}
+          <div className="flex flex-col items-center justify-between self-stretch shrink-0 py-0.5 border-l border-white/[0.06] pl-2.5 ml-1 min-h-[92px]">
+            {/* Match Details Icon Link (in top right corner above the expand arrow) */}
+            <Link
+              href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
+              className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-sky-500/25 bg-sky-500/10 hover:bg-sky-500/20 hover:border-sky-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
+              title="Match Details"
+              aria-label="Match Details"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-[#00a8e8] group-hover/detail:text-[#38bdf8] transition-colors"
+              >
+                <path
+                  d="M2.5 3V17H18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <rect x="5" y="11" width="2" height="6" rx="0.5" fill="currentColor" />
+                <rect x="8.5" y="6" width="2" height="11" rx="0.5" fill="currentColor" />
+                <rect x="12" y="8.5" width="2" height="8.5" rx="0.5" fill="currentColor" />
+                <rect x="15.5" y="4" width="2" height="13" rx="0.5" fill="currentColor" />
+              </svg>
+            </Link>
+
+            {/* Expand Details Arrow Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (showNewBadge) setIsDismissed(true);
+                setIsExpanded(!isExpanded);
+              }}
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+              aria-label="Toggle Match Details"
+            >
+              {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Expanded Inline Full-Width Scorecard (Stacked analog screenshot) */}
       {isExpanded && (
-        <div className="p-4 sm:p-5 pt-0 border-t border-white/[0.06] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200 overflow-x-auto">
+        <div className="p-4 sm:p-5 pt-0 border-t border-white/[0.06] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-200 overflow-x-auto pb-5">
           {/* Blue Side Table */}
           {renderTeamTable(
             blueTeam,
@@ -998,17 +1027,6 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             redTeamTotals,
             redTeamData
           )}
-
-          {/* Bottom Action Bar: "Match Details" Button */}
-          <div className="flex items-center justify-end pt-2">
-            <Link
-              href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-bold text-zinc-200 hover:bg-white/10 hover:text-white transition-all shadow-sm active:scale-98"
-            >
-              <span>Match Details</span>
-              <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
-            </Link>
-          </div>
         </div>
       )}
     </div>
