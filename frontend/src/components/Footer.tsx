@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import RiftHeroIcon from './RiftHeroIcon';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function Footer() {
@@ -12,6 +13,7 @@ export default function Footer() {
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-white/[0.04]">
           <div className="flex items-center gap-2">
+            <RiftHeroIcon className="h-4 w-4 drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
             <span className="text-sm font-black tracking-tight text-white">
               RIFT<span className="text-orange-500">HERO</span>
             </span>

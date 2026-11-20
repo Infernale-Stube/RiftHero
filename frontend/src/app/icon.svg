@@ -1,105 +1,96 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
   <defs>
-    <linearGradient id="rh-gold-primary" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFF2A3" />
-      <stop offset="30%" stop-color="#F59E0B" />
-      <stop offset="70%" stop-color="#D97706" />
-      <stop offset="100%" stop-color="#92400E" />
+    <!-- Bright Specular Gold -->
+    <linearGradient id="cw-gold-highlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="35%" stop-color="#FDE047" />
+      <stop offset="75%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
     </linearGradient>
 
-    <linearGradient id="rh-gold-light" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#FEF9C3" />
-      <stop offset="50%" stop-color="#FBBF24" />
-      <stop offset="100%" stop-color="#B45309" />
+    <!-- Primary Rich Gold -->
+    <linearGradient id="cw-gold-body" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="40%" stop-color="#F59E0B" />
+      <stop offset="80%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#78350F" />
     </linearGradient>
 
-    <linearGradient id="rh-gold-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Shaded Chiseled Gold -->
+    <linearGradient id="cw-gold-shadow" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#B45309" />
-      <stop offset="60%" stop-color="#78350F" />
+      <stop offset="50%" stop-color="#78350F" />
       <stop offset="100%" stop-color="#451A03" />
     </linearGradient>
 
-    <linearGradient id="rh-rift-core" x1="50%" y1="0%" x2="50%" y2="100%">
+    <!-- Deep Dark Obsidian Steel -->
+    <linearGradient id="cw-steel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#27272A" />
+      <stop offset="60%" stop-color="#18181B" />
+      <stop offset="100%" stop-color="#09090B" />
+    </linearGradient>
+
+    <!-- Blazing Rift Core Energy -->
+    <linearGradient id="cw-rift-fire" x1="50%" y1="0%" x2="50%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF" />
       <stop offset="25%" stop-color="#FEF08A" />
       <stop offset="60%" stop-color="#F97316" />
-      <stop offset="100%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#C2410C" />
     </linearGradient>
 
-    <radialGradient id="rh-obsidian" cx="50%" cy="45%" r="55%">
-      <stop offset="0%" stop-color="#1E232F" />
-      <stop offset="65%" stop-color="#0E121B" />
-      <stop offset="100%" stop-color="#05070B" />
-    </radialGradient>
-
-    <radialGradient id="rh-aura-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.5" />
-      <stop offset="60%" stop-color="#EA580C" stop-opacity="0.2" />
-      <stop offset="100%" stop-color="#F97316" stop-opacity="0" />
+    <!-- Radial Core Energy Burst -->
+    <radialGradient id="cw-core-burst" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FBBF24" stop-opacity="0.8" />
+      <stop offset="40%" stop-color="#F97316" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#EA580C" stop-opacity="0" />
     </radialGradient>
   </defs>
 
-  <!-- Aura Glow -->
-  <circle cx="50" cy="50" r="46" fill="url(#rh-aura-glow)" />
+  <!-- Core Glow Burst -->
+  <circle cx="60" cy="58" r="34" fill="url(#cw-core-burst)" />
 
-  <!-- Outer Crest Silhouette -->
-  <path
-    d="M50 8 L74 18 L84 32 L79 48 L85 64 L70 80 L50 94 L30 80 L15 64 L21 48 L16 32 L26 18 Z"
-    fill="url(#rh-obsidian)"
-    stroke="url(#rh-gold-dark)"
-    stroke-width="1.5"
-  />
+  <!-- LEFT WING -->
+  <path d="M60 48 L46 38 L22 18 C16 28 14 42 24 54 L44 58 L60 48 Z" fill="url(#cw-steel)" />
+  <path d="M60 48 L46 38 L22 18 C26 12 38 18 48 28 L60 40 Z" fill="url(#cw-gold-highlight)" />
+  <path d="M48 28 L22 18 C14 26 12 40 18 52 L32 50 C24 38 32 28 48 28 Z" fill="url(#cw-gold-body)" />
 
-  <!-- Wing Armor Left -->
-  <path
-    d="M50 11 L28 20 L20 32 L24 46 L17 62 L32 77 L50 90 L50 84 L36 72 L25 58 L28 46 L23 35 L33 24 L50 16 Z"
-    fill="url(#rh-gold-dark)"
-  />
+  <path d="M60 62 L42 58 L12 48 C8 58 10 70 20 80 L38 72 L54 66 Z" fill="url(#cw-gold-shadow)" />
+  <path d="M56 60 L38 56 L12 48 C16 44 26 48 38 52 L54 62 Z" fill="url(#cw-gold-highlight)" />
+  <path d="M42 58 L12 48 C14 62 24 74 36 74 L46 64 Z" fill="url(#cw-gold-body)" />
 
-  <!-- Wing Armor Right -->
-  <path
-    d="M50 11 L72 20 L80 32 L76 46 L83 62 L68 77 L50 90 L50 84 L64 72 L75 58 L72 46 L77 35 L67 24 L50 16 Z"
-    fill="url(#rh-gold-primary)"
-  />
+  <path d="M60 76 L48 70 L26 80 C32 90 42 98 56 102 L60 88 Z" fill="url(#cw-gold-shadow)" />
+  <path d="M58 74 L46 68 L26 80 C34 84 46 84 56 80 Z" fill="url(#cw-gold-highlight)" />
 
-  <!-- Top Crown Spire -->
-  <path d="M50 8 L60 17 L50 25 L40 17 Z" fill="url(#rh-gold-light)" />
-  <path d="M50 8 L50 25 L40 17 Z" fill="url(#rh-gold-primary)" />
+  <!-- RIGHT WING -->
+  <path d="M60 48 L74 38 L98 18 C104 28 106 42 96 54 L76 58 L60 48 Z" fill="url(#cw-steel)" />
+  <path d="M60 48 L74 38 L98 18 C94 12 82 18 72 28 L60 40 Z" fill="url(#cw-gold-highlight)" />
+  <path d="M72 28 L98 18 C106 26 108 40 102 52 L88 50 C96 38 88 28 72 28 Z" fill="url(#cw-gold-body)" />
 
-  <!-- Wing Flanges -->
-  <path d="M28 20 L38 27 L33 36 L20 32 Z" fill="url(#rh-gold-primary)" />
-  <path d="M72 20 L62 27 L67 36 L80 32 Z" fill="url(#rh-gold-light)" />
-  <path d="M24 46 L36 49 L32 64 L17 62 Z" fill="url(#rh-gold-dark)" />
-  <path d="M76 46 L64 49 L68 64 L83 62 Z" fill="url(#rh-gold-primary)" />
+  <path d="M60 62 L78 58 L108 48 C112 58 110 70 100 80 L82 72 L66 66 Z" fill="url(#cw-gold-shadow)" />
+  <path d="M64 60 L82 56 L108 48 C104 44 94 48 82 52 L66 62 Z" fill="url(#cw-gold-highlight)" />
+  <path d="M78 58 L108 48 C106 62 96 74 84 74 L74 64 Z" fill="url(#cw-gold-body)" />
 
-  <!-- Inner Crest Frame -->
-  <path
-    d="M50 26 L66 38 L62 60 L50 78 L38 60 L34 38 Z"
-    fill="#090D15"
-    stroke="url(#rh-gold-primary)"
-    stroke-width="1.75"
-  />
-  <path d="M50 27 L35 39 L39 59 L50 76 Z" fill="#000000" fill-opacity="0.4" />
+  <path d="M60 76 L72 70 L94 80 C88 90 78 98 64 102 L60 88 Z" fill="url(#cw-gold-shadow)" />
+  <path d="M62 74 L74 68 L94 80 C86 84 74 84 64 80 Z" fill="url(#cw-gold-highlight)" />
 
-  <!-- Central Rift Shard Core -->
-  <polygon points="50,31 41,49 50,70" fill="#F97316" />
-  <polygon points="50,31 59,49 50,70" fill="url(#rh-rift-core)" />
-  <polygon points="50,36 55,49 50,62 45,49" fill="#FFFBEB" opacity="0.9" />
+  <!-- TOP CROWN -->
+  <polygon points="60,10 68,26 60,34 52,26" fill="url(#cw-gold-highlight)" />
+  <polygon points="60,10 52,26 60,34" fill="url(#cw-gold-body)" />
+  <circle cx="60" cy="24" r="2.5" fill="#FFFBEB" />
 
-  <!-- Rift Fracture -->
-  <path
-    d="M50 33 L49 43 L52 48 L48 56 L51 61 L50 67"
-    stroke="#FFFFFF"
-    stroke-width="1.25"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
+  <!-- CENTRAL CRYSTAL HOUSING -->
+  <path d="M60 36 L72 48 L70 70 L60 84 L50 70 L48 48 Z" fill="#0A0E17" stroke="url(#cw-gold-body)" stroke-width="1.5" />
 
-  <!-- Bottom Apex Finial -->
-  <polygon points="50,75 56,84 50,91 44,84" fill="url(#rh-gold-light)" />
-  <polygon points="50,75 44,84 50,91" fill="url(#rh-gold-dark)" />
+  <!-- CENTRAL RIFT CRYSTAL -->
+  <polygon points="60,40 70,58 60,78 50,58" fill="url(#cw-rift-fire)" opacity="0.5" />
+  <polygon points="60,41 51,58 60,77" fill="#F97316" />
+  <polygon points="60,41 69,58 60,77" fill="url(#cw-rift-fire)" />
+  <polygon points="60,46 65,58 60,70 55,58" fill="#FFFBEB" opacity="0.95" />
 
-  <!-- Top Crown Gem -->
-  <circle cx="50" cy="17" r="2.5" fill="#FFFBEB" />
-  <circle cx="50" cy="17" r="1.2" fill="#F97316" />
+  <!-- RIFT FRACTURE -->
+  <path d="M60,43 L58,52 L62,57 L58,64 L61,69 L60,74" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- BOTTOM FINIAL -->
+  <polygon points="60,86 66,96 60,106 54,96" fill="url(#cw-gold-highlight)" />
+  <polygon points="60,86 54,96 60,106" fill="url(#cw-gold-shadow)" />
 </svg>

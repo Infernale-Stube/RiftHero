@@ -16,11 +16,9 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#0a0d12]/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <Link href={`/${locale}`} className="flex items-center gap-2.5 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/80 via-orange-500/60 to-yellow-600/40 p-0.5 shadow-lg shadow-orange-500/25 transition-transform group-hover:scale-105">
-            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0d14]/90 backdrop-blur-sm">
-              <RiftHeroIcon className="h-6 w-6 transition-all duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-            </div>
+        <Link href={`/${locale}`} className="flex items-center gap-3 group">
+          <div className="relative flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+            <RiftHeroIcon className="h-10 w-10 transition-all duration-300 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)] group-hover:drop-shadow-[0_0_18px_rgba(249,115,22,0.8)]" />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-white transition-colors">
