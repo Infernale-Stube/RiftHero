@@ -325,6 +325,7 @@ export interface TranslationDictionary {
     detailFaqSkinsDesc: string;
     detailFaqCost: string;
     detailFaqCostDesc: string;
+    championsFromYear: string;
     skinTimeline: string;
     regular: string;
     epic: string;
@@ -714,6 +715,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       detailFaqSkinsDesc: '{name} verfügt aktuell über {count} verschiedene Skins und Artworks im Spiel, inklusive des Basis-Klassikers.',
       detailFaqCost: 'Wie viel kostet {name}?',
       detailFaqCostDesc: '{name} kostet {be} Blaue Essenzen oder {rp} Riot Points. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden.',
+      championsFromYear: 'Champions aus dem Jahr {year} ({count})',
       skinTimeline: 'Skin Timeline',
       regular: 'Regular',
       epic: 'Epic',
@@ -1101,6 +1103,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       detailFaqSkinsDesc: 'Currently, there are {count} {name} Skins available in the game. This includes all cosmetic variants released since their launch, the base skin is not included.',
       detailFaqCost: 'How Much Is {name}?',
       detailFaqCostDesc: '{name} costs {be} Blue Essence or {rp} Riot Points. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.',
+      championsFromYear: 'Champions from {year} ({count})',
       skinTimeline: 'Skin Timeline',
       regular: 'Regular',
       epic: 'Epic',

@@ -39,6 +39,7 @@ import {
 } from '@/lib/ddragon';
 import { fetchChampionDetailApi, fetchTierList, TierListChampionItem } from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
+import championMetadataRaw from '@/lib/championMetadata.json';
 
 interface ChampionPosInfo {
   id: string;
@@ -121,6 +122,13 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
+  const sameYearCarouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollSameYearCarousel = (direction: 'left' | 'right') => {
+    if (!sameYearCarouselRef.current) return;
+    const scrollAmount = direction === 'left' ? -380 : 380;
+    sameYearCarouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  };
 
   // Fetch Champion Details (Instant from PostgreSQL cache / bundled metadata with DDragon fallback)
   useEffect(() => {
@@ -384,11 +392,51 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     );
   }
 
-  const rawRelDate = data.releaseDate || data.storeData?.releaseDate || '2011-12-14';
+  const cleanKey = (data.id || data.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const metaItem = (championMetadataRaw as Record<string, any>)[cleanKey];
+
+  const rawRelDate = data.releaseDate || metaItem?.d || data.storeData?.releaseDate || '2011-12-14';
   const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
-  const beCost = (data.storeData?.ip ?? 4800).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
-  const rpCost = (data.storeData?.rp ?? 880).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
+  const beCost = (metaItem?.be ?? data.storeData?.ip ?? 4800).toLocaleString(
+    locale.startsWith('en') ? 'en-US' : 'de-DE'
+  );
+  const rpCost = (metaItem?.rp ?? data.storeData?.rp ?? 880).toLocaleString(
+    locale.startsWith('en') ? 'en-US' : 'de-DE'
+  );
   const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
+
+  const releaseYear = useMemo(() => {
+    if (rawRelDate) {
+      const y = parseInt(rawRelDate.slice(0, 4), 10);
+      if (!isNaN(y)) return y;
+    }
+    return metaItem?.y || 2011;
+  }, [rawRelDate, metaItem]);
+
+  const sameYearChampions = useMemo(() => {
+    if (!releaseYear) return [];
+    const currentKey = (data.id || data.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const metaRecords = championMetadataRaw as Record<string, any>;
+    return Object.values(metaRecords)
+      .filter(
+        (c) =>
+          c.y === releaseYear &&
+          c.key.toLowerCase().replace(/[^a-z0-9]/g, '') !== currentKey
+      )
+      .map((c) => {
+        const p =
+          (championPositionsMap as any)[c.key] ||
+          (championPositionsMap as any)[c.name] ||
+          {};
+        return {
+          id: c.key,
+          name: c.name,
+          title: p.title || '',
+          releaseDate: c.d,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [releaseYear, data, slug]);
 
   // =========================================================================
   // SUB-RENDER: PROFILE HEADER (NO SKINS BADGE, NO LEADERBOARD BADGE)
@@ -1160,6 +1208,76 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
+  // SUB-RENDER: CHAMPIONS FROM SAME RELEASE YEAR (CAROUSEL)
+  // =========================================================================
+  const renderSameYearChampionsCard = () => {
+    if (sameYearChampions.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            {t('championWiki.championsFromYear', {
+              year: releaseYear,
+              count: sameYearChampions.length,
+            })}
+          </h2>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => scrollSameYearCarousel('left')}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-[#0c1017] text-zinc-400 hover:text-white hover:border-white/30 hover:bg-white/[0.04] transition-all cursor-pointer"
+              title="Vorherige"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollSameYearCarousel('right')}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-[#0c1017] text-zinc-400 hover:text-white hover:border-white/30 hover:bg-white/[0.04] transition-all cursor-pointer"
+              title="Nächste"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Horizontal Carousel without visible scrollbars */}
+        <div
+          ref={sameYearCarouselRef}
+          className="flex gap-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-1"
+        >
+          {sameYearChampions.map((champ) => (
+            <Link
+              key={champ.id}
+              href={`/${locale}/champions/${champ.id.toLowerCase()}`}
+              className="group relative h-48 w-36 sm:h-52 sm:w-40 md:h-56 md:w-44 shrink-0 rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0c1017] hover:border-amber-400/50 hover:shadow-[0_0_15px_rgba(251,146,60,0.25)] transition-all cursor-pointer block"
+            >
+              <Image
+                src={getChampionLoadingUrl(champ.id, 0)}
+                alt={champ.name}
+                fill
+                className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                unoptimized
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent flex flex-col justify-end p-3 pointer-events-none">
+                <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                  {champ.name}
+                </span>
+                {champ.title && (
+                  <span className="text-[11px] text-zinc-400 capitalize truncate mt-0.5">
+                    {champ.title}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // =========================================================================
   // SUB-RENDER: FAQ CARD (4 QUESTIONS MATCHING REFERENCE SCREENSHOT)
   // =========================================================================
   const renderFaqCard = () => (
@@ -1265,6 +1383,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         {/* ABILITIES & PASSIVE                                                       */}
         {/* ========================================================================= */}
         {renderAbilitiesCard()}
+
+        {/* ========================================================================= */}
+        {/* CHAMPIONS FROM SAME RELEASE YEAR (CAROUSEL)                               */}
+        {/* ========================================================================= */}
+        {renderSameYearChampionsCard()}
 
         {/* ========================================================================= */}
         {/* FAQ SECTION                                                               */}
