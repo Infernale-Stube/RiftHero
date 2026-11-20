@@ -268,12 +268,17 @@ export interface DDragonChampionDetail extends DDragonChampionSummary {
   } | null;
 }
 
+export function toDDragonLocale(locale = 'de'): 'de_DE' | 'en_US' {
+  const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
+  return l.startsWith('en') ? 'en_US' : 'de_DE';
+}
+
 export async function fetchDDragonChampionsList(locale = 'de'): Promise<{
   version: string;
   champions: DDragonChampionSummary[];
 }> {
   const v = getDDragonVersion();
-  const lang = locale === 'de' ? 'de_DE' : 'en_US';
+  const lang = toDDragonLocale(locale);
   try {
     const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/${lang}/champion.json`, {
       cache: 'no-store',
@@ -292,6 +297,89 @@ export async function fetchDDragonChampionsList(locale = 'de'): Promise<{
   return { version: v, champions: [] };
 }
 
+function mapSkinRarityClient(rawRarity?: string): { rarity: string; rarityColor: string } {
+  if (!rawRarity) return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+  const r = rawRarity.toLowerCase().replace(/[^a-z]/g, '');
+  if (r.includes('epic')) return { rarity: 'Epic', rarityColor: '#0FAEB6' };
+  if (r.includes('legendary')) return { rarity: 'Legendary', rarityColor: '#DB1523' };
+  if (r.includes('mythic')) return { rarity: 'Mythic', rarityColor: '#B034B6' };
+  if (r.includes('transcendent') || r.includes('ultimate') || r.includes('exalted')) {
+    return { rarity: 'Transcendent', rarityColor: '#C7A8DD' };
+  }
+  return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+}
+
+export async function enrichChampionWithMeraki(champ: DDragonChampionDetail): Promise<DDragonChampionDetail> {
+  if (!champ) return champ;
+  try {
+    const res = await fetch(
+      `https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/${champ.id}.json`,
+      { cache: 'no-store' }
+    );
+    if (res.ok) {
+      const meraki = await res.json();
+      champ.storeData = {
+        ip: meraki.price?.blueEssence ?? 4800,
+        rp: meraki.price?.rp ?? 880,
+        releaseDate: meraki.releaseDate || '2012-01-01',
+      };
+      champ.releaseDate = meraki.releaseDate;
+
+      const baseYear = meraki.releaseDate ? new Date(meraki.releaseDate).getFullYear() : 2011;
+
+      if (Array.isArray(champ.skins)) {
+        champ.skins = champ.skins.map((s) => {
+          if (s.num === 0) {
+            return {
+              ...s,
+              rarity: 'Regular',
+              rarityColor: '#2E8D4C',
+              releaseDate: meraki.releaseDate,
+              releaseYear: isNaN(baseYear) ? 2011 : baseYear,
+              cost: 0,
+            };
+          }
+
+          // 1. Match by universal numeric Skin ID (99.8% match rate)
+          let matched = meraki.skins?.find((m: any) => String(m.id) === String(s.id));
+
+          // 2. Special cases
+          let relDate = matched?.release;
+          let rawRarity = matched?.rarity;
+
+          if (!matched) {
+            if (String(s.id) === '103086') {
+              relDate = '2024-06-12';
+              rawRarity = 'Transcendent';
+            } else if (String(s.id) === '147002' || String(s.id) === '147003') {
+              relDate = '2020-10-29';
+              rawRarity = 'Transcendent';
+            } else {
+              relDate = meraki.releaseDate;
+            }
+          }
+
+          const rarityInfo = mapSkinRarityClient(rawRarity);
+          const dObj = relDate ? new Date(relDate) : null;
+          const skinYear = dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : (baseYear || 2012);
+
+          return {
+            ...s,
+            rarity: rarityInfo.rarity,
+            rarityColor: rarityInfo.rarityColor,
+            releaseDate: relDate || meraki.releaseDate,
+            releaseYear: skinYear,
+            cost: matched?.cost ?? 975,
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[DDragon] Meraki client enrichment warning:', err);
+  }
+  return champ;
+}
+
 export async function fetchDDragonChampionDetail(
   slugOrName: string,
   locale = 'de'
@@ -300,7 +388,7 @@ export async function fetchDDragonChampionDetail(
   champion: DDragonChampionDetail | null;
 }> {
   const v = getDDragonVersion();
-  const lang = locale === 'de' ? 'de_DE' : 'en_US';
+  const lang = toDDragonLocale(locale);
 
   // 1. Try directly with normalized name
   const candidateId = normalizeChampionNameForDDragon(slugOrName);
@@ -312,7 +400,14 @@ export async function fetchDDragonChampionDetail(
     if (res.ok) {
       const data = await res.json();
       if (data && data.data && data.data[candidateId]) {
-        return { version: data.version || v, champion: data.data[candidateId] };
+        let champ = data.data[candidateId];
+        if (champ && Array.isArray(champ.skins)) {
+          champ.skins = champ.skins.filter(
+            (s: DDragonSkin) => s.parentSkin === undefined || s.parentSkin === null
+          );
+        }
+        champ = await enrichChampionWithMeraki(champ);
+        return { version: data.version || v, champion: champ };
       }
     }
   } catch {}
@@ -334,12 +429,13 @@ export async function fetchDDragonChampionDetail(
       if (res.ok) {
         const data = await res.json();
         if (data && data.data && data.data[found.id]) {
-          const champ = data.data[found.id];
+          let champ = data.data[found.id];
           if (champ && Array.isArray(champ.skins)) {
             champ.skins = champ.skins.filter(
               (s: DDragonSkin) => s.parentSkin === undefined || s.parentSkin === null
             );
           }
+          champ = await enrichChampionWithMeraki(champ);
           return { version: data.version || v, champion: champ };
         }
       }
@@ -351,11 +447,58 @@ export async function fetchDDragonChampionDetail(
   return { version: v, champion: null };
 }
 
-export function getItemIconUrl(itemId: number, version?: string): string {
-  if (!itemId || itemId === 0) return '';
+export function getItemIconUrl(itemId: number | string, version?: string): string {
+  if (!itemId || itemId === 0 || itemId === '0') return '';
   const v = version || getDDragonVersion();
   return `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${itemId}.png`;
 }
+
+export async function fetchDDragonItemsList(locale = 'de'): Promise<{
+  version: string;
+  items: any[];
+}> {
+  const v = getDDragonVersion();
+  const lang = toDDragonLocale(locale);
+  try {
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/${lang}/item.json`, {
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.data) {
+        const items = Object.entries(data.data).map(([id, raw]: [string, any]) => ({
+          id,
+          name: raw.name || `Item ${id}`,
+          plaintext: raw.plaintext || '',
+          description: raw.description || '',
+          colloq: raw.colloq || '',
+          gold: {
+            base: raw.gold?.base ?? 0,
+            total: raw.gold?.total ?? 0,
+            sell: raw.gold?.sell ?? 0,
+            purchasable: raw.gold?.purchasable ?? true,
+          },
+          tags: Array.isArray(raw.tags) ? raw.tags : [],
+          categories: [],
+          tier: (raw.tags || []).includes('Boots') ? 'boots' : (raw.gold?.total >= 2200 ? 'legendary' : 'basic'),
+          depth: raw.depth ?? 1,
+          maps: raw.maps || {},
+          stats: raw.stats || {},
+          formattedStats: [],
+          from: Array.isArray(raw.from) ? raw.from : [],
+          into: Array.isArray(raw.into) ? raw.into : [],
+          icon: `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${id}.png`,
+          inStore: raw.inStore !== false && (raw.gold?.purchasable ?? true),
+        }));
+        return { version: data.version || v, items };
+      }
+    }
+  } catch (err) {
+    console.warn('[DDragon] Error fetching items fallback list:', err);
+  }
+  return { version: v, items: [] };
+}
+
 
 export const SPELL_MAP: Record<number, string> = {
   1: 'SummonerBoost',

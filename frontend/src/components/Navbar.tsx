@@ -90,6 +90,12 @@ export default function Navbar() {
       isActive: Boolean(pathname?.includes('/champions')),
     },
     {
+      href: `/${locale}/items`,
+      label: t('nav.items') || 'Items',
+      icon: Swords,
+      isActive: Boolean(pathname?.includes('/items')),
+    },
+    {
       href: `/${locale}/tier-list`,
       label: t('nav.tierList') || 'Tier List',
       icon: Flame,

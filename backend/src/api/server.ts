@@ -7,9 +7,11 @@ import { summonerRoutes } from './routes/summoners';
 import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
 import { metaRoutes } from './routes/meta';
+import { itemRoutes } from './routes/items';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
 import { initMetaAnalysisWorker } from '../services/metaService';
+import { initItemSyncWorker } from '../services/itemService';
 
 // Polyfill BigInt JSON serialization for Fastify / Prisma responses
 (BigInt.prototype as any).toJSON = function () {
@@ -43,6 +45,7 @@ export async function buildServer() {
       await apiScope.register(matchRoutes);
       await apiScope.register(searchRoutes);
       await apiScope.register(metaRoutes);
+      await apiScope.register(itemRoutes);
     },
     { prefix: '/api' }
   );
@@ -67,6 +70,9 @@ async function start() {
 
     // Start 6-hour Meta & Tier List background analysis worker
     initMetaAnalysisWorker();
+
+    // Start background Item Sync Worker (checks versions.json & syncs items table)
+    initItemSyncWorker();
 
     const shutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Shutting down API server gracefully...`);

@@ -9,6 +9,8 @@ import {
   PlayedWithTeammate,
   FormattedPlayerChallenges,
   SummonerMasteriesResponse,
+  ItemsRosterResponse,
+  ItemRosterItem,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -382,4 +384,36 @@ export async function fetchChampionDetailApi(
     return null;
   }
 }
+
+export async function fetchItemsRosterApi(locale = 'de'): Promise<ItemsRosterResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/items?locale=${locale}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchItemDetailApi(
+  id: string,
+  locale = 'de'
+): Promise<{
+  version: string;
+  patch: string;
+  item: ItemRosterItem | null;
+} | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/items/${encodeURIComponent(id)}?locale=${locale}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 

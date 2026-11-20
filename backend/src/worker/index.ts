@@ -9,6 +9,7 @@ import { processSummonerJob } from './processor';
 import { config } from '../config';
 import { disconnectPrisma } from '../db/prisma';
 import { initMetaAnalysisWorker } from '../services/metaService';
+import { initItemSyncWorker } from '../services/itemService';
 
 // Polyfill BigInt JSON serialization
 (BigInt.prototype as any).toJSON = function () {
@@ -77,6 +78,9 @@ async function main() {
 
   // Initialize 6h Meta & Tier List background worker
   initMetaAnalysisWorker();
+
+  // Initialize Item Sync background worker
+  initItemSyncWorker();
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {

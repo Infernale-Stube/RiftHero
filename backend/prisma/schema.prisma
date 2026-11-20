@@ -185,3 +185,18 @@ model MetaSnapshot {
 
   @@map("meta_snapshots")
 }
+
+model ItemSnapshot {
+  id              String   @id @default("active")
+  version         String
+  patch           String
+  itemsCount      Int      @default(0)
+  itemsJson       Json
+  itemDetailsJson Json?
+  treeJson        Json?
+  computedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("item_snapshots")
+}
+

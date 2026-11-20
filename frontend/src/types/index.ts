@@ -388,3 +388,59 @@ export interface MatchDetailResponse {
   scoreTimeline?: ScoreTimelinePoint[];
   lpChange?: MatchLpChange | null;
 }
+
+// Items Wiki Types
+export interface ItemGold {
+  base: number;
+  total: number;
+  sell: number;
+  purchasable: boolean;
+}
+
+export interface ItemComponentRef {
+  id: string;
+  name: string;
+  icon: string;
+  totalGold: number;
+}
+
+export interface ItemStatFormatted {
+  name: string;
+  value: string;
+  color?: string;
+}
+
+export interface ItemRosterItem {
+  id: string;
+  name: string;
+  plaintext: string;
+  description: string;
+  colloq: string;
+  gold: ItemGold;
+  tags: string[];
+  categories: string[];
+  tier: 'basic' | 'epic' | 'legendary' | 'boots' | 'consumable' | 'starter';
+  depth: number;
+  maps: Record<string, boolean>;
+  stats: Record<string, number>;
+  formattedStats: ItemStatFormatted[];
+  from: string[];
+  into: string[];
+  fromItems?: ItemComponentRef[];
+  intoItems?: ItemComponentRef[];
+  icon: string;
+  inStore: boolean;
+  requiredChampion?: string | null;
+  requiredAlly?: string | null;
+  consumed?: boolean;
+  stacks?: number;
+}
+
+export interface ItemsRosterResponse {
+  version: string;
+  patch: string;
+  totalItems: number;
+  items: ItemRosterItem[];
+  tree: any[];
+}
+

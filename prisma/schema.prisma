@@ -171,3 +171,32 @@ model MatchParticipant {
   @@index([summonerId])
   @@map("match_participants")
 }
+
+model MetaSnapshot {
+  id                  String   @id @default("active")
+  patch               String
+  totalMatches        Int      @default(0)
+  metaPicksJson       Json
+  tierListJson        Json
+  championsJson       Json?
+  championDetailsJson Json?
+  computedAt          DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("meta_snapshots")
+}
+
+model ItemSnapshot {
+  id              String   @id @default("active")
+  version         String
+  patch           String
+  itemsCount      Int      @default(0)
+  itemsJson       Json
+  itemDetailsJson Json?
+  treeJson        Json?
+  computedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("item_snapshots")
+}
+

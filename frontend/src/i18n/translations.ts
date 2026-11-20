@@ -18,6 +18,7 @@ export interface TranslationDictionary {
     apiOnline: string;
     tierList: string;
     champions: string;
+    items: string;
     home: string;
   };
   home: {
@@ -331,6 +332,55 @@ export interface TranslationDictionary {
     mythic: string;
     transcendent: string;
   };
+  itemsWiki: {
+    pageTitle: string;
+    pageSubtitle: string;
+    badge: string;
+    searchPlaceholder: string;
+    allCategories: string;
+    catAttack: string;
+    catMagic: string;
+    catDefense: string;
+    catMovement: string;
+    catStarterConsumable: string;
+    mapFilter: string;
+    mapSR: string;
+    mapARAM: string;
+    mapArena: string;
+    mapAll: string;
+    tierFilter: string;
+    allTiers: string;
+    tierLegendary: string;
+    tierEpic: string;
+    tierBasic: string;
+    tierBoots: string;
+    tierStarter: string;
+    tierConsumable: string;
+    sortBy: string;
+    sortGoldDesc: string;
+    sortGoldAsc: string;
+    sortNameAsc: string;
+    sortNameDesc: string;
+    onlyPurchasable: string;
+    resetFilters: string;
+    noItemsFound: string;
+    noItemsDesc: string;
+    showingCount: string;
+    goldCost: string;
+    totalCost: string;
+    recipeCost: string;
+    sellValue: string;
+    buildsFrom: string;
+    buildsInto: string;
+    noRecipe: string;
+    noUpgrades: string;
+    close: string;
+    statsTitle: string;
+    effectsTitle: string;
+    tagsTitle: string;
+    exclusiveChampion: string;
+    ornnUpgrade: string;
+  };
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
@@ -352,6 +402,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
       champions: 'Champions',
+      items: 'Items',
       home: 'Startseite',
     },
     home: {
@@ -667,6 +718,55 @@ export const translations: Record<Locale, TranslationDictionary> = {
       mythic: 'Mythic',
       transcendent: 'Transcendent',
     },
+    itemsWiki: {
+      pageTitle: 'Item Enzyklopädie & Rezepte',
+      pageSubtitle: 'Alle {count} Gegenstände in League of Legends auf aktuellem Patch {patch}',
+      badge: 'PATCH {patch} ITEM ENZYKLOPÄDIE',
+      searchPlaceholder: 'Item suchen (z.B. Rabadon, Klinge der Unendlichkeit, IE)...',
+      allCategories: 'Alle Kategorien',
+      catAttack: 'Angriff',
+      catMagic: 'Magie',
+      catDefense: 'Verteidigung',
+      catMovement: 'Bewegung',
+      catStarterConsumable: 'Start & Verbrauch',
+      mapFilter: 'Spielmodus / Karte',
+      mapSR: 'Kluft der Beschwörer',
+      mapARAM: 'ARAM (Heulende Schlucht)',
+      mapArena: 'Arena',
+      mapAll: 'Alle Karten',
+      tierFilter: 'Gegenstandsstufe',
+      allTiers: 'Alle Stufen',
+      tierLegendary: 'Legendär & Vollständig',
+      tierEpic: 'Episch',
+      tierBasic: 'Basis',
+      tierBoots: 'Stiefel',
+      tierStarter: 'Startgegenstände',
+      tierConsumable: 'Verbrauchsgüter',
+      sortBy: 'Sortieren nach',
+      sortGoldDesc: 'Goldkosten (hoch → niedrig)',
+      sortGoldAsc: 'Goldkosten (niedrig → hoch)',
+      sortNameAsc: 'Name (A → Z)',
+      sortNameDesc: 'Name (Z → A)',
+      onlyPurchasable: 'Nur kaufbare Items',
+      resetFilters: 'Filter zurücksetzen',
+      noItemsFound: 'Keine Items gefunden',
+      noItemsDesc: 'Passe deine Suchbegriffe oder Filter an, um passende Gegenstände zu finden.',
+      showingCount: '{count} Gegenstände',
+      goldCost: 'Gold',
+      totalCost: 'Gesamtkosten',
+      recipeCost: 'Rezeptkosten',
+      sellValue: 'Verkaufswert',
+      buildsFrom: 'Baut aus (Rezept)',
+      buildsInto: 'Baut zu (Ausbauten)',
+      noRecipe: 'Keine Vorstufen erforderlich',
+      noUpgrades: 'Keine weiteren Ausbauten',
+      close: 'Schließen',
+      statsTitle: 'Werte & Attribute',
+      effectsTitle: 'Effekte & Passiven',
+      tagsTitle: 'Kategorien',
+      exclusiveChampion: 'Exklusiv für',
+      ornnUpgrade: 'Ornn Meisterwerk',
+    },
   },
   en: {
     common: {
@@ -686,6 +786,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
       champions: 'Champions',
+      items: 'Items',
       home: 'Home',
     },
     home: {
@@ -1000,6 +1101,55 @@ export const translations: Record<Locale, TranslationDictionary> = {
       legendary: 'Legendary',
       mythic: 'Mythic',
       transcendent: 'Transcendent',
+    },
+    itemsWiki: {
+      pageTitle: 'Item Encyclopedia & Build Paths',
+      pageSubtitle: 'All {count} items in League of Legends on active Patch {patch}',
+      badge: 'PATCH {patch} ITEM ENCYCLOPEDIA',
+      searchPlaceholder: 'Search items (e.g. Rabadon, Infinity Edge, IE)...',
+      allCategories: 'All Categories',
+      catAttack: 'Attack',
+      catMagic: 'Magic',
+      catDefense: 'Defense',
+      catMovement: 'Movement',
+      catStarterConsumable: 'Starter & Consumable',
+      mapFilter: 'Game Mode / Map',
+      mapSR: "Summoner's Rift",
+      mapARAM: 'ARAM (Howling Abyss)',
+      mapArena: 'Arena',
+      mapAll: 'All Maps',
+      tierFilter: 'Item Tier',
+      allTiers: 'All Tiers',
+      tierLegendary: 'Legendary & Completed',
+      tierEpic: 'Epic',
+      tierBasic: 'Basic',
+      tierBoots: 'Boots',
+      tierStarter: 'Starter Items',
+      tierConsumable: 'Consumables',
+      sortBy: 'Sort by',
+      sortGoldDesc: 'Gold Cost (High → Low)',
+      sortGoldAsc: 'Gold Cost (Low → High)',
+      sortNameAsc: 'Name (A → Z)',
+      sortNameDesc: 'Name (Z → A)',
+      onlyPurchasable: 'Only Purchasable Items',
+      resetFilters: 'Reset Filters',
+      noItemsFound: 'No Items Found',
+      noItemsDesc: 'Adjust your search terms or filters to find items.',
+      showingCount: '{count} Items',
+      goldCost: 'Gold',
+      totalCost: 'Total Cost',
+      recipeCost: 'Recipe Cost',
+      sellValue: 'Sell Value',
+      buildsFrom: 'Builds From (Recipe)',
+      buildsInto: 'Builds Into (Upgrades)',
+      noRecipe: 'No components required',
+      noUpgrades: 'No further upgrades',
+      close: 'Close',
+      statsTitle: 'Stats & Attributes',
+      effectsTitle: 'Effects & Passives',
+      tagsTitle: 'Categories',
+      exclusiveChampion: 'Exclusive to',
+      ornnUpgrade: 'Ornn Masterwork',
     },
   },
 };
