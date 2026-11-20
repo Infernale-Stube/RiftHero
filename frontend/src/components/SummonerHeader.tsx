@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Radio, Globe, ChevronLeft } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
-import { getRankEmblemUrl } from './RankBadge';
+import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -184,7 +184,7 @@ export default function SummonerHeader({
                       />
                     </div>
                     <span className="text-zinc-400 font-medium">Solo/Duo</span>
-                    <span className="font-bold text-sky-400 uppercase">
+                    <span className={`font-bold uppercase ${TIER_COLORS[soloRank.tier.toUpperCase()]?.text || 'text-sky-400'}`}>
                       {soloRank.tier} {soloRank.rank} · {soloRank.leaguePoints} LP
                     </span>
                   </div>
@@ -209,7 +209,7 @@ export default function SummonerHeader({
                       />
                     </div>
                     <span className="text-zinc-400 font-medium">Flex</span>
-                    <span className="font-bold text-zinc-300 uppercase">
+                    <span className={`font-bold uppercase ${TIER_COLORS[flexRank.tier.toUpperCase()]?.text || 'text-zinc-300'}`}>
                       {flexRank.tier} {flexRank.rank} · {flexRank.leaguePoints} LP
                     </span>
                   </div>
@@ -234,7 +234,7 @@ export default function SummonerHeader({
                       />
                     </div>
                     <span className="text-zinc-400 font-medium">Ranked 5s</span>
-                    <span className="font-bold text-amber-300 uppercase">
+                    <span className={`font-bold uppercase ${TIER_COLORS[ranked5s.tier.toUpperCase()]?.text || 'text-amber-300'}`}>
                       {ranked5s.tier} {ranked5s.rank} · {ranked5s.leaguePoints} LP
                     </span>
                   </div>
