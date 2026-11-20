@@ -35,6 +35,7 @@ import {
   getMajorMinorPatch,
   getDDragonVersion,
   PositionKey,
+  mapSkinRarityClient,
 } from '@/lib/ddragon';
 import { fetchChampionDetailApi, fetchTierList, TierListChampionItem } from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
@@ -55,16 +56,31 @@ interface ChampionDetailViewProps {
   slug: string;
 }
 
-const ALL_RARITIES = ['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'] as const;
+const ALL_RARITIES = [
+  'Transcendent',
+  'Exalted',
+  'Ultimate',
+  'Mythic',
+  'Legendary',
+  'Epic',
+  'Regular',
+] as const;
 type RarityTier = (typeof ALL_RARITIES)[number];
 
 const RARITY_COLORS: Record<RarityTier, string> = {
-  Regular: '#22c55e',
-  Epic: '#06b6d4',
-  Legendary: '#ef4444',
-  Mythic: '#d946ef',
   Transcendent: '#a855f7',
+  Exalted: '#f43f5e',
+  Ultimate: '#eab308',
+  Mythic: '#d946ef',
+  Legendary: '#ef4444',
+  Epic: '#06b6d4',
+  Regular: '#22c55e',
 };
+
+function getRarityGemIconUrl(tier: RarityTier): string | null {
+  if (tier === 'Regular') return null;
+  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/${tier.toLowerCase()}.png`;
+}
 
 // Formats YYYY-MM-DD into "December 14, 2011" (en) or "14. Dezember 2011" (de)
 function formatReleaseDate(dateStr?: string, locale = 'de'): string {
@@ -101,7 +117,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   // Interactive Rarity Filters for Skin Timeline
   const [enabledRarities, setEnabledRarities] = useState<Set<RarityTier>>(
-    () => new Set<RarityTier>(['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'])
+    () => new Set<RarityTier>(ALL_RARITIES)
   );
 
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
@@ -144,6 +160,40 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       })
       .catch(() => {});
   }, [slug, locale]);
+
+  // Live Dynamic Official Skin Rarities from CommunityDragon
+  useEffect(() => {
+    if (data?.key) {
+      fetch(
+        `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/${data.key}.json`
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .then((cdData) => {
+          if (cdData && Array.isArray(cdData.skins)) {
+            const cdMap = new Map(cdData.skins.map((s: any) => [String(s.id), s]));
+            setData((prev) => {
+              if (!prev || !prev.skins) return prev;
+              return {
+                ...prev,
+                skins: prev.skins.map((s) => {
+                  const cd = cdMap.get(String(s.id)) as any;
+                  if (cd && cd.rarity) {
+                    const mapped = mapSkinRarityClient(cd.rarity);
+                    return {
+                      ...s,
+                      rarity: mapped.rarity,
+                      rarityColor: mapped.rarityColor,
+                    };
+                  }
+                  return s;
+                }),
+              };
+            });
+          }
+        })
+        .catch((err) => console.warn('[CDragon] Live skins enrichment error:', err));
+    }
+  }, [data?.key]);
 
   const patchString = getMajorMinorPatch(version);
 
@@ -208,6 +258,19 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       mpregen: calc(s.mpregen, s.mpregenperlevel),
     };
   }, [data, selectedLevel]);
+
+  // Active Rarity Tiers present on this champion (in top-to-bottom hierarchy)
+  const activeTiers = useMemo<RarityTier[]>(() => {
+    const present = new Set<RarityTier>();
+    for (const s of skins) {
+      if (s.num !== 0 && s.rarity) {
+        present.add(s.rarity as RarityTier);
+      }
+    }
+    const list = ALL_RARITIES.filter((tier) => present.has(tier));
+    if (list.length === 0) return ['Regular'];
+    return list;
+  }, [skins]);
 
   // Skin Timeline Data Grouping (excludes base skin num 0)
   const timelineData = useMemo(() => {
@@ -625,14 +688,25 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <div
             className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
             style={{
-              backgroundColor: `${activeSkin?.rarityColor || '#2E8D4C'}33`,
-              borderColor: activeSkin?.rarityColor || '#2E8D4C',
+              backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
+              borderColor: activeSkin?.rarityColor || '#22c55e',
             }}
           >
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: activeSkin?.rarityColor || '#2E8D4C' }}
-            />
+            {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
+              <Image
+                src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
+                alt={activeSkin?.rarity || 'Regular'}
+                width={14}
+                height={14}
+                className="h-3.5 w-3.5 object-contain"
+                unoptimized
+              />
+            ) : (
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
+              />
+            )}
             <span>{activeSkin?.rarity || 'Regular'}</span>
           </div>
         </div>
@@ -656,21 +730,23 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         </button>
       </div>
 
-      {/* Divider: ─── CHAMPION NAME ─── */}
-      <div className="flex items-center gap-3 my-1">
+      {/* Skin Name Header above Thumbnails */}
+      <div className="flex items-center gap-3 my-1.5">
         <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-amber-500/50" />
-        <span className="text-xs font-black tracking-widest text-amber-400 uppercase">
-          {data.name}
+        <span className="text-xs sm:text-sm font-black tracking-widest text-amber-400 uppercase text-center px-2">
+          {activeSkin?.num === 0
+            ? (activeSkin?.name === 'default' ? data.name : activeSkin?.name)
+            : activeSkin?.name}
         </span>
         <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-500/30 to-amber-500/50" />
       </div>
 
-      {/* Horizontal Thumbnail Strip with Left/Right arrows */}
+      {/* Horizontal Thumbnail Strip with Left/Right arrows (no borders, no scrollbar leiste) */}
       <div className="relative flex items-center">
         <button
           type="button"
           onClick={handlePrevSkin}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer mr-2 shadow-md"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300 hover:bg-amber-500 hover:text-black transition-all cursor-pointer mr-2"
           title="Vorheriger Skin"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -678,7 +754,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
         <div
           ref={thumbnailStripRef}
-          className="flex gap-2 overflow-x-auto py-1 scrollbar-none scroll-smooth flex-1"
+          className="flex gap-2 overflow-x-auto py-1.5 scroll-smooth flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {skins.map((skin, idx) => {
             const isSelected = idx === selectedSkinIndex;
@@ -688,10 +764,10 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 data-skin-index={idx}
                 type="button"
                 onClick={() => setSelectedSkinIndex(idx)}
-                className={`group relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                className={`group relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-amber-400 ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,146,60,0.6)] scale-105'
-                    : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                    ? 'ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,146,60,0.6)] scale-105'
+                    : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
               >
@@ -711,7 +787,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handleNextSkin}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer ml-2 shadow-md"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300 hover:bg-amber-500 hover:text-black transition-all cursor-pointer ml-2"
           title="Nächster Skin"
         >
           <ChevronRight className="h-4 w-4" />
@@ -738,11 +814,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <h2 className="text-lg font-black text-white">{t('championWiki.skinTimeline') || 'Skin Timeline'}</h2>
         </div>
 
-        {/* Interactive Clickable Legend Filters */}
+        {/* Dynamic Clickable Legend Filters with Official Riot Gem Icons */}
         <div className="flex flex-wrap items-center gap-3.5 text-xs font-semibold select-none">
-          {ALL_RARITIES.map((tier) => {
+          {activeTiers.map((tier) => {
             const isEnabled = enabledRarities.has(tier);
             const color = RARITY_COLORS[tier];
+            const gemUrl = getRarityGemIconUrl(tier);
             return (
               <button
                 key={tier}
@@ -755,14 +832,25 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 }`}
                 title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
               >
-                <span
-                  className="h-2.5 w-2.5 rounded-full transition-transform"
-                  style={{
-                    backgroundColor: color,
-                    boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
-                    transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
-                  }}
-                />
+                {gemUrl ? (
+                  <Image
+                    src={gemUrl}
+                    alt={tier}
+                    width={16}
+                    height={16}
+                    className={`h-4 w-4 object-contain transition-transform ${isEnabled ? 'scale-100' : 'scale-90 grayscale'}`}
+                    unoptimized
+                  />
+                ) : (
+                  <span
+                    className="h-2.5 w-2.5 rounded-full transition-transform"
+                    style={{
+                      backgroundColor: color,
+                      boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
+                      transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
+                    }}
+                  />
+                )}
                 <span>{tier}</span>
               </button>
             );
@@ -773,72 +861,49 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       {/* Horizontal Timeline Scroll Canvas */}
       <div className="overflow-x-auto pb-4 scrollbar-thin">
         <div className="relative min-w-[860px] h-[280px] bg-black/40 rounded-2xl border border-white/[0.06] p-4 flex">
-          {/* Left Y-Axis: Rarity Icons from Top (Transcendent) to Bottom (Regular) */}
-          <div className="w-14 shrink-0 flex flex-col justify-between py-2 items-center border-r border-white/[0.06]">
-            {/* Transcendent: Star Gem */}
-            <div
-              className={`flex items-center justify-center h-8 transition-opacity ${
-                enabledRarities.has('Transcendent') ? 'opacity-100' : 'opacity-25'
-              }`}
-              title="Transcendent"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#a855f7">
-                <path d="M12 2l2.4 6.9 7.1.3-5.5 4.5 1.9 6.9-5.9-4-5.9 4 1.9-6.9-5.5-4.5 7.1-.3z" />
-              </svg>
-            </div>
-            {/* Mythic: Hexagon Gem */}
-            <div
-              className={`flex items-center justify-center h-8 transition-opacity ${
-                enabledRarities.has('Mythic') ? 'opacity-100' : 'opacity-25'
-              }`}
-              title="Mythic"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#d946ef">
-                <polygon points="6,3 18,3 22,12 18,21 6,21 2,12" />
-              </svg>
-            </div>
-            {/* Legendary: Ruby Diamond */}
-            <div
-              className={`flex items-center justify-center h-8 transition-opacity ${
-                enabledRarities.has('Legendary') ? 'opacity-100' : 'opacity-25'
-              }`}
-              title="Legendary"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#ef4444">
-                <polygon points="12,2 22,9 12,22 2,9" />
-              </svg>
-            </div>
-            {/* Epic: Pyramid / Triangle */}
-            <div
-              className={`flex items-center justify-center h-8 transition-opacity ${
-                enabledRarities.has('Epic') ? 'opacity-100' : 'opacity-25'
-              }`}
-              title="Epic"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#06b6d4">
-                <polygon points="12,3 22,20 2,20" />
-              </svg>
-            </div>
-            {/* Regular: Sphere / Circle */}
-            <div
-              className={`flex items-center justify-center h-8 transition-opacity ${
-                enabledRarities.has('Regular') ? 'opacity-100' : 'opacity-25'
-              }`}
-              title="Regular"
-            >
-              <span className="h-4 w-4 rounded-full border-2 border-[#22c55e] bg-[#22c55e]/50 shadow-[0_0_8px_#22c55e]" />
-            </div>
-            <div className="h-6" />
+          {/* Left Y-Axis: Dynamic Rarity Gem Icons from Riot */}
+          <div className="w-14 shrink-0 flex flex-col justify-between h-[224px] py-1 items-center border-r border-white/[0.06]">
+            {activeTiers.map((tier) => {
+              const isEnabled = enabledRarities.has(tier);
+              const gemUrl = getRarityGemIconUrl(tier);
+              return (
+                <div
+                  key={tier}
+                  className={`flex items-center justify-center h-8 transition-opacity ${
+                    isEnabled ? 'opacity-100' : 'opacity-25'
+                  }`}
+                  title={tier}
+                >
+                  {gemUrl ? (
+                    <Image
+                      src={gemUrl}
+                      alt={tier}
+                      width={22}
+                      height={22}
+                      className="h-5 w-5 object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]"
+                      unoptimized
+                    />
+                  ) : (
+                    <span className="h-4 w-4 rounded-full border-2 border-[#22c55e] bg-[#22c55e]/50 shadow-[0_0_8px_#22c55e]" />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Main Timeline Grid */}
           <div className="relative flex-1 h-full pl-2">
-            {/* Subtle horizontal dashed lines for each tier row */}
-            <div className="absolute inset-x-0 top-[20px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-            <div className="absolute inset-x-0 top-[68px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-            <div className="absolute inset-x-0 top-[116px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-            <div className="absolute inset-x-0 top-[164px] border-b border-dashed border-white/[0.05] pointer-events-none" />
-            <div className="absolute inset-x-0 top-[212px] border-b border-dashed border-white/[0.05] pointer-events-none" />
+            {/* Dynamic horizontal dashed lines for each active tier */}
+            {activeTiers.map((tier, idx) => {
+              const y = activeTiers.length > 1 ? (idx / (activeTiers.length - 1)) * 192 + 20 : 112;
+              return (
+                <div
+                  key={tier}
+                  className="absolute inset-x-0 border-b border-dashed border-white/[0.05] pointer-events-none"
+                  style={{ top: `${y}px` }}
+                />
+              );
+            })}
             {/* Bottom axis line */}
             <div className="absolute inset-x-0 bottom-6 border-b border-white/[0.1] pointer-events-none" />
 
@@ -861,17 +926,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     {/* Nodes in this year */}
                     <div className="relative w-full h-[224px]">
                       {col.nodes.map((node) => {
-                        const yTop =
-                          node.tier === 'Transcendent'
-                            ? 2
-                            : node.tier === 'Mythic'
-                            ? 50
-                            : node.tier === 'Legendary'
-                            ? 98
-                            : node.tier === 'Epic'
-                            ? 146
-                            : 194;
-
+                        const tierIdx = activeTiers.indexOf(node.tier);
+                        const yTop = activeTiers.length > 1 ? (tierIdx / (activeTiers.length - 1)) * 192 + 4 : 96;
                         const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
 
                         return (

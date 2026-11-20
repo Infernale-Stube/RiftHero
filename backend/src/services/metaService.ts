@@ -100,15 +100,27 @@ export async function ensureMetaTableExists(): Promise<void> {
 }
 
 function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor: string } {
-  if (!rawRarity) return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+  if (!rawRarity) return { rarity: 'Regular', rarityColor: '#22c55e' };
   const r = rawRarity.toLowerCase().replace(/[^a-z]/g, '');
-  if (r.includes('epic')) return { rarity: 'Epic', rarityColor: '#0FAEB6' };
-  if (r.includes('legendary')) return { rarity: 'Legendary', rarityColor: '#DB1523' };
-  if (r.includes('mythic')) return { rarity: 'Mythic', rarityColor: '#B034B6' };
-  if (r.includes('transcendent') || r.includes('ultimate') || r.includes('exalted')) {
-    return { rarity: 'Transcendent', rarityColor: '#C7A8DD' };
+  if (r === 'ktranscendent' || r.includes('transcendent')) {
+    return { rarity: 'Transcendent', rarityColor: '#a855f7' };
   }
-  return { rarity: 'Regular', rarityColor: '#2E8D4C' };
+  if (r === 'kexalted' || r.includes('exalted')) {
+    return { rarity: 'Exalted', rarityColor: '#f43f5e' };
+  }
+  if (r === 'kultimate' || r.includes('ultimate')) {
+    return { rarity: 'Ultimate', rarityColor: '#eab308' };
+  }
+  if (r === 'kmythic' || r.includes('mythic') || r.includes('prestige')) {
+    return { rarity: 'Mythic', rarityColor: '#d946ef' };
+  }
+  if (r === 'klegendary' || r.includes('legendary')) {
+    return { rarity: 'Legendary', rarityColor: '#ef4444' };
+  }
+  if (r === 'kepic' || r.includes('epic')) {
+    return { rarity: 'Epic', rarityColor: '#06b6d4' };
+  }
+  return { rarity: 'Regular', rarityColor: '#22c55e' };
 }
 
 function normalizeSkinName(name: string, champName: string): string {
