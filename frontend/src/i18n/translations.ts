@@ -311,6 +311,17 @@ export interface TranslationDictionary {
     faqDesc2: string;
     faqTitle3: string;
     faqDesc3: string;
+    tabOverview: string;
+    tabAbilities: string;
+    tabSkins: string;
+    pricingBE: string;
+    pricingRP: string;
+    detailFaqRelease: string;
+    detailFaqReleaseDesc: string;
+    detailFaqRole: string;
+    detailFaqRoleDesc: string;
+    detailFaqSkins: string;
+    detailFaqSkinsDesc: string;
   };
 }
 
@@ -628,6 +639,17 @@ export const translations: Record<Locale, TranslationDictionary> = {
       faqDesc2: 'Champions auf Summoner\'s Rift verteilen sich auf die fünf Hauptpositionen Top, Jungle, Mid, Bot (ADC) und Support, wobei viele flexible Picks in mehreren Rollen glänzen.',
       faqTitle3: 'Klassen & Spielstile',
       faqDesc3: 'Jeder Champion gehört primären und sekundären Klassen wie Kämpfer (Fighter), Magier (Mage), Schützen (Marksman), Assassinen, Tanks oder Unterstützer an.',
+      tabOverview: 'Übersicht & Spotlight',
+      tabAbilities: 'Fähigkeiten & Kit',
+      tabSkins: 'Skins & Artworks',
+      pricingBE: 'BE',
+      pricingRP: 'RP',
+      detailFaqRelease: 'Wann wurde {name} veröffentlicht?',
+      detailFaqReleaseDesc: '{name} ist ein fester Bestandteil des League of Legends Champion-Rosters und wird regelmäßig mit Patches und Balance-Updates auf aktuellem Stand gehalten.',
+      detailFaqRole: 'Auf welcher Position wird {name} gespielt?',
+      detailFaqRoleDesc: '{name} wird primär auf {role} gespielt{flex}, wo die einzigartige Skill-Kombination und Stärken am besten zum Tragen kommen.',
+      detailFaqSkins: 'Wie viele Skins besitzt {name}?',
+      detailFaqSkinsDesc: '{name} verfügt aktuell über {count} verschiedene Skins und Artworks im Spiel, inklusive des Basis-Klassikers.',
     },
   },
   en: {
@@ -943,6 +965,17 @@ export const translations: Record<Locale, TranslationDictionary> = {
       faqDesc2: 'Champions on Summoner\'s Rift are distributed across five primary lanes: Top, Jungle, Mid, Bot (ADC), and Support, with many versatile champions flexing across multiple positions.',
       faqTitle3: 'Champion Classes & Playstyles',
       faqDesc3: 'Every champion belongs to tactical classes including Fighters, Mages, Marksmen, Assassins, Tanks, and Supports, each bringing distinct playstyles and abilities to Summoner\'s Rift.',
+      tabOverview: 'Overview & Spotlight',
+      tabAbilities: 'Abilities & Kit',
+      tabSkins: 'Skins & Artworks',
+      pricingBE: 'BE',
+      pricingRP: 'RP',
+      detailFaqRelease: 'When Was {name} Released?',
+      detailFaqReleaseDesc: '{name} is part of the League of Legends champion roster and actively balanced with regular patch updates.',
+      detailFaqRole: 'What Lane Is {name} Played In?',
+      detailFaqRoleDesc: '{name} is primarily played in the {role} lane{flex}, leveraging their distinct ability kit and team fight utility.',
+      detailFaqSkins: 'How Many Skins Does {name} Have?',
+      detailFaqSkinsDesc: '{name} currently features {count} distinct skins and splash artworks in the game, including the base classic skin.',
     },
   },
 };
