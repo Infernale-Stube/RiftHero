@@ -26,45 +26,12 @@ import { fetchMetaChampions } from '@/lib/api';
 
 interface MetaChampion {
   name: string;
-  tier: 'S+' | 'S';
+  tier: 'S+' | 'S' | 'A';
   winrate: string;
   pickrate: string;
   banrate: string;
   role: PositionKey;
 }
-
-const META_CHAMPIONS_BY_ROLE: Record<PositionKey, MetaChampion[]> = {
-  TOP: [
-    { name: 'Aatrox', tier: 'S+', winrate: '52.4%', pickrate: '14.2%', banrate: '11.8%', role: 'TOP' },
-    { name: 'Sett', tier: 'S+', winrate: '52.1%', pickrate: '11.5%', banrate: '8.4%', role: 'TOP' },
-    { name: 'Camille', tier: 'S', winrate: '51.8%', pickrate: '8.7%', banrate: '5.2%', role: 'TOP' },
-    { name: 'Jax', tier: 'S', winrate: '51.4%', pickrate: '9.3%', banrate: '12.1%', role: 'TOP' },
-  ],
-  JUNGLE: [
-    { name: 'LeeSin', tier: 'S+', winrate: '51.2%', pickrate: '19.4%', banrate: '14.6%', role: 'JUNGLE' },
-    { name: 'Viego', tier: 'S+', winrate: '51.6%', pickrate: '15.8%', banrate: '9.3%', role: 'JUNGLE' },
-    { name: 'Briar', tier: 'S', winrate: '52.8%', pickrate: '8.1%', banrate: '15.4%', role: 'JUNGLE' },
-    { name: 'JarvanIV', tier: 'S', winrate: '51.9%', pickrate: '8.6%', banrate: '3.7%', role: 'JUNGLE' },
-  ],
-  MID: [
-    { name: 'Ahri', tier: 'S+', winrate: '52.6%', pickrate: '13.1%', banrate: '7.8%', role: 'MID' },
-    { name: 'Sylas', tier: 'S+', winrate: '51.8%', pickrate: '16.7%', banrate: '18.2%', role: 'MID' },
-    { name: 'Yone', tier: 'S', winrate: '50.6%', pickrate: '15.4%', banrate: '22.1%', role: 'MID' },
-    { name: 'Orianna', tier: 'S', winrate: '51.5%', pickrate: '8.9%', banrate: '4.2%', role: 'MID' },
-  ],
-  ADC: [
-    { name: 'Jinx', tier: 'S+', winrate: '52.7%', pickrate: '22.8%', banrate: '8.6%', role: 'ADC' },
-    { name: 'Kaisa', tier: 'S+', winrate: '51.4%', pickrate: '26.4%', banrate: '7.9%', role: 'ADC' },
-    { name: 'Jhin', tier: 'S+', winrate: '52.0%', pickrate: '20.1%', banrate: '5.4%', role: 'ADC' },
-    { name: 'Draven', tier: 'S', winrate: '51.8%', pickrate: '9.2%', banrate: '24.5%', role: 'ADC' },
-  ],
-  SUPPORT: [
-    { name: 'Thresh', tier: 'S+', winrate: '52.1%', pickrate: '17.3%', banrate: '8.2%', role: 'SUPPORT' },
-    { name: 'Nautilus', tier: 'S+', winrate: '51.6%', pickrate: '15.8%', banrate: '11.4%', role: 'SUPPORT' },
-    { name: 'Leona', tier: 'S', winrate: '52.3%', pickrate: '12.4%', banrate: '7.1%', role: 'SUPPORT' },
-    { name: 'Lulu', tier: 'S', winrate: '51.5%', pickrate: '11.2%', banrate: '9.8%', role: 'SUPPORT' },
-  ],
-};
 
 const ROLES: Array<{ key: PositionKey; label: string }> = [
   { key: 'TOP', label: 'Top Lane' },
@@ -77,44 +44,29 @@ const ROLES: Array<{ key: PositionKey; label: string }> = [
 export default function HomeView() {
   const { t, locale } = useTranslation();
   const [activeRole, setActiveRole] = useState<PositionKey>('MID');
-  const [metaByRole, setMetaByRole] = useState<Record<string, MetaChampion[]>>(META_CHAMPIONS_BY_ROLE);
-  const [patchVersion, setPatchVersion] = useState<string>(() => {
-    const full = getDDragonVersion();
-    return full ? full.split('.').slice(0, 2).join('.') : '16.23';
+  const [metaByRole, setMetaByRole] = useState<Record<string, MetaChampion[]>>({
+    TOP: [],
+    JUNGLE: [],
+    MID: [],
+    ADC: [],
+    SUPPORT: [],
   });
+  const [isLoadingMeta, setIsLoadingMeta] = useState(true);
 
   useEffect(() => {
-    // Derive current patch from active DDragon version
-    const full = getDDragonVersion();
-    if (full) {
-      setPatchVersion(full.split('.').slice(0, 2).join('.'));
-    }
-
-    // Fetch dynamic meta champions from backend
-    fetchMetaChampions().then((res) => {
-      if (res && res.champions) {
-        setMetaByRole((prev) => ({
-          ...prev,
-          ...(res.champions as any),
-        }));
-        if (res.patch) {
-          setPatchVersion(res.patch);
+    // Pure dynamic fetch from backend match analysis
+    fetchMetaChampions()
+      .then((res) => {
+        if (res && res.champions) {
+          setMetaByRole(res.champions as any);
         }
-      }
-    });
-
-    // Reactive sync if DDragon version updates in background
-    const handler = (e: Event) => {
-      const customEvent = e as CustomEvent<string>;
-      if (customEvent.detail) {
-        setPatchVersion(customEvent.detail.split('.').slice(0, 2).join('.'));
-      }
-    };
-    window.addEventListener('rifthero:ddragon-version', handler);
-    return () => window.removeEventListener('rifthero:ddragon-version', handler);
+      })
+      .finally(() => {
+        setIsLoadingMeta(false);
+      });
   }, []);
 
-  const metaChampions = metaByRole[activeRole] || META_CHAMPIONS_BY_ROLE[activeRole] || META_CHAMPIONS_BY_ROLE.MID;
+  const metaChampions = metaByRole[activeRole] || [];
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-10 sm:px-6 lg:px-8">
@@ -232,7 +184,7 @@ export default function HomeView() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
               <Flame className="h-4 w-4 text-amber-400" />
-              <span>{t('home.metaTitle', { patch: patchVersion })}</span>
+              <span>{t('home.metaTitle')}</span>
             </div>
             <p className="text-sm text-zinc-400">
               {t('home.metaSubtitle')}
@@ -269,58 +221,82 @@ export default function HomeView() {
         </div>
 
         {/* Champions Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {metaChampions.map((champ, idx) => (
-            <div
-              key={champ.name}
-              className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-black/40 p-3.5 transition-all hover:border-amber-500/30 hover:bg-white/[0.02]"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="relative shrink-0">
-                  <div className="h-12 w-12 rounded-full overflow-hidden border border-white/10 shadow-md">
-                    <Image
-                      src={getChampionIconUrl(champ.name)}
-                      alt={champ.name}
-                      width={48}
-                      height={48}
-                      className="h-full w-full object-cover"
-                      unoptimized
-                    />
+        {isLoadingMeta ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-2xl border border-white/[0.04] bg-black/25 p-3.5 animate-pulse"
+              >
+                <div className="h-12 w-12 rounded-full bg-white/5 shrink-0" />
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="h-4 w-24 bg-white/5 rounded" />
+                  <div className="h-3 w-16 bg-white/5 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : metaChampions.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {metaChampions.map((champ) => (
+              <div
+                key={champ.name}
+                className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-black/40 p-3.5 transition-all hover:border-amber-500/30 hover:bg-white/[0.02]"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="h-12 w-12 rounded-full overflow-hidden border border-white/10 shadow-md">
+                      <Image
+                        src={getChampionIconUrl(champ.name)}
+                        alt={champ.name}
+                        width={48}
+                        height={48}
+                        className="h-full w-full object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 rounded-md px-1.5 py-0.5 text-[9px] font-black tracking-tight uppercase shadow-md border border-black/80 flex items-center justify-center leading-none z-10 ${
+                        champ.tier === 'S+'
+                          ? 'bg-amber-400 text-black'
+                          : 'bg-sky-400 text-black'
+                      }`}
+                    >
+                      {champ.tier}
+                    </div>
                   </div>
-                  <div
-                    className={`absolute -bottom-1 -right-1 rounded-md px-1.5 py-0.5 text-[9px] font-black tracking-tight uppercase shadow-md border border-black/80 flex items-center justify-center leading-none z-10 ${
-                      champ.tier === 'S+'
-                        ? 'bg-amber-400 text-black'
-                        : 'bg-sky-400 text-black'
-                    }`}
-                  >
-                    {champ.tier}
+
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-extrabold text-sm text-white truncate">
+                      {champ.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
+                      <span className="text-emerald-400 font-bold">{champ.winrate} WR</span>
+                      <span className="text-zinc-600">•</span>
+                      <span className="text-zinc-400">{champ.pickrate} Pick</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col min-w-0">
-                  <span className="font-extrabold text-sm text-white truncate">
-                    {champ.name}
+                <div className="flex flex-col items-end shrink-0 pl-2">
+                  <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
+                    Ban
                   </span>
-                  <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
-                    <span className="text-emerald-400 font-bold">{champ.winrate} WR</span>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-zinc-400">{champ.pickrate} Pick</span>
-                  </div>
+                  <span className="text-xs font-bold text-zinc-300">
+                    {champ.banrate}
+                  </span>
                 </div>
               </div>
-
-              <div className="flex flex-col items-end shrink-0 pl-2">
-                <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
-                  Ban
-                </span>
-                <span className="text-xs font-bold text-zinc-300">
-                  {champ.banrate}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center text-zinc-500">
+            <Shield className="h-8 w-8 text-zinc-600 mb-2 opacity-50" />
+            <p className="text-sm font-semibold text-zinc-400">
+              {t('home.noMetaPicks')}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

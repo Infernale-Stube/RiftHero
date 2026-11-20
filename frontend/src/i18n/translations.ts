@@ -34,6 +34,7 @@ export interface TranslationDictionary {
     noRecentSummoners: string;
     metaTitle: string;
     metaSubtitle: string;
+    noMetaPicks: string;
   };
   summoner: {
     loadingProfile: string;
@@ -264,8 +265,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       recentSearchesTitle: 'Zuletzt gesucht',
       recentSummonersTitle: 'Zuletzt aufgerufene Beschwörer',
       noRecentSummoners: 'Noch keine Spieler aufgerufen.',
-      metaTitle: 'Patch {patch} Meta Picks',
+      metaTitle: 'Patch 14.23 Meta Picks',
       metaSubtitle: 'Die stärksten Champions nach Rolle auf der aktuellen Kluft',
+      noMetaPicks: 'Noch keine Match-Daten für diese Rolle erfasst.',
     },
     summoner: {
       loadingProfile: 'Profil wird geladen...',
@@ -495,8 +497,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       recentSearchesTitle: 'Recent Searches',
       recentSummonersTitle: 'Recently Viewed Summoners',
       noRecentSummoners: 'No summoners viewed yet.',
-      metaTitle: 'Patch {patch} Meta Picks',
+      metaTitle: 'Patch 14.23 Meta Picks',
       metaSubtitle: 'Top tier champion picks by lane on Summoner\'s Rift',
+      noMetaPicks: 'No match data recorded for this role yet.',
     },
     summoner: {
       loadingProfile: 'Loading profile...',
