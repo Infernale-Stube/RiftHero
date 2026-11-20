@@ -248,7 +248,7 @@ export default function ChampionsListView() {
   }, [champions]);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
       {/* Breadcrumb Navigation (LoLDB inspired) */}
       <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
         <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
@@ -463,7 +463,7 @@ export default function ChampionsListView() {
 
       {/* Champions Grid (LoLDB Style Loading Art Portrait Cards) */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
           {[...Array(18)].map((_, i) => (
             <div
               key={i}
@@ -475,7 +475,7 @@ export default function ChampionsListView() {
           ))}
         </div>
       ) : filteredChampions.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
           {filteredChampions.map((champ) => {
             const slug = champ.id.toLowerCase();
             const meta = championPositionsMap[champ.id];

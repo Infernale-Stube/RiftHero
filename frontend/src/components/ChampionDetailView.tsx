@@ -358,7 +358,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex max-w-7xl flex-col px-4 py-12 sm:px-6 lg:px-8 animate-pulse space-y-6">
+      <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-12 sm:px-6 lg:px-8 animate-pulse space-y-6">
         <div className="h-5 w-48 bg-white/5 rounded-md" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-6 space-y-4">
@@ -1343,7 +1343,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   return (
     <div className="min-h-screen bg-[#06080c] text-zinc-100 pb-20">
-      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 space-y-8">
+      <div className="mx-auto max-w-[1600px] px-4 pt-6 sm:px-6 lg:px-8 space-y-8">
         {/* Top Breadcrumb Navigation */}
         <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium">
           <Link href={`/${locale}`} className="hover:text-zinc-300 transition-colors">

@@ -297,7 +297,7 @@ export default function ItemsListView() {
   );
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
         <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
@@ -463,7 +463,7 @@ export default function ItemsListView() {
 
       {/* Items Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
           {[...Array(24)].map((_, i) => (
             <div
               key={i}
@@ -475,7 +475,7 @@ export default function ItemsListView() {
           ))}
         </div>
       ) : filteredItems.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
           {filteredItems.map((item) => {
             const style = getTierStyle(item.tier);
             const iconUrl = getItemIconUrl(item.id, version);

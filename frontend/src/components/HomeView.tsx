@@ -75,7 +75,7 @@ export default function HomeView() {
   const metaChampions = metaByRole[activeRole] || [];
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto flex max-w-[1600px] flex-col items-center px-4 py-10 sm:px-6 lg:px-8">
       {/* Hero Section */}
       <div className="flex flex-col items-center text-center max-w-4xl w-full mb-12">
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1 text-xs font-bold text-amber-400 uppercase tracking-wider mb-5 shadow-sm">
