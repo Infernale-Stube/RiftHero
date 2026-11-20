@@ -51,6 +51,7 @@ export interface TranslationDictionary {
     tabLive: string;
     soloRank: string;
     flexRank: string;
+    ranked5sRank: string;
     unranked: string;
     noGamesRecorded: string;
     lastGames: string;
@@ -80,6 +81,7 @@ export interface TranslationDictionary {
     filterAll: string;
     filterSolo: string;
     filterFlex: string;
+    filterRanked5s: string;
     filterAram: string;
     filterNormal: string;
     detailedOverview: string;
@@ -281,7 +283,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tabChallenges: 'Challenges',
       tabLive: 'Live Game',
       soloRank: 'Ranked Solo/Duo',
-      flexRank: 'Ranked 5s',
+      flexRank: 'Ranked Flex',
+      ranked5sRank: 'Ranked 5s',
       unranked: 'Unranked',
       noGamesRecorded: 'Keine Spiele erfasst',
       lastGames: 'Letzte {count} Spiele',
@@ -309,8 +312,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       loadMore: 'Mehr Matches laden',
       noMatches: 'Keine Matches für diesen Filter gefunden.',
       filterAll: 'Alle Queues',
-      filterSolo: 'Ranked Solo',
-      filterFlex: 'Ranked 5s',
+      filterSolo: 'Solo/Duo',
+      filterFlex: 'Flex',
+      filterRanked5s: 'Ranked 5s',
       filterAram: 'ARAM',
       filterNormal: 'Normal Draft',
       detailedOverview: 'Detaillierte Spielübersicht',
@@ -510,7 +514,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tabChallenges: 'Challenges',
       tabLive: 'Live Game',
       soloRank: 'Ranked Solo/Duo',
-      flexRank: 'Ranked 5s',
+      flexRank: 'Ranked Flex',
+      ranked5sRank: 'Ranked 5s',
       unranked: 'Unranked',
       noGamesRecorded: 'No games recorded',
       lastGames: 'Last {count} Games',
@@ -538,8 +543,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       loadMore: 'Load more matches',
       noMatches: 'No matches found for this filter.',
       filterAll: 'All Queues',
-      filterSolo: 'Ranked Solo',
-      filterFlex: 'Ranked 5s',
+      filterSolo: 'Solo/Duo',
+      filterFlex: 'Flex',
+      filterRanked5s: 'Ranked 5s',
       filterAram: 'ARAM',
       filterNormal: 'Normal Draft',
       detailedOverview: 'Detailed Match Overview',

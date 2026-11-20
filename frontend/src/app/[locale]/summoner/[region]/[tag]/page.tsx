@@ -173,22 +173,31 @@ export default function SummonerMatchesPage() {
 
   const soloRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
+  const ranked5s = profileData?.ranks.find(
+    (r) => r.queueType === 'RANKED_TEAM_5x5' || r.queueType === 'RANKED_5s' || r.queueType === 'RANKED_5X5'
+  );
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* Left Sidebar: Ranked Solo/Duo + LP Graph + Played With + Champion Stats */}
       <div className="w-full lg:w-[350px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6">
-        {/* Ranked Solo/Duo Card with LP History Graph */}
+        {/* 1. Ranked Solo/Duo Card with LP History Graph */}
         <RankCard
           title={t('summoner.soloRank')}
           rankData={soloRank}
           lpHistory={lpHistory}
         />
 
-        {/* Ranked 5s Card */}
+        {/* 2. Ranked Flex Card */}
         <RankCard
           title={t('summoner.flexRank')}
           rankData={flexRank}
+        />
+
+        {/* 3. Ranked 5s Card */}
+        <RankCard
+          title={t('summoner.ranked5sRank')}
+          rankData={ranked5s}
         />
 
         {/* Played With Synergy Widget (LoLDB Signature) */}

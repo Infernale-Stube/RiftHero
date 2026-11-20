@@ -76,6 +76,7 @@ export default function SummonerHeader({
 
   const soloRank = ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
+  const ranked5s = ranks.find((r) => r.queueType === 'RANKED_TEAM_5x5' || r.queueType === 'RANKED_5s' || r.queueType === 'RANKED_5X5');
   const formattedTag = `${summoner.gameName}-${summoner.tagLine}`;
   const basePath = `/${locale}/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
 
@@ -188,6 +189,7 @@ export default function SummonerHeader({
                   </div>
                 )}
 
+                {/* 2. Flex */}
                 {flexRank ? (
                   <div className="flex items-center gap-2">
                     <div className="relative h-4 w-4 shrink-0">
@@ -200,9 +202,34 @@ export default function SummonerHeader({
                         unoptimized
                       />
                     </div>
-                    <span className="text-zinc-400 font-medium">Ranked 5s</span>
+                    <span className="text-zinc-400 font-medium">Flex</span>
                     <span className="font-bold text-zinc-300 uppercase">
                       {flexRank.tier} {flexRank.rank} · {flexRank.leaguePoints} LP
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <span className="text-zinc-500 font-medium">Flex</span>
+                    <span className="font-semibold">{t('summoner.unranked')}</span>
+                  </div>
+                )}
+
+                {/* 3. Ranked 5s */}
+                {ranked5s ? (
+                  <div className="flex items-center gap-2">
+                    <div className="relative h-4 w-4 shrink-0">
+                      <Image
+                        src={getRankEmblemUrl(ranked5s.tier)}
+                        alt={ranked5s.tier}
+                        width={16}
+                        height={16}
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                    <span className="text-zinc-400 font-medium">Ranked 5s</span>
+                    <span className="font-bold text-amber-300 uppercase">
+                      {ranked5s.tier} {ranked5s.rank} · {ranked5s.leaguePoints} LP
                     </span>
                   </div>
                 ) : (
