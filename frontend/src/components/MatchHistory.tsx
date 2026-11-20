@@ -66,8 +66,7 @@ export default function MatchHistory({
     const order: string[] = [];
 
     matches.forEach((m) => {
-      const matchEndTime = m.gameEndTimestamp || (m.gameCreation + m.gameDuration * 1000);
-      const d = new Date(matchEndTime);
+      const d = new Date(m.gameCreation);
       const dStr = d.toDateString();
 
       let label = dStr;
