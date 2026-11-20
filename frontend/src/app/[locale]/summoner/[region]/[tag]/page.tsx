@@ -174,7 +174,11 @@ export default function SummonerMatchesPage() {
   const soloRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = profileData?.ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
   const ranked5s = profileData?.ranks.find(
-    (r) => r.queueType === 'RANKED_TEAM_5x5' || r.queueType === 'RANKED_5s' || r.queueType === 'RANKED_5X5'
+    (r) =>
+      r.queueType === 'RANKED_PREMADE_5x5' ||
+      r.queueType === 'RANKED_TEAM_5x5' ||
+      r.queueType === 'RANKED_5s' ||
+      r.queueType === 'RANKED_5X5'
   );
 
   return (

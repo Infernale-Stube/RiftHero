@@ -76,7 +76,13 @@ export default function SummonerHeader({
 
   const soloRank = ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
   const flexRank = ranks.find((r) => r.queueType === 'RANKED_FLEX_SR');
-  const ranked5s = ranks.find((r) => r.queueType === 'RANKED_TEAM_5x5' || r.queueType === 'RANKED_5s' || r.queueType === 'RANKED_5X5');
+  const ranked5s = ranks.find(
+    (r) =>
+      r.queueType === 'RANKED_PREMADE_5x5' ||
+      r.queueType === 'RANKED_TEAM_5x5' ||
+      r.queueType === 'RANKED_5s' ||
+      r.queueType === 'RANKED_5X5'
+  );
   const formattedTag = `${summoner.gameName}-${summoner.tagLine}`;
   const basePath = `/${locale}/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
 

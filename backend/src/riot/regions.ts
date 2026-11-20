@@ -96,7 +96,8 @@ export function mapQueueFilterToId(filter?: string): number[] | undefined {
       return [440];
     case 'ranked_5s':
     case 'ranked5s':
-      return [42, 440];
+    case 'ranked_premade_5x5':
+      return [4, 42, 440];
     case 'aram':
       return [450];
     case 'arena':
