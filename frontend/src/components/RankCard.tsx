@@ -53,7 +53,7 @@ export default function RankCard({
             onClick={() => setActiveMode('solo')}
             className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
               activeMode === 'solo'
-                ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
@@ -64,7 +64,7 @@ export default function RankCard({
             onClick={() => setActiveMode('flex')}
             className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
               activeMode === 'flex'
-                ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
@@ -76,7 +76,7 @@ export default function RankCard({
               onClick={() => setActiveMode('5s')}
               className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
                 activeMode === '5s'
-                  ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                  ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
                   : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
               }`}
             >
@@ -112,7 +112,7 @@ export default function RankCard({
                 {currentRank.tier} {currentRank.rank}
               </span>
               <span className="text-zinc-500 font-bold">-</span>
-              <span className="text-xs font-black text-orange-400">
+              <span className="text-xs font-black text-amber-400">
                 {currentRank.leaguePoints} LP
               </span>
             </div>

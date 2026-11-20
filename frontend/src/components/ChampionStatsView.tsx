@@ -111,7 +111,7 @@ export default function ChampionStatsView({
         <div className="rounded-xl border border-white/[0.08] bg-[#0d1116] p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-zinc-400 text-xs">
             <span>{t('champions.championsPlayed')}</span>
-            <Trophy className="h-4 w-4 text-orange-400" />
+            <Trophy className="h-4 w-4 text-amber-400" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{stats.length}</div>
           <div className="text-[11px] text-zinc-500 mt-1">{t('champions.championsPlayedSubtitle')}</div>
@@ -136,7 +136,7 @@ export default function ChampionStatsView({
             <span>{t('champions.overallWinrate')}</span>
             <Zap className="h-4 w-4 text-emerald-400" />
           </div>
-          <div className={`mt-2 text-2xl font-black ${overallWinrate >= 55 ? 'text-emerald-400' : overallWinrate >= 50 ? 'text-orange-400' : 'text-zinc-200'}`}>
+          <div className={`mt-2 text-2xl font-black ${overallWinrate >= 55 ? 'text-emerald-400' : overallWinrate >= 50 ? 'text-amber-400' : 'text-zinc-200'}`}>
             {overallWinrate}%
           </div>
           {/* Winrate progress mini bar */}
@@ -189,7 +189,7 @@ export default function ChampionStatsView({
               onClick={() => onQueueChange(q.id)}
               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                 activeQueue === q.id
-                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                   : 'bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 border border-transparent'
               }`}
             >
@@ -206,7 +206,7 @@ export default function ChampionStatsView({
             placeholder={t('champions.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-[#060809] py-1.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-orange-500/50 focus:outline-none"
+            className="w-full rounded-lg border border-white/[0.08] bg-[#060809] py-1.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-amber-500/50 focus:outline-none"
           />
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function ChampionStatsView({
               <tr>
                 <td colSpan={8} className="py-12 text-center text-zinc-500">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
                     <span>{t('champions.loading')}</span>
                   </div>
                 </td>
@@ -365,7 +365,7 @@ export default function ChampionStatsView({
 
                     {/* Damage */}
                     <td className="py-3 px-3">
-                      <div className="font-bold text-orange-400">
+                      <div className="font-bold text-amber-400">
                         {(champ.avgDamage || 0).toLocaleString()}
                       </div>
                       <div className="text-[11px] text-zinc-500">

@@ -14,7 +14,7 @@ export default function LanguageSwitcher() {
         onClick={() => setLocale('de')}
         className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-bold transition-all ${
           locale === 'de'
-            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-sm'
+            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-sm'
             : 'text-zinc-400 hover:text-white'
         }`}
         title="Deutsch"
@@ -28,7 +28,7 @@ export default function LanguageSwitcher() {
         onClick={() => setLocale('en')}
         className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-bold transition-all ${
           locale === 'en'
-            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-sm'
+            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-sm'
             : 'text-zinc-400 hover:text-white'
         }`}
         title="English"

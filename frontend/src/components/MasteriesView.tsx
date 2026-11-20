@@ -118,7 +118,7 @@ export default function MasteriesView({
             <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               {t('masteries.totalScore')}
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Trophy className="h-4 w-4" />
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function MasteriesView({
             <span className="text-3xl font-black tracking-tight text-white">
               {masteriesData.totalMasteryScore}
             </span>
-            <span className="text-xs font-bold text-orange-400">Levels</span>
+            <span className="text-xs font-bold text-amber-400">Levels</span>
           </div>
           <p className="mt-1 text-[11px] text-zinc-500">
             Kumulierter Gesamt-Mastery-Level aller Champions
@@ -180,7 +180,7 @@ export default function MasteriesView({
 
       {/* Spotlight: Top Champion Card */}
       {topChampion && (
-        <div className="relative overflow-hidden rounded-2xl border border-orange-500/30 bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md">
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md">
           {/* Champion Splash Backdrop */}
           <div className="absolute inset-y-0 right-0 w-full sm:w-2/3 pointer-events-none select-none overflow-hidden">
             <Image
@@ -199,7 +199,7 @@ export default function MasteriesView({
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               {/* Avatar + Level Badge */}
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-orange-500/50 shadow-xl">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-amber-500/50 shadow-xl">
                 <Image
                   src={getChampionIconUrl(topChampion.championName)}
                   alt={topChampion.championName}
@@ -217,7 +217,7 @@ export default function MasteriesView({
 
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-orange-500/20 border border-orange-500/40 px-2 py-0.5 text-[10px] font-black uppercase text-orange-400">
+                  <span className="rounded bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[10px] font-black uppercase text-amber-400">
                     #1 Main Champion
                   </span>
                   <span className="text-xs text-zinc-400">
@@ -253,7 +253,7 @@ export default function MasteriesView({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('masteries.searchPlaceholder')}
-            className="w-full rounded-xl border border-white/[0.08] bg-black/40 pl-9 pr-3 py-2 text-xs font-medium text-white placeholder-zinc-500 outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20 transition-all"
+            className="w-full rounded-xl border border-white/[0.08] bg-black/40 pl-9 pr-3 py-2 text-xs font-medium text-white placeholder-zinc-500 outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-all"
           />
         </div>
 
@@ -265,7 +265,7 @@ export default function MasteriesView({
               onClick={() => setMinLevelFilter(0)}
               className={`px-2.5 py-1 rounded-lg transition-colors ${
                 minLevelFilter === 0
-                  ? 'bg-orange-500 text-white shadow-sm'
+                  ? 'bg-amber-500 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -275,7 +275,7 @@ export default function MasteriesView({
               onClick={() => setMinLevelFilter(7)}
               className={`px-2.5 py-1 rounded-lg transition-colors ${
                 minLevelFilter === 7
-                  ? 'bg-orange-500 text-white shadow-sm'
+                  ? 'bg-amber-500 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -285,7 +285,7 @@ export default function MasteriesView({
               onClick={() => setMinLevelFilter(10)}
               className={`px-2.5 py-1 rounded-lg transition-colors ${
                 minLevelFilter === 10
-                  ? 'bg-orange-500 text-white shadow-sm'
+                  ? 'bg-amber-500 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -385,7 +385,7 @@ export default function MasteriesView({
 
                   {/* Champion Info */}
                   <div className="flex flex-col min-w-0">
-                    <h4 className="text-base font-black text-white group-hover:text-orange-400 transition-colors truncate">
+                    <h4 className="text-base font-black text-white group-hover:text-amber-400 transition-colors truncate">
                       {m.championName}
                     </h4>
                     <span className="text-xs font-extrabold text-amber-400 mt-0.5">

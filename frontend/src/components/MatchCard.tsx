@@ -967,7 +967,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             {/* Match Details Icon Link (in top right corner above the expand arrow) */}
             <Link
               href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
-              className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 hover:border-orange-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
+              className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
               title="Match Details"
               aria-label="Match Details"
             >
@@ -975,7 +975,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 viewBox="0 0 20 20"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-orange-400 group-hover/detail:text-orange-300 transition-colors"
+                className="h-4 w-4 text-amber-400 group-hover/detail:text-amber-300 transition-colors"
               >
                 <path
                   d="M2.5 3V17H18"

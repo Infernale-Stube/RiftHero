@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Globe, ChevronLeft } from 'lucide-react';
+import { Radio, Globe } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import RankBadge, { TIER_COLORS } from './RankBadge';
@@ -121,21 +121,6 @@ export default function SummonerHeader({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Breadcrumb Navigation (LoLDB Style) */}
-      <nav aria-label="breadcrumb" className="flex items-center gap-2 text-xs text-zinc-400">
-        <Link
-          href={`/${locale}`}
-          className="flex items-center gap-1 hover:text-white transition-colors"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-          <span>{t('nav.home') || 'Startseite'}</span>
-        </Link>
-        <span className="text-zinc-600">/</span>
-        <span className="font-bold text-orange-400">
-          {summoner.gameName}#{summoner.tagLine}
-        </span>
-      </nav>
-
       {/* Main Profile Header Card with Splash Background */}
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1116] p-6 shadow-2xl backdrop-blur-md">
         {/* Profile Background Image (Most Played / Top Mastery Champion Splash Art) */}
@@ -215,8 +200,8 @@ export default function SummonerHeader({
             ) : summoner.lastFetchedAt ? (
               <div className="flex items-center gap-1.5 text-[11px] font-medium">
                 {isUpdating ? (
-                  <span className="flex items-center gap-1.5 text-orange-400 font-semibold">
-                    <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+                  <span className="flex items-center gap-1.5 text-amber-400 font-semibold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                     <span>{t('summoner.bgSync')}</span>
                   </span>
                 ) : (
@@ -249,7 +234,7 @@ export default function SummonerHeader({
                   className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 transition-transform duration-200 group-hover:scale-105"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
                     {rc.title}
                   </span>
                   {hasRank ? (
@@ -259,7 +244,7 @@ export default function SummonerHeader({
                           {rc.rank!.tier} {rc.rank!.rank}
                         </span>
                         <span className="text-zinc-500 font-bold text-xs">·</span>
-                        <span className="text-xs font-black text-orange-400 shrink-0">
+                        <span className="text-xs font-black text-amber-400 shrink-0">
                           {rc.rank!.leaguePoints} LP
                         </span>
                       </div>
@@ -301,7 +286,7 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('matches')}
             className={`relative pb-2 transition-colors ${
               currentTab === 'matches'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -313,7 +298,7 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('champions')}
             className={`relative pb-2 transition-colors ${
               currentTab === 'champions'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -325,7 +310,7 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('masteries')}
             className={`relative pb-2 transition-colors ${
               currentTab === 'masteries'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -337,7 +322,7 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('challenges')}
             className={`relative pb-2 transition-colors ${
               currentTab === 'challenges'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -349,7 +334,7 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('live')}
             className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
               currentTab === 'live'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-500'
+                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : isLive
                 ? 'text-emerald-400 hover:text-emerald-300'
                 : 'text-zinc-400 hover:text-zinc-200'

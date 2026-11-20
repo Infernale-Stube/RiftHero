@@ -209,12 +209,12 @@ export default function MatchHistory({
               >
                 {isLoadingMore ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin text-orange-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
                     <span>{locale === 'de' ? 'Lade weitere Matches...' : 'Loading more matches...'}</span>
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="h-4 w-4 text-orange-400" />
+                    <ChevronDown className="h-4 w-4 text-amber-400" />
                     <span>{locale === 'de' ? 'Mehr Matches anzeigen (+10)' : 'Show more matches (+10)'}</span>
                   </>
                 )}

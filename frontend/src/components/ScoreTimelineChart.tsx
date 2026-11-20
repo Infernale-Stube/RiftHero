@@ -192,7 +192,7 @@ export default function ScoreTimelineChart({
             onClick={() => setViewMode('team')}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'team'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -204,7 +204,7 @@ export default function ScoreTimelineChart({
             onClick={() => setViewMode('players')}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'players'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >

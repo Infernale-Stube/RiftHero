@@ -32,7 +32,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
   return (
     <div className="w-full">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="h-4 w-4 text-orange-400" />
+        <Sparkles className="h-4 w-4 text-amber-400" />
         <h2 className="text-base font-bold text-white uppercase tracking-wider">
           {locale === 'de' ? 'Zuletzt aktualisierte Profile' : 'Recently Updated Profiles'}
         </h2>
@@ -48,11 +48,11 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
             <Link
               key={s.id}
               href={`/${locale}/summoner/${s.region}/${encodeURIComponent(formattedTag)}`}
-              className="group flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#0c1017]/80 p-3.5 transition-all hover:border-orange-500/40 hover:bg-[#121722] hover:shadow-xl hover:shadow-orange-500/5 shadow-md"
+              className="group flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#0c1017]/80 p-3.5 transition-all hover:border-amber-500/40 hover:bg-[#121722] hover:shadow-xl hover:shadow-amber-500/5 shadow-md"
             >
               <div className="flex items-center gap-3">
                 {/* Profile Icon */}
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-orange-500/60 transition-colors">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-500/60 transition-colors">
                   <Image
                     src={getProfileIconUrl(s.profileIconId)}
                     alt={s.gameName}
@@ -61,7 +61,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     className="h-full w-full object-cover"
                     unoptimized
                   />
-                  <div className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[9px] font-black text-orange-400">
+                  <div className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[9px] font-black text-amber-400">
                     {s.summonerLevel}
                   </div>
                 </div>
@@ -75,7 +75,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     <span className="text-xs text-zinc-500 shrink-0">#{s.tagLine}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="rounded bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-orange-400">
+                    <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-400">
                       {s.region}
                     </span>
                     {s.lastFetchedAt && (

@@ -38,7 +38,7 @@ export default function LiveGameView({
   if (isLoading) {
     return (
       <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-black/40 p-12 text-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-orange-500 mb-3" />
+        <RefreshCw className="h-8 w-8 animate-spin text-amber-500 mb-3" />
         <h3 className="text-sm font-bold text-slate-200">{t('live.analyzing')}</h3>
         <p className="text-xs text-slate-500 mt-1">{t('live.spectatorCheck')}</p>
       </div>
@@ -59,7 +59,7 @@ export default function LiveGameView({
         </p>
         <button
           onClick={onRefresh}
-          className="flex items-center gap-2 rounded-xl border border-orange-500/40 bg-orange-500/10 px-5 py-2.5 text-xs font-bold text-orange-400 hover:bg-orange-500/20 transition-all shadow-md active:scale-95"
+          className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all shadow-md active:scale-95"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>{t('live.checkAgain')}</span>
@@ -326,7 +326,7 @@ export default function LiveGameView({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Link
                           href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
-                          className={`truncate text-sm font-bold hover:text-orange-400 transition-colors ${
+                          className={`truncate text-sm font-bold hover:text-amber-400 transition-colors ${
                             isTarget ? 'text-amber-400' : 'text-slate-100'
                           }`}
                         >

@@ -23,7 +23,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
       aria-label="Breadcrumb"
     >
       {/* Root: Homepage */}
-      <Link href={`/${locale}`} className="hover:text-orange-400 transition-colors">
+      <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
         {t('nav.home') || 'Startseite'}
       </Link>
 
@@ -35,9 +35,9 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
           <React.Fragment key={`${item.label}-${index}`}>
             <span className="text-zinc-600 select-none">/</span>
             {isLast || !item.href ? (
-              <span className="text-orange-400 font-bold select-none">{item.label}</span>
+              <span className="text-amber-400 font-bold select-none">{item.label}</span>
             ) : (
-              <Link href={item.href} className="hover:text-orange-400 transition-colors">
+              <Link href={item.href} className="hover:text-amber-400 transition-colors">
                 {item.label}
               </Link>
             )}

@@ -75,7 +75,7 @@ export default function ChallengesView({
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-zinc-400">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
           <span>{t('challenges.loading')}</span>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function ChallengesView({
                 {totalPoints.current.toLocaleString()} <span className="text-sm font-semibold text-zinc-400">{t('challenges.points')}</span>
               </div>
               {preferences?.title && (
-                <div className="mt-1 text-xs text-orange-400 font-semibold italic">
+                <div className="mt-1 text-xs text-amber-400 font-semibold italic">
                   {t('challenges.titleEquipped', { title: preferences.title })}
                 </div>
               )}
@@ -166,13 +166,13 @@ export default function ChallengesView({
               onClick={() => setSelectedCategory(isSelected ? 'ALL' : catKey)}
               className={`rounded-xl border p-4 text-left transition-all relative overflow-hidden ${
                 isSelected
-                  ? 'border-orange-500/50 bg-[#151c28] shadow-lg shadow-orange-500/10'
+                  ? 'border-amber-500/50 bg-[#151c28] shadow-lg shadow-amber-500/10'
                   : 'border-white/[0.08] bg-[#0d1116] hover:border-white/20 hover:bg-[#111722]'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <IconComponent className="h-4 w-4 text-orange-400" />
+                  <IconComponent className="h-4 w-4 text-amber-400" />
                   <span className="font-bold text-white text-xs">{cat.name}</span>
                 </div>
                 <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded border ${tierStyle.bg} ${tierStyle.text} ${tierStyle.border}`}>

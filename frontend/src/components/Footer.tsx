@@ -22,7 +22,7 @@ export default function Footer() {
               unoptimized
             />
             <span className="text-sm font-black tracking-tight text-white">
-              RIFT<span className="text-orange-500">HERO</span>
+              RIFT<span className="text-amber-400">HERO</span>
             </span>
             <span className="text-[10px] text-zinc-600">•</span>
             <span className="text-xs text-zinc-400">

@@ -135,7 +135,7 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-xl font-black tracking-tight text-white transition-colors">
-                  RIFT<span className="text-orange-500">HERO</span>
+                  RIFT<span className="text-amber-400">HERO</span>
                 </span>
                 <span className="text-[10px] uppercase tracking-wider text-zinc-400 -mt-1 font-bold">
                   {t('nav.brandSubtitle')}
@@ -195,7 +195,7 @@ export default function Navbar() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-lg font-black tracking-tight text-white">
-                      RIFT<span className="text-orange-500">HERO</span>
+                      RIFT<span className="text-amber-400">HERO</span>
                     </span>
                     <span className="text-[9px] uppercase tracking-wider text-zinc-400 -mt-0.5 font-bold">
                       Navigation

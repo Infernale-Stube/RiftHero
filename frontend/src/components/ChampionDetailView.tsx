@@ -18,6 +18,9 @@ import {
   Layers,
   Coins,
   Gem,
+  Droplet,
+  Droplets,
+  CircleDot,
   Palette,
   RotateCcw,
   Award,
@@ -85,6 +88,11 @@ function getRarityGemIconUrl(tier: RarityTier): string | null {
   if (tier === 'Regular') return null;
   return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/${tier.toLowerCase()}.png`;
 }
+
+const BE_ICON_URL =
+  'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-be-150.png';
+const RP_ICON_URL =
+  'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-rp-72.png';
 
 // Formats YYYY-MM-DD into "December 14, 2011" (en) or "14. Dezember 2011" (de)
 function formatReleaseDate(dateStr?: string, locale = 'de'): string {
@@ -278,18 +286,22 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     };
   }, [data, selectedLevel]);
 
-  // Standard LolDB ladder tiers for Y-axis (top to bottom: Transcendent -> Mythic -> Legendary -> Epic -> Regular)
+  // Dynamic ladder tiers for Y-axis (only tiers actually present on this champion, top-to-bottom hierarchy)
   const timelineLadderTiers = useMemo<RarityTier[]>(() => {
-    const hasExalted = skins.some((s) => s.rarity === 'Exalted');
-    const hasUltimate = skins.some((s) => s.rarity === 'Ultimate');
-    const list: RarityTier[] = ['Transcendent'];
-    if (hasExalted) list.push('Exalted');
-    if (hasUltimate) list.push('Ultimate');
-    list.push('Mythic', 'Legendary', 'Epic', 'Regular');
+    const present = new Set<RarityTier>();
+    for (const s of skins) {
+      if (s.num !== 0) {
+        const raw = (s.rarity || 'Regular') as RarityTier;
+        const tier = ALL_RARITIES.includes(raw) ? raw : 'Regular';
+        present.add(tier);
+      }
+    }
+    const list = ALL_RARITIES.filter((tier) => present.has(tier));
+    if (list.length === 0) return ['Regular'];
     return list;
   }, [skins]);
 
-  // Legend order (bottom-to-top hierarchy: Regular -> Epic -> Legendary -> Mythic -> Transcendent)
+  // Legend order (bottom-to-top hierarchy for top filters: Regular -> Epic -> Legendary -> ...)
   const timelineLegendTiers = useMemo<RarityTier[]>(() => {
     return [...timelineLadderTiers].reverse();
   }, [timelineLadderTiers]);
@@ -453,12 +465,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   }
 
   // =========================================================================
-  // SUB-RENDER: PROFILE HEADER (NO SKINS BADGE, NO LEADERBOARD BADGE)
+  // SUB-RENDER: PROFILE HEADER (MERGED WITH BIO & OFFICIAL CURRENCY ICONS)
   // =========================================================================
   const renderProfileHeader = () => (
     <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md space-y-4">
       <div className="flex items-center gap-4">
-        <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full overflow-hidden border-2 border-amber-400 shadow-[0_0_20px_rgba(251,146,60,0.3)] bg-zinc-950">
+        <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full overflow-hidden border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] bg-zinc-950">
           <Image
             src={getChampionIconUrl(data.id, version)}
             alt={data.name}
@@ -480,17 +492,31 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         </div>
       </div>
 
-      {/* Badges Row: BE, RP, RELEASED (NO Skins badge, NO Leaderboard badge) */}
+      {/* Badges Row: BE, RP, RELEASED (with official CommunityDragon icons) */}
       <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
         {/* Blue Essence */}
-        <div className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 font-bold text-cyan-300 shadow-sm">
-          <Coins className="h-3.5 w-3.5 text-cyan-400" />
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#0acbe6]/30 bg-[#0acbe6]/10 px-2.5 py-1 font-bold text-[#0acbe6] shadow-sm">
+          <Image
+            src={BE_ICON_URL}
+            alt="Blue Essence"
+            width={16}
+            height={16}
+            className="h-4 w-4 object-contain"
+            unoptimized
+          />
           <span>{beCost}</span>
         </div>
 
         {/* RP */}
-        <div className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 font-bold text-yellow-300 shadow-sm">
-          <Gem className="h-3.5 w-3.5 text-yellow-400" />
+        <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-bold text-amber-400 shadow-sm">
+          <Image
+            src={RP_ICON_URL}
+            alt="RP"
+            width={16}
+            height={16}
+            className="h-4 w-4 object-contain"
+            unoptimized
+          />
           <span>{rpCost}</span>
         </div>
 
@@ -500,34 +526,27 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <span className="text-zinc-200">{formattedReleaseDate}</span>
         </div>
       </div>
-    </div>
-  );
 
-  // =========================================================================
-  // SUB-RENDER: BRIEF BIO CARD
-  // =========================================================================
-  const renderBioCard = () => (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md">
-      <h2 className="text-sm font-bold text-white mb-2">Brief Bio</h2>
-      <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal">
+      {/* Champion Bio (merged directly inside card, no 'Brief Bio' heading) */}
+      <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-normal pt-2 border-t border-white/[0.06]">
         {data.lore || data.blurb}
       </p>
     </div>
   );
 
   // =========================================================================
-  // SUB-RENDER: BASE STATS CARD (REVERTED TO PREVIOUS CARD GRID WITH ICONS)
+  // SUB-RENDER: BASE STATS CARD (MATCHING LOLDB 2-COLUMN ANIMATED DESIGN)
   // =========================================================================
   const renderBaseStatsCard = () => (
     <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/85 p-5 shadow-xl backdrop-blur-md space-y-4">
       {/* Header: Base Stats and LVL Indicator */}
       <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-        <h2 className="text-sm font-bold text-white">Base Stats</h2>
+        <h2 className="text-base font-bold text-white tracking-tight">Base Stats</h2>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
             LVL
           </span>
-          <span className="text-lg font-black text-[#fb923c] [text-shadow:0_0_12px_rgba(251,146,60,0.6)]">
+          <span className="text-lg font-black text-amber-400 [text-shadow:0_0_12px_rgba(251,191,36,0.6)]">
             {selectedLevel}
           </span>
         </div>
@@ -535,20 +554,22 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
       {/* 18 Diamond Level Buttons with Milestone numbers 1, 6, 11, 16, 18 */}
       <div className="px-1 pb-3 border-b border-white/[0.06]">
-        <div className="flex mb-1">
+        <div className="flex mb-1.5">
           {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
             const isMilestone = lvl === 1 || lvl === 6 || lvl === 11 || lvl === 16 || lvl === 18;
             const isCurrent = lvl === selectedLevel;
             return (
               <div key={lvl} className="flex justify-center flex-1">
-                {isMilestone && (
+                {isMilestone ? (
                   <span
-                    className={`text-[8px] font-bold tabular-nums select-none ${
-                      isCurrent ? 'text-amber-400 font-extrabold' : 'text-white/20'
+                    className={`text-[9px] font-bold tabular-nums select-none ${
+                      isCurrent ? 'text-amber-400 font-extrabold' : 'text-zinc-500'
                     }`}
                   >
                     {lvl}
                   </span>
+                ) : (
+                  <span className="text-[9px] opacity-0 select-none">-</span>
                 )}
               </div>
             );
@@ -567,10 +588,10 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 className="relative flex-1 flex justify-center items-center h-5 cursor-pointer group outline-none"
               >
                 <div
-                  className={`transition-all duration-150 rotate-45 ${
+                  className={`transition-all duration-200 rotate-45 ${
                     isSelected
-                      ? 'w-2.5 h-2.5 bg-[#fb923c] shadow-[0_0_0_1.5px_rgba(251,146,60,0.4),0_0_10px_rgba(251,146,60,0.7)] scale-110'
-                      : 'w-1.5 h-1.5 bg-white/10 group-hover:bg-[#fb923c]/50 group-hover:scale-125'
+                      ? 'w-2.5 h-2.5 bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.3),0_0_12px_rgba(251,191,36,0.8)] scale-110'
+                      : 'w-1.5 h-1.5 bg-zinc-700/60 group-hover:bg-amber-400/50 group-hover:scale-125'
                   }`}
                 />
               </button>
@@ -579,144 +600,240 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         </div>
       </div>
 
-      {/* Reverted Card Grid: 10 Stats with Colored Icons, bold value & growth */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {/* 1. HEALTH */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-rose-400 font-bold mb-1">
-            <Heart className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.hp') || 'Health'}</span>
+      {/* 2-Column Stats Grid matching LolDB Reference */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-2.5 pt-1">
+        {/* Left Column (5 stats) */}
+        <div className="space-y-2.5">
+          {/* 1. HEALTH */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Heart className="h-3.5 w-3.5 text-[#f87171] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.hp') || 'Health'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#f87171] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hp ?? data.stats.hp) / 2800) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.hpperlevel}/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#f87171] tabular-nums">
+              {calcStats?.hp ?? data.stats.hp}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.hp ?? data.stats.hp}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.hpperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
+
+          {/* 2. ATTACK DMG */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Swords className="h-3.5 w-3.5 text-[#fb923c] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.attackDamage') || 'Attack Dmg'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#fb923c] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.ad ?? data.stats.attackdamage) / 160) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.attackdamageperlevel}/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#fb923c] tabular-nums">
+              {calcStats?.ad ?? data.stats.attackdamage}
+            </span>
+          </div>
+
+          {/* 3. ARMOR */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Shield className="h-3.5 w-3.5 text-[#facc15] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.armor') || 'Armor'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#facc15] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.armor ?? data.stats.armor) / 130) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.armorperlevel}/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#facc15] tabular-nums">
+              {calcStats?.armor ?? data.stats.armor}
+            </span>
+          </div>
+
+          {/* 4. HP REGEN */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Heart className="h-3.5 w-3.5 text-[#4ade80] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.hpRegen') || 'HP Regen'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#4ade80] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hpregen ?? data.stats.hpregen) / 25) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.hpregenperlevel}/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#4ade80] tabular-nums">
+              {calcStats?.hpregen ?? data.stats.hpregen}
+            </span>
+          </div>
+
+          {/* 5. MOVE SPEED */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Wind className="h-3.5 w-3.5 text-[#94a3b8] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.movementSpeed') || 'Move Speed'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#94a3b8] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(15, (data.stats.movespeed / 400) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              —
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-zinc-200 tabular-nums">
+              {data.stats.movespeed}
+            </span>
+          </div>
         </div>
 
-        {/* 2. MANA / RESOURCE */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-sky-400 font-bold mb-1">
-            <Zap className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{data.partype || t('championWiki.mana') || 'Mana'}</span>
+        {/* Right Column (5 stats) */}
+        <div className="space-y-2.5">
+          {/* 1. MANA / RESOURCE */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Droplet className="h-3.5 w-3.5 text-[#60a5fa] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {data.partype || t('championWiki.mana') || 'Mana'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#60a5fa] rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${data.stats.mp > 0 ? Math.min(100, Math.max(10, ((calcStats?.mp ?? data.stats.mp) / 1800) * 100)) : 0}%`,
+                }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              {data.stats.mp > 0 ? `+${data.stats.mpperlevel}/lvl` : '—'}
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#60a5fa] tabular-nums">
+              {data.stats.mp > 0 ? (calcStats?.mp ?? data.stats.mp) : 0}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {data.stats.mp > 0 ? (calcStats?.mp ?? data.stats.mp) : '0'}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            {data.stats.mp > 0 ? `+${data.stats.mpperlevel} ${t('championWiki.perLevel') || 'pro Stufe'}` : 'Keine Kosten'}
-          </span>
-        </div>
 
-        {/* 3. ATTACK DAMAGE */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-orange-400 font-bold mb-1">
-            <Swords className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.attackDamage') || 'Attack Dmg'}</span>
+          {/* 2. ATTACK SPEED */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Activity className="h-3.5 w-3.5 text-[#fbbf24] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.attackSpeed') || 'Atk Speed'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#fbbf24] rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${Math.min(100, Math.max(10, (((calcStats?.as ?? data.stats.attackspeed) - 0.5) / 1.0) * 100))}%`,
+                }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.attackspeedperlevel}%/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#fbbf24] tabular-nums">
+              {calcStats?.as ?? data.stats.attackspeed}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.ad ?? data.stats.attackdamage}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.attackdamageperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
-        </div>
 
-        {/* 4. ATTACK SPEED */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-yellow-400 font-bold mb-1">
-            <Activity className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.attackSpeed') || 'Atk Speed'}</span>
+          {/* 3. MAGIC RESIST */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <CircleDot className="h-3.5 w-3.5 text-[#c084fc] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.mr') || 'Magic Resist'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#c084fc] rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${Math.min(100, Math.max(10, ((calcStats?.mr ?? data.stats.spellblock) / 90) * 100))}%`,
+                }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              +{data.stats.spellblockperlevel}/lvl
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#c084fc] tabular-nums">
+              {calcStats?.mr ?? data.stats.spellblock}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.as ?? data.stats.attackspeed}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.attackspeedperlevel}% {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
-        </div>
 
-        {/* 5. ARMOR */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-amber-400 font-bold mb-1">
-            <Shield className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.armor') || 'Armor'}</span>
+          {/* 4. MANA REGEN */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Droplets className="h-3.5 w-3.5 text-[#38bdf8] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.manaRegen') || 'Mana Regen'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#38bdf8] rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${data.stats.mp > 0 ? Math.min(100, Math.max(10, ((calcStats?.mpregen ?? data.stats.mpregen) / 25) * 100)) : 0}%`,
+                }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              {data.stats.mp > 0 ? `+${data.stats.mpregenperlevel}/lvl` : '—'}
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-[#38bdf8] tabular-nums">
+              {data.stats.mp > 0 ? (calcStats?.mpregen ?? data.stats.mpregen) : 0}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.armor ?? data.stats.armor}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.armorperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
-        </div>
 
-        {/* 6. MAGIC RESIST */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-indigo-400 font-bold mb-1">
-            <Shield className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.mr') || 'Magic Resist'}</span>
+          {/* 5. ATK RANGE */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-28 sm:w-32 shrink-0">
+              <Target className="h-3.5 w-3.5 text-[#94a3b8] shrink-0" />
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('championWiki.range') || 'Atk Range'}
+              </span>
+            </div>
+            <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#94a3b8] rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(15, (data.stats.attackrange / 700) * 100))}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
+              —
+            </span>
+            <span className="w-12 shrink-0 text-right text-sm font-black text-zinc-200 tabular-nums">
+              {data.stats.attackrange}
+            </span>
           </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.mr ?? data.stats.spellblock}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.spellblockperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
-        </div>
-
-        {/* 7. HP REGEN */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-emerald-400 font-bold mb-1">
-            <Heart className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.hpRegen') || 'HP Regen'}</span>
-          </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {calcStats?.hpregen ?? data.stats.hpregen}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            +{data.stats.hpregenperlevel} {t('championWiki.perLevel') || 'pro Stufe'}
-          </span>
-        </div>
-
-        {/* 8. MANA REGEN */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-cyan-400 font-bold mb-1">
-            <Zap className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.manaRegen') || 'Mana Regen'}</span>
-          </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {data.stats.mp > 0 ? (calcStats?.mpregen ?? data.stats.mpregen) : '0'}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            {data.stats.mp > 0 ? `+${data.stats.mpregenperlevel} ${t('championWiki.perLevel') || 'pro Stufe'}` : '—'}
-          </span>
-        </div>
-
-        {/* 9. MOVE SPEED */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-teal-400 font-bold mb-1">
-            <Wind className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.movementSpeed') || 'Move Speed'}</span>
-          </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {data.stats.movespeed}
-          </span>
-          <span className="text-[10px] text-zinc-500">Basiswert</span>
-        </div>
-
-        {/* 10. ATK RANGE */}
-        <div className="flex flex-col rounded-xl bg-black/40 p-3 border border-white/[0.04] transition-colors hover:border-white/10">
-          <div className="flex items-center gap-1.5 text-rose-400 font-bold mb-1">
-            <Target className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] uppercase tracking-wider">{t('championWiki.range') || 'Atk Range'}</span>
-          </div>
-          <span className="text-base font-black text-white tabular-nums">
-            {data.stats.attackrange}
-          </span>
-          <span className="text-[10px] text-zinc-500">
-            {data.stats.attackrange > 300 ? 'Fernkampf' : 'Nahkampf'}
-          </span>
         </div>
       </div>
     </div>
@@ -742,8 +859,21 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
           {/* Top Badge: Cost */}
           <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
-            <Gem className="h-3 w-3 text-amber-400" />
-            <span>{activeSkin?.num === 0 ? (locale === 'de' ? 'Klassischer Skin' : 'Base Skin') : `${activeSkin?.cost || 975} RP`}</span>
+            {activeSkin?.num === 0 ? (
+              <span>{locale === 'de' ? 'Klassischer Skin' : 'Base Skin'}</span>
+            ) : (
+              <>
+                <Image
+                  src={RP_ICON_URL}
+                  alt="RP"
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain"
+                  unoptimized
+                />
+                <span>{activeSkin?.cost || 975} RP</span>
+              </>
+            )}
           </div>
 
           {/* Bottom Badge: Rarity */}
@@ -806,7 +936,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handlePrevSkin}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-orange-400 transition-all cursor-pointer mr-2 shadow-md active:scale-95"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-amber-400 transition-all cursor-pointer mr-2 shadow-md active:scale-95"
           title="Vorheriger Skin"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -826,7 +956,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 onClick={() => setSelectedSkinIndex(idx)}
                 className={`group relative h-13 w-13 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
                   isSelected
-                    ? 'ring-2 ring-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.6)] scale-105'
+                    ? 'ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.6)] scale-105'
                     : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
@@ -847,7 +977,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handleNextSkin}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-orange-400 transition-all cursor-pointer ml-2 shadow-md active:scale-95"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-amber-400 transition-all cursor-pointer ml-2 shadow-md active:scale-95"
           title="Nächster Skin"
         >
           <ChevronRight className="h-4 w-4" />
@@ -873,11 +1003,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           {t('championWiki.skinTimeline') || 'Skin Timeline'}
         </h2>
 
-        {/* Dynamic Clickable Legend Filters with pure colored dots matching LolDB */}
+        {/* Dynamic Clickable Legend Filters with official gem icons */}
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold select-none">
           {timelineLegendTiers.map((tier) => {
             const isEnabled = enabledRarities.has(tier);
             const color = RARITY_COLORS[tier];
+            const gemUrl = getRarityGemIconUrl(tier);
             return (
               <button
                 key={tier}
@@ -890,14 +1021,29 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 }`}
                 title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
               >
-                <span
-                  className="h-2 w-2 rounded-full transition-transform shrink-0"
-                  style={{
-                    backgroundColor: color,
-                    boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
-                    transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
-                  }}
-                />
+                {gemUrl ? (
+                  <Image
+                    src={gemUrl}
+                    alt={tier}
+                    width={16}
+                    height={16}
+                    className={`h-4 w-4 object-contain transition-all ${
+                      isEnabled
+                        ? 'drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]'
+                        : 'grayscale opacity-40'
+                    }`}
+                    unoptimized
+                  />
+                ) : (
+                  <span
+                    className="h-2.5 w-2.5 rounded-full transition-transform shrink-0"
+                    style={{
+                      backgroundColor: color,
+                      boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
+                      transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
+                    }}
+                  />
+                )}
                 <span>{tier}</span>
               </button>
             );
@@ -1221,7 +1367,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <div className="flex items-center gap-2 pb-3 border-b border-white/[0.06]">
           <Award className="h-5 w-5 text-amber-400" />
           <h2 className="text-lg sm:text-xl font-black text-white">
-            {t('championWiki.tips') || 'Tipps & Strategie'}
+            {t('championWiki.tips') || 'Tipps'}
           </h2>
         </div>
 
@@ -1252,7 +1398,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <div className="flex items-center gap-2 text-rose-400">
                 <Swords className="h-4 w-4" />
                 <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-300">
-                  {t('championWiki.enemyTipsTitle', { name: data.name }) || `Tipps gegen ${data.name} (Counterplay)`}
+                  {t('championWiki.enemyTipsTitle', { name: data.name }) || `Tipps gegen ${data.name}`}
                 </h3>
               </div>
               <ul className="space-y-2.5 text-xs sm:text-sm text-zinc-300">
@@ -1353,11 +1499,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
           {locale.startsWith('en') ? (
             <>
-              {data.name} was released on <span className="font-bold text-white">{formattedReleaseDate}</span>. Players could purchase them with Riot Points or Blue Essence as soon as it dropped in-game.
+              {data.name} was released on <span className="font-bold text-amber-400">{formattedReleaseDate}</span>. Players could purchase them with Riot Points or Blue Essence as soon as it dropped in-game.
             </>
           ) : (
             <>
-              {data.name} wurde am <span className="font-bold text-white">{formattedReleaseDate}</span> veröffentlicht. Spieler konnten den Champion direkt nach Release mit Blauen Essenzen oder Riot Points erwerben.
+              {data.name} wurde am <span className="font-bold text-amber-400">{formattedReleaseDate}</span> veröffentlicht. Spieler konnten den Champion direkt nach Release mit Blauen Essenzen oder Riot Points erwerben.
             </>
           )}
         </p>
@@ -1371,11 +1517,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
           {locale.startsWith('en') ? (
             <>
-              {data.name} is primarily played in the <span className="font-bold text-white">{primaryRole}</span> lane and falls under the <span className="font-bold text-white">{metaPos?.class || 'Mage'}</span> class. The champion&apos;s kit and playstyle make them most suited for it, where they can maximize their impact throughout the game.
+              {data.name} is primarily played in the <span className="font-bold text-amber-400">{primaryRole}</span> lane and falls under the <span className="font-bold text-amber-400">{metaPos?.class || 'Mage'}</span> class. The champion&apos;s kit and playstyle make them most suited for it, where they can maximize their impact throughout the game.
             </>
           ) : (
             <>
-              {data.name} wird primär auf der Position <span className="font-bold text-white">{primaryRole}</span> gespielt und gehört zur Klasse <span className="font-bold text-white">{metaPos?.class || 'Magier'}</span>. Das Fähigkeitenset und der Spielstil sind ideal darauf abgestimmt, um über das gesamte Spiel hinweg maximalen Einfluss zu nehmen.
+              {data.name} wird primär auf der Position <span className="font-bold text-amber-400">{primaryRole}</span> gespielt und gehört zur Klasse <span className="font-bold text-amber-400">{metaPos?.class || 'Magier'}</span>. Das Fähigkeitenset und der Spielstil sind ideal darauf abgestimmt, um über das gesamte Spiel hinweg maximalen Einfluss zu nehmen.
             </>
           )}
         </p>
@@ -1389,11 +1535,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
           {locale.startsWith('en') ? (
             <>
-              Currently, there are <span className="font-bold text-amber-500">{nonBaseSkinsCount} {data.name} Skins</span> available in the game. This includes all cosmetic variants released since their launch, the base skin is not included.
+              Currently, there are <span className="font-bold text-amber-400">{nonBaseSkinsCount} {data.name} Skins</span> available in the game. This includes all cosmetic variants released since their launch, the base skin is not included.
             </>
           ) : (
             <>
-              Aktuell gibt es <span className="font-bold text-amber-500">{nonBaseSkinsCount} {data.name} Skins</span> im Spiel. Dies umfasst alle kosmetischen Varianten seit dem Release; der Basis-Skin ist nicht mitgezählt.
+              Aktuell gibt es <span className="font-bold text-amber-400">{nonBaseSkinsCount} {data.name} Skins</span> im Spiel. Dies umfasst alle kosmetischen Varianten seit dem Release; der Basis-Skin ist nicht mitgezählt.
             </>
           )}
         </p>
@@ -1407,11 +1553,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
           {locale.startsWith('en') ? (
             <>
-              {data.name} costs <span className="font-bold text-amber-500">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blue Essence or {typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.
+              {data.name} costs <span className="font-bold text-[#0acbe6]">{typeof beCost === 'number' ? beCost.toLocaleString('en-US') : beCost} Blue Essence</span> or <span className="font-bold text-amber-400">{typeof rpCost === 'number' ? rpCost.toLocaleString('en-US') : rpCost} Riot Points</span>. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.
             </>
           ) : (
             <>
-              {data.name} kostet <span className="font-bold text-amber-500">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blaue Essenzen oder {typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden. Blaue Essenzen werden durch Levelaufstiege und Entzaubern von Champion-Splittern verdient, während Riot Points mit Echtgeld erworben werden.
+              {data.name} kostet <span className="font-bold text-[#0acbe6]">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blaue Essenzen</span> oder <span className="font-bold text-amber-400">{typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden. Blaue Essenzen werden durch Levelaufstiege und Entzaubern von Champion-Splittern verdient, während Riot Points mit Echtgeld erworben werden.
             </>
           )}
         </p>
@@ -1434,10 +1580,9 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         {/* 2-COLUMN HERO AREA (PROFILE & STATS ON LEFT, SPOTLIGHT SPLASH ON RIGHT)    */}
         {/* ========================================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Profile Header + Brief Bio + Reverted Base Stats */}
+          {/* Left Column: Merged Profile & Bio Header + Animated Base Stats */}
           <div className="lg:col-span-6 flex flex-col gap-4">
             {renderProfileHeader()}
-            {renderBioCard()}
             {renderBaseStatsCard()}
           </div>
 

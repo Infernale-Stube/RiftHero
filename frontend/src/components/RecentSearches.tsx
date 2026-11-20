@@ -57,7 +57,7 @@ export default function RecentSearches() {
     <div className="w-full">
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
-          <History className="h-3.5 w-3.5 text-orange-400" />
+          <History className="h-3.5 w-3.5 text-amber-400" />
           <span>{locale === 'de' ? 'Zuletzt gesucht' : 'Recent Searches'}</span>
         </div>
         <button
@@ -75,9 +75,9 @@ export default function RecentSearches() {
             <Link
               key={`${item.region}-${item.gameName}-${item.tagLine}`}
               href={`/${locale}/summoner/${item.region}/${encodeURIComponent(formattedTag)}`}
-              className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-orange-500/50 hover:bg-[#131924] shadow-sm"
+              className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-amber-500/50 hover:bg-[#131924] shadow-sm"
             >
-              <span className="rounded bg-orange-500/15 border border-orange-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-orange-400">
+              <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-400">
                 {item.region}
               </span>
               <span className="font-bold text-zinc-200 group-hover:text-white transition-colors">
