@@ -181,6 +181,150 @@ export function getChampionLoadingUrl(championName?: string | null): string {
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_0.jpg`;
 }
 
+export function getChampionPassiveIconUrl(imageFull: string, version?: string): string {
+  if (!imageFull) return '';
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/passive/${imageFull}`;
+}
+
+export function getChampionSpellIconUrl(imageFull: string, version?: string): string {
+  if (!imageFull) return '';
+  const v = version || getDDragonVersion();
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${imageFull}`;
+}
+
+export function getChampionSkinSplashUrl(championId: string, skinNum: number): string {
+  const clean = normalizeChampionNameForDDragon(championId);
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${clean}_${skinNum}.jpg`;
+}
+
+export function getChampionSkinLoadingUrl(championId: string, skinNum: number): string {
+  const clean = normalizeChampionNameForDDragon(championId);
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_${skinNum}.jpg`;
+}
+
+export interface DDragonChampionSummary {
+  version: string;
+  id: string; // e.g. "Aatrox"
+  key: string; // e.g. "266"
+  name: string; // e.g. "Aatrox"
+  title: string; // e.g. "the Darkin Blade"
+  blurb: string;
+  info: { attack: number; defense: number; magic: number; difficulty: number };
+  image: { full: string; sprite: string; group: string };
+  tags: string[]; // ["Fighter", "Tank"]
+  partype: string;
+  stats: Record<string, number>;
+}
+
+export interface DDragonSpell {
+  id: string;
+  name: string;
+  description: string;
+  tooltip: string;
+  cooldownBurn: string;
+  costBurn: string;
+  rangeBurn: string;
+  image: { full: string };
+}
+
+export interface DDragonSkin {
+  id: string;
+  num: number;
+  name: string;
+  chromas: boolean;
+}
+
+export interface DDragonChampionDetail extends DDragonChampionSummary {
+  lore: string;
+  skins: DDragonSkin[];
+  spells: DDragonSpell[];
+  passive: {
+    name: string;
+    description: string;
+    image: { full: string };
+  };
+  allytips?: string[];
+  enemytips?: string[];
+}
+
+export async function fetchDDragonChampionsList(locale = 'de'): Promise<{
+  version: string;
+  champions: DDragonChampionSummary[];
+}> {
+  const v = getDDragonVersion();
+  const lang = locale === 'de' ? 'de_DE' : 'en_US';
+  try {
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/${lang}/champion.json`, {
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.data) {
+        const champs = Object.values(data.data) as DDragonChampionSummary[];
+        champs.sort((a, b) => a.name.localeCompare(b.name));
+        return { version: data.version || v, champions: champs };
+      }
+    }
+  } catch (err) {
+    console.warn('[DDragon] Error fetching champions list:', err);
+  }
+  return { version: v, champions: [] };
+}
+
+export async function fetchDDragonChampionDetail(
+  slugOrName: string,
+  locale = 'de'
+): Promise<{
+  version: string;
+  champion: DDragonChampionDetail | null;
+}> {
+  const v = getDDragonVersion();
+  const lang = locale === 'de' ? 'de_DE' : 'en_US';
+
+  // 1. Try directly with normalized name
+  const candidateId = normalizeChampionNameForDDragon(slugOrName);
+
+  try {
+    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/${lang}/champion/${candidateId}.json`, {
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.data && data.data[candidateId]) {
+        return { version: data.version || v, champion: data.data[candidateId] };
+      }
+    }
+  } catch {}
+
+  // 2. If not found directly, fetch champions index and find case-insensitive match
+  try {
+    const { champions } = await fetchDDragonChampionsList(locale);
+    const targetSlug = slugOrName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const found = champions.find((c) => {
+      const cId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return cId === targetSlug || cName === targetSlug;
+    });
+
+    if (found) {
+      const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/${lang}/champion/${found.id}.json`, {
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data && data.data[found.id]) {
+          return { version: data.version || v, champion: data.data[found.id] };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[DDragon] Error finding champion detail:', err);
+  }
+
+  return { version: v, champion: null };
+}
+
 export function getItemIconUrl(itemId: number, version?: string): string {
   if (!itemId || itemId === 0) return '';
   const v = version || getDDragonVersion();

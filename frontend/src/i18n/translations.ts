@@ -17,6 +17,8 @@ export interface TranslationDictionary {
     searchPlaceholder: string;
     apiOnline: string;
     tierList: string;
+    champions: string;
+    home: string;
   };
   home: {
     heroBadge: string;
@@ -251,6 +253,44 @@ export interface TranslationDictionary {
     mostBanned: string;
     totalAnalyzed: string;
   };
+  championWiki: {
+    pageTitle: string;
+    pageSubtitle: string;
+    searchPlaceholder: string;
+    filterAll: string;
+    filterFighter: string;
+    filterMage: string;
+    filterAssassin: string;
+    filterMarksman: string;
+    filterTank: string;
+    filterSupport: string;
+    difficulty: string;
+    role: string;
+    noChampions: string;
+    backToList: string;
+    lore: string;
+    abilities: string;
+    passive: string;
+    baseStats: string;
+    skins: string;
+    hp: string;
+    mana: string;
+    armor: string;
+    mr: string;
+    attackDamage: string;
+    attackSpeed: string;
+    movementSpeed: string;
+    range: string;
+    cooldown: string;
+    cost: string;
+    tips: string;
+    allyTips: string;
+    enemyTips: string;
+    resource: string;
+    perLevel: string;
+    defaultSkin: string;
+    patchDataNotice: string;
+  };
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
@@ -271,6 +311,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       searchPlaceholder: 'Beschwörer suchen (Name#TAG)...',
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
+      champions: 'Champions',
+      home: 'Startseite',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
@@ -507,6 +549,44 @@ export const translations: Record<Locale, TranslationDictionary> = {
       mostBanned: 'Meistgebannt',
       totalAnalyzed: 'Analysierte Matches',
     },
+    championWiki: {
+      pageTitle: 'Champion Übersicht',
+      pageSubtitle: 'Alle {count} Champions in League of Legends auf aktuellem Patch {patch}',
+      searchPlaceholder: 'Champion suchen (Name, Titel oder Rolle)...',
+      filterAll: 'Alle Rollen',
+      filterFighter: 'Kämpfer',
+      filterMage: 'Magier',
+      filterAssassin: 'Assassinen',
+      filterMarksman: 'Schützen',
+      filterTank: 'Tanks',
+      filterSupport: 'Unterstützer',
+      difficulty: 'Schwierigkeit',
+      role: 'Klasse',
+      noChampions: 'Keine Champions gefunden, die den Filtern entsprechen.',
+      backToList: 'Zurück zur Champion-Übersicht',
+      lore: 'Biografie & Hintergrund',
+      abilities: 'Fähigkeiten & Skills',
+      passive: 'Passiv',
+      baseStats: 'Basis-Attribute zum aktuellen Patch',
+      skins: 'Skins & Artworks',
+      hp: 'Leben',
+      mana: 'Mana / Ressource',
+      armor: 'Rüstung',
+      mr: 'Magieresistenz',
+      attackDamage: 'Angriffsschaden',
+      attackSpeed: 'Angriffstempo',
+      movementSpeed: 'Lauftempo',
+      range: 'Reichweite',
+      cooldown: 'Abklingzeit',
+      cost: 'Kosten',
+      tips: 'Tipps & Strategien',
+      allyTips: 'Tipps als dieser Champion',
+      enemyTips: 'Tipps gegen diesen Champion',
+      resource: 'Ressource',
+      perLevel: 'pro Stufe',
+      defaultSkin: 'Standard-Skin',
+      patchDataNotice: 'Aktuelle Patch-Daten direkt aus Riots Data Dragon',
+    },
   },
   en: {
     common: {
@@ -525,6 +605,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       searchPlaceholder: 'Search summoner (Name#TAG)...',
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
+      champions: 'Champions',
+      home: 'Home',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
@@ -760,6 +842,44 @@ export const translations: Record<Locale, TranslationDictionary> = {
       mostPicked: 'Most Picked',
       mostBanned: 'Most Banned',
       totalAnalyzed: 'Matches Analyzed',
+    },
+    championWiki: {
+      pageTitle: 'Champion Overview',
+      pageSubtitle: 'All {count} Champions in League of Legends on active Patch {patch}',
+      searchPlaceholder: 'Search champion (name, title or role)...',
+      filterAll: 'All Roles',
+      filterFighter: 'Fighters',
+      filterMage: 'Mages',
+      filterAssassin: 'Assassins',
+      filterMarksman: 'Marksmen',
+      filterTank: 'Tanks',
+      filterSupport: 'Supports',
+      difficulty: 'Difficulty',
+      role: 'Class',
+      noChampions: 'No champions found matching the selected filters.',
+      backToList: 'Back to Champion Overview',
+      lore: 'Biography & Lore',
+      abilities: 'Abilities & Skills',
+      passive: 'Passive',
+      baseStats: 'Base Statistics for Active Patch',
+      skins: 'Skins & Artworks',
+      hp: 'Health',
+      mana: 'Mana / Resource',
+      armor: 'Armor',
+      mr: 'Magic Resist',
+      attackDamage: 'Attack Damage',
+      attackSpeed: 'Attack Speed',
+      movementSpeed: 'Movement Speed',
+      range: 'Range',
+      cooldown: 'Cooldown',
+      cost: 'Cost',
+      tips: 'Tips & Strategy',
+      allyTips: 'Playing as Champion',
+      enemyTips: 'Playing against Champion',
+      resource: 'Resource',
+      perLevel: 'per level',
+      defaultSkin: 'Default Skin',
+      patchDataNotice: 'Active patch data directly from Riot Data Dragon',
     },
   },
 };
