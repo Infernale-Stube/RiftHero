@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -19,8 +19,10 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import {
   getPositionIconUrl,
   getChampionIconUrl,
+  getDDragonVersion,
   PositionKey,
 } from '@/lib/ddragon';
+import { fetchMetaChampions } from '@/lib/api';
 
 interface MetaChampion {
   name: string;
@@ -75,8 +77,44 @@ const ROLES: Array<{ key: PositionKey; label: string }> = [
 export default function HomeView() {
   const { t, locale } = useTranslation();
   const [activeRole, setActiveRole] = useState<PositionKey>('MID');
+  const [metaByRole, setMetaByRole] = useState<Record<string, MetaChampion[]>>(META_CHAMPIONS_BY_ROLE);
+  const [patchVersion, setPatchVersion] = useState<string>(() => {
+    const full = getDDragonVersion();
+    return full ? full.split('.').slice(0, 2).join('.') : '16.23';
+  });
 
-  const metaChampions = META_CHAMPIONS_BY_ROLE[activeRole] || META_CHAMPIONS_BY_ROLE.MID;
+  useEffect(() => {
+    // Derive current patch from active DDragon version
+    const full = getDDragonVersion();
+    if (full) {
+      setPatchVersion(full.split('.').slice(0, 2).join('.'));
+    }
+
+    // Fetch dynamic meta champions from backend
+    fetchMetaChampions().then((res) => {
+      if (res && res.champions) {
+        setMetaByRole((prev) => ({
+          ...prev,
+          ...(res.champions as any),
+        }));
+        if (res.patch) {
+          setPatchVersion(res.patch);
+        }
+      }
+    });
+
+    // Reactive sync if DDragon version updates in background
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setPatchVersion(customEvent.detail.split('.').slice(0, 2).join('.'));
+      }
+    };
+    window.addEventListener('rifthero:ddragon-version', handler);
+    return () => window.removeEventListener('rifthero:ddragon-version', handler);
+  }, []);
+
+  const metaChampions = metaByRole[activeRole] || META_CHAMPIONS_BY_ROLE[activeRole] || META_CHAMPIONS_BY_ROLE.MID;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-10 sm:px-6 lg:px-8">
@@ -194,7 +232,7 @@ export default function HomeView() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
               <Flame className="h-4 w-4 text-amber-400" />
-              <span>{t('home.metaTitle')}</span>
+              <span>{t('home.metaTitle', { patch: patchVersion })}</span>
             </div>
             <p className="text-sm text-zinc-400">
               {t('home.metaSubtitle')}

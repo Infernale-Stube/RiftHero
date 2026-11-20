@@ -264,7 +264,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       recentSearchesTitle: 'Zuletzt gesucht',
       recentSummonersTitle: 'Zuletzt aufgerufene Beschwörer',
       noRecentSummoners: 'Noch keine Spieler aufgerufen.',
-      metaTitle: 'Patch 14.23 Meta Picks',
+      metaTitle: 'Patch {patch} Meta Picks',
       metaSubtitle: 'Die stärksten Champions nach Rolle auf der aktuellen Kluft',
     },
     summoner: {
@@ -495,7 +495,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       recentSearchesTitle: 'Recent Searches',
       recentSummonersTitle: 'Recently Viewed Summoners',
       noRecentSummoners: 'No summoners viewed yet.',
-      metaTitle: 'Patch 14.23 Meta Picks',
+      metaTitle: 'Patch {patch} Meta Picks',
       metaSubtitle: 'Top tier champion picks by lane on Summoner\'s Rift',
     },
     summoner: {

@@ -251,3 +251,31 @@ export async function fetchSummonerMasteries(
   }
 }
 
+export interface MetaChampionItem {
+  name: string;
+  tier: 'S+' | 'S' | 'A';
+  winrate: string;
+  pickrate: string;
+  banrate: string;
+  role: string;
+  games?: number;
+}
+
+export interface MetaChampionsResponse {
+  patch: string;
+  champions: Record<string, MetaChampionItem[]>;
+}
+
+export async function fetchMetaChampions(): Promise<MetaChampionsResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/meta/champions`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+

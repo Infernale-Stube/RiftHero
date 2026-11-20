@@ -6,6 +6,7 @@ import { healthRoutes } from './routes/health';
 import { summonerRoutes } from './routes/summoners';
 import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
+import { metaRoutes } from './routes/meta';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
 
@@ -40,6 +41,7 @@ export async function buildServer() {
       await apiScope.register(summonerRoutes);
       await apiScope.register(matchRoutes);
       await apiScope.register(searchRoutes);
+      await apiScope.register(metaRoutes);
     },
     { prefix: '/api' }
   );
