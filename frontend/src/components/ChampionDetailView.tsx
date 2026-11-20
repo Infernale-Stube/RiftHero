@@ -24,6 +24,7 @@ import {
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
   fetchDDragonChampionDetail,
+  enrichChampionWithMeraki,
   DDragonChampionDetail,
   DDragonSkin,
   getChampionIconUrl,
@@ -136,7 +137,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     fetchChampionDetailApi(slug, locale)
       .then((res) => {
         if (res && res.champion) {
-          setData(res.champion);
+          setData(enrichChampionWithMeraki(res.champion));
           if (res.version) setVersion(res.version);
           return;
         }
@@ -267,18 +268,21 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     };
   }, [data, selectedLevel]);
 
-  // Active Rarity Tiers present on this champion (in top-to-bottom hierarchy)
-  const activeTiers = useMemo<RarityTier[]>(() => {
-    const present = new Set<RarityTier>();
-    for (const s of skins) {
-      if (s.num !== 0 && s.rarity) {
-        present.add(s.rarity as RarityTier);
-      }
-    }
-    const list = ALL_RARITIES.filter((tier) => present.has(tier));
-    if (list.length === 0) return ['Regular'];
+  // Standard LolDB ladder tiers for Y-axis (top to bottom: Transcendent -> Mythic -> Legendary -> Epic -> Regular)
+  const timelineLadderTiers = useMemo<RarityTier[]>(() => {
+    const hasExalted = skins.some((s) => s.rarity === 'Exalted');
+    const hasUltimate = skins.some((s) => s.rarity === 'Ultimate');
+    const list: RarityTier[] = ['Transcendent'];
+    if (hasExalted) list.push('Exalted');
+    if (hasUltimate) list.push('Ultimate');
+    list.push('Mythic', 'Legendary', 'Epic', 'Regular');
     return list;
   }, [skins]);
+
+  // Legend order (bottom-to-top hierarchy: Regular -> Epic -> Legendary -> Mythic -> Transcendent)
+  const timelineLegendTiers = useMemo<RarityTier[]>(() => {
+    return [...timelineLadderTiers].reverse();
+  }, [timelineLadderTiers]);
 
   // Skin Timeline Data Grouping (excludes base skin num 0)
   const timelineData = useMemo(() => {
@@ -789,12 +793,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-500/30 to-amber-500/50" />
       </div>
 
-      {/* Horizontal Thumbnail Strip with Left/Right arrows (no borders, no scrollbar leiste) */}
+      {/* Horizontal Thumbnail Strip with Left/Right arrows (matching LolDB) */}
       <div className="relative flex items-center">
         <button
           type="button"
           onClick={handlePrevSkin}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300 hover:bg-amber-500 hover:text-black transition-all cursor-pointer mr-2"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 border border-white/10 text-zinc-300 hover:border-orange-500 hover:text-white transition-all cursor-pointer mr-2 shadow-md active:scale-95"
           title="Vorheriger Skin"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -802,7 +806,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
         <div
           ref={thumbnailStripRef}
-          className="flex gap-2 overflow-x-auto py-1.5 scroll-smooth flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-2.5 overflow-x-auto py-2 scroll-smooth flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {skins.map((skin, idx) => {
             const isSelected = idx === selectedSkinIndex;
@@ -812,10 +816,10 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 data-skin-index={idx}
                 type="button"
                 onClick={() => setSelectedSkinIndex(idx)}
-                className={`group relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
+                className={`group relative h-13 w-13 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
                   isSelected
-                    ? 'ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,146,60,0.6)] scale-105'
-                    : 'opacity-70 hover:opacity-100 hover:scale-105'
+                    ? 'border-2 border-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.6)] scale-105'
+                    : 'border border-transparent opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
               >
@@ -835,16 +839,26 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handleNextSkin}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-300 hover:bg-amber-500 hover:text-black transition-all cursor-pointer ml-2"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 border border-white/10 text-zinc-300 hover:border-orange-500 hover:text-white transition-all cursor-pointer ml-2 shadow-md active:scale-95"
           title="Nächster Skin"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
+      {/* Progress Track Indicator */}
+      <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden mt-1 mb-1">
+        <div
+          className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-300"
+          style={{
+            width: `${((selectedSkinIndex + 1) / Math.max(skins.length, 1)) * 100}%`,
+          }}
+        />
+      </div>
+
       {/* Skin Counter */}
       <div className="text-center">
-        <span className="text-[11px] font-bold text-zinc-400">
+        <span className="text-xs font-bold text-zinc-400 select-none">
           {selectedSkinIndex + 1} / {skins.length}
         </span>
       </div>
@@ -857,17 +871,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const renderTimelineCard = () => (
     <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-amber-400" />
-          <h2 className="text-lg font-black text-white">{t('championWiki.skinTimeline') || 'Skin Timeline'}</h2>
-        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          {t('championWiki.skinTimeline') || 'Skin Timeline'}
+        </h2>
 
-        {/* Dynamic Clickable Legend Filters with Official Riot Gem Icons */}
-        <div className="flex flex-wrap items-center gap-3.5 text-xs font-semibold select-none">
-          {activeTiers.map((tier) => {
+        {/* Dynamic Clickable Legend Filters with pure colored dots matching LolDB */}
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold select-none">
+          {timelineLegendTiers.map((tier) => {
             const isEnabled = enabledRarities.has(tier);
             const color = RARITY_COLORS[tier];
-            const gemUrl = getRarityGemIconUrl(tier);
             return (
               <button
                 key={tier}
@@ -875,30 +887,19 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 onClick={() => toggleRarity(tier)}
                 className={`flex items-center gap-1.5 transition-all cursor-pointer ${
                   isEnabled
-                    ? 'opacity-100 text-zinc-200 hover:text-white'
-                    : 'opacity-40 text-zinc-500 line-through hover:opacity-60'
+                    ? 'opacity-100 text-zinc-300 hover:text-white'
+                    : 'opacity-40 text-zinc-600 line-through hover:opacity-60'
                 }`}
                 title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
               >
-                {gemUrl ? (
-                  <Image
-                    src={gemUrl}
-                    alt={tier}
-                    width={16}
-                    height={16}
-                    className={`h-4 w-4 object-contain transition-transform ${isEnabled ? 'scale-100' : 'scale-90 grayscale'}`}
-                    unoptimized
-                  />
-                ) : (
-                  <span
-                    className="h-2.5 w-2.5 rounded-full transition-transform"
-                    style={{
-                      backgroundColor: color,
-                      boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
-                      transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
-                    }}
-                  />
-                )}
+                <span
+                  className="h-2 w-2 rounded-full transition-transform shrink-0"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
+                    transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
+                  }}
+                />
                 <span>{tier}</span>
               </button>
             );
@@ -911,7 +912,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <div className="relative min-w-[860px] h-[280px] bg-black/40 rounded-2xl border border-white/[0.06] p-4 flex">
           {/* Left Y-Axis: Dynamic Rarity Gem Icons from Riot */}
           <div className="w-14 shrink-0 flex flex-col justify-between h-[224px] py-1 items-center border-r border-white/[0.06]">
-            {activeTiers.map((tier) => {
+            {timelineLadderTiers.map((tier) => {
               const isEnabled = enabledRarities.has(tier);
               const gemUrl = getRarityGemIconUrl(tier);
               return (
@@ -942,8 +943,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           {/* Main Timeline Grid */}
           <div className="relative flex-1 h-full pl-2">
             {/* Dynamic horizontal dashed lines for each active tier */}
-            {activeTiers.map((tier, idx) => {
-              const y = activeTiers.length > 1 ? (idx / (activeTiers.length - 1)) * 192 + 20 : 112;
+            {timelineLadderTiers.map((tier, idx) => {
+              const y = (idx / (timelineLadderTiers.length - 1)) * 176 + 24;
               return (
                 <div
                   key={tier}
@@ -974,8 +975,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     {/* Nodes in this year */}
                     <div className="relative w-full h-[224px]">
                       {col.nodes.map((node) => {
-                        const tierIdx = activeTiers.indexOf(node.tier);
-                        const yTop = activeTiers.length > 1 ? (tierIdx / (activeTiers.length - 1)) * 192 + 4 : 96;
+                        const tierIdx = timelineLadderTiers.indexOf(node.tier);
+                        const yTop = tierIdx !== -1 ? (tierIdx / (timelineLadderTiers.length - 1)) * 176 + 4 : 88;
                         const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
 
                         return (
@@ -1278,64 +1279,79 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   };
 
   // =========================================================================
-  // SUB-RENDER: FAQ CARD (4 QUESTIONS MATCHING REFERENCE SCREENSHOT)
+  // SUB-RENDER: FAQ SECTION (FULL-WIDTH VERTICAL LIST MATCHING LOLDB SCREENSHOT)
   // =========================================================================
   const renderFaqCard = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-8 pt-6 border-t border-white/[0.08]">
       {/* 1. Release Date */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-        <h3 className="text-base font-bold text-white">
+      <div className="space-y-2">
+        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           {t('championWiki.detailFaqRelease', { name: data.name })}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-          {t('championWiki.detailFaqReleaseDesc', {
-            name: data.name,
-            date: formattedReleaseDate,
-          })}
+        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
+          {locale.startsWith('en') ? (
+            <>
+              {data.name} was released on <span className="font-bold text-white">{formattedReleaseDate}</span>. Players could purchase them with Riot Points or Blue Essence as soon as it dropped in-game.
+            </>
+          ) : (
+            <>
+              {data.name} wurde am <span className="font-bold text-white">{formattedReleaseDate}</span> veröffentlicht. Spieler konnten den Champion direkt nach Release mit Blauen Essenzen oder Riot Points erwerben.
+            </>
+          )}
         </p>
       </div>
 
       {/* 2. Lane & Class */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-        <h3 className="text-base font-bold text-white">
+      <div className="space-y-2">
+        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           {t('championWiki.detailFaqRole', { name: data.name })}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-          {t('championWiki.detailFaqRoleDesc', {
-            name: data.name,
-            role: primaryRole,
-            flex:
-              metaPos?.recommendedPositions && metaPos.recommendedPositions.length > 1
-                ? ` und ${metaPos.recommendedPositions.slice(1).join(', ')}`
-                : '',
-          })}
+        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
+          {locale.startsWith('en') ? (
+            <>
+              {data.name} is primarily played in the <span className="font-bold text-white">{primaryRole}</span> lane and falls under the <span className="font-bold text-white">{metaPos?.class || 'Mage'}</span> class. The champion&apos;s kit and playstyle make them most suited for it, where they can maximize their impact throughout the game.
+            </>
+          ) : (
+            <>
+              {data.name} wird primär auf der Position <span className="font-bold text-white">{primaryRole}</span> gespielt und gehört zur Klasse <span className="font-bold text-white">{metaPos?.class || 'Magier'}</span>. Das Fähigkeitenset und der Spielstil sind ideal darauf abgestimmt, um über das gesamte Spiel hinweg maximalen Einfluss zu nehmen.
+            </>
+          )}
         </p>
       </div>
 
       {/* 3. Skins Count */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-        <h3 className="text-base font-bold text-white">
+      <div className="space-y-2">
+        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           {t('championWiki.detailFaqSkins', { name: data.name })}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-          {t('championWiki.detailFaqSkinsDesc', {
-            name: data.name,
-            count: nonBaseSkinsCount,
-          })}
+        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
+          {locale.startsWith('en') ? (
+            <>
+              Currently, there are <span className="font-bold text-amber-500">{nonBaseSkinsCount} {data.name} Skins</span> available in the game. This includes all cosmetic variants released since their launch, the base skin is not included.
+            </>
+          ) : (
+            <>
+              Aktuell gibt es <span className="font-bold text-amber-500">{nonBaseSkinsCount} {data.name} Skins</span> im Spiel. Dies umfasst alle kosmetischen Varianten seit dem Release; der Basis-Skin ist nicht mitgezählt.
+            </>
+          )}
         </p>
       </div>
 
       {/* 4. Pricing (BE & RP) */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-5 shadow-lg backdrop-blur-md space-y-2">
-        <h3 className="text-base font-bold text-white">
+      <div className="space-y-2">
+        <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           {t('championWiki.detailFaqCost', { name: data.name })}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-          {t('championWiki.detailFaqCostDesc', {
-            name: data.name,
-            be: beCost,
-            rp: rpCost,
-          })}
+        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
+          {locale.startsWith('en') ? (
+            <>
+              {data.name} costs <span className="font-bold text-amber-500">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blue Essence or {typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.
+            </>
+          ) : (
+            <>
+              {data.name} kostet <span className="font-bold text-amber-500">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blaue Essenzen oder {typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden. Blaue Essenzen werden durch Levelaufstiege und Entzaubern von Champion-Splittern verdient, während Riot Points mit Echtgeld erworben werden.
+            </>
+          )}
         </p>
       </div>
     </div>

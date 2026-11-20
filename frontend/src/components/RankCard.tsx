@@ -51,10 +51,10 @@ export default function RankCard({
           <button
             type="button"
             onClick={() => setActiveMode('solo')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
+            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
               activeMode === 'solo'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
+                : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             {t('summoner.soloRank') || 'Ranked Solo/Duo'}
@@ -62,10 +62,10 @@ export default function RankCard({
           <button
             type="button"
             onClick={() => setActiveMode('flex')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
+            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
               activeMode === 'flex'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
+                : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             {t('summoner.flexRank') || 'Ranked Flex'}
@@ -74,10 +74,10 @@ export default function RankCard({
             <button
               type="button"
               onClick={() => setActiveMode('5s')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
+              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
                 activeMode === '5s'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
+                  : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               {t('summoner.ranked5sRank') || 'Ranked 5s'}

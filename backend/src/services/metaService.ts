@@ -1,6 +1,9 @@
 import { prisma } from '../db/prisma';
 import { getChampionNameById, getDDragonPatches, getLatestDDragonVersion } from '../riot/ddragon';
 import championPositionsRaw from '../riot/championPositions.json';
+import championMetadataRaw from '../riot/championMetadata.json';
+
+const championMetadataMap = championMetadataRaw as Record<string, any>;
 
 const championPositionsMap = championPositionsRaw as Record<
   string,
@@ -191,14 +194,16 @@ async function buildChampionRostersAndDetails(
             const cleanKey = String(champ.key);
             const metaTier = tierMap.get(cleanName) || tierMap.get(cleanId) || null;
 
-            // Meraki match for store pricing and release dates
+            // Meraki and local bundle match for store pricing and release dates
+            const metaChamp =
+              championMetadataMap[cleanId] || championMetadataMap[cleanName] || championMetadataMap[cleanKey] || null;
             const merakiChamp =
               merakiMap.get(cleanId) || merakiMap.get(cleanName) || merakiMap.get(cleanKey) || null;
 
             const storePrice = {
-              ip: merakiChamp?.price?.blueEssence ?? 4800,
-              rp: merakiChamp?.price?.rp ?? 880,
-              releaseDate: merakiChamp?.releaseDate || '2012-01-01',
+              ip: metaChamp?.be ?? merakiChamp?.price?.blueEssence ?? 4800,
+              rp: metaChamp?.rp ?? merakiChamp?.price?.rp ?? 880,
+              releaseDate: metaChamp?.d ?? merakiChamp?.releaseDate ?? '2012-01-01',
             };
 
             const metaBlock = metaTier
@@ -238,13 +243,14 @@ async function buildChampionRostersAndDetails(
                   };
                 }
 
-                // 1. Primary match: Universal Riot numeric Skin ID (matches 99.8% across all languages!)
+                // 1. Primary match: Bundled verified championMetadata or Meraki numeric Skin ID
+                const skinMeta = metaChamp?.s?.[String(s.id)];
                 let matchedMerakiSkin = merakiChamp?.skins?.find(
                   (m: any) => String(m.id) === String(s.id)
                 );
 
                 // 2. Fallback: normalized name matching
-                if (!matchedMerakiSkin) {
+                if (!skinMeta && !matchedMerakiSkin) {
                   const ddNorm = normalizeSkinName(s.name, champ.name);
                   matchedMerakiSkin = merakiChamp?.skins?.find(
                     (m: any) => normalizeSkinName(m.name, champ.name) === ddNorm
@@ -252,17 +258,20 @@ async function buildChampionRostersAndDetails(
                 }
 
                 // 3. Known special cases (Hall of Legends / Ultimate variants)
-                let relDate = matchedMerakiSkin?.release;
-                let rarityRaw = matchedMerakiSkin?.rarity;
+                let relDate = skinMeta?.d || matchedMerakiSkin?.release;
+                let rarityRaw = skinMeta?.r || matchedMerakiSkin?.rarity;
+                let skinYear = skinMeta?.y;
 
-                if (!matchedMerakiSkin) {
+                if (!skinMeta && !matchedMerakiSkin) {
                   if (String(s.id) === '103086') {
                     // Immortalized Legend Ahri (2024 Hall of Legends)
                     relDate = '2024-06-12';
+                    skinYear = 2024;
                     rarityRaw = 'Transcendent';
                   } else if (String(s.id) === '147002' || String(s.id) === '147003') {
                     // Seraphine K/DA ALL OUT variants
                     relDate = '2020-10-29';
+                    skinYear = 2020;
                     rarityRaw = 'Transcendent';
                   } else {
                     relDate = storePrice.releaseDate;
@@ -271,7 +280,14 @@ async function buildChampionRostersAndDetails(
 
                 const rarityInfo = mapSkinRarity(rarityRaw);
                 const dObj = relDate ? new Date(relDate) : null;
-                const relYear = dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : (baseYear || 2012);
+                const relYear = skinYear || (dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : (baseYear || 2012));
+
+                const finalCost =
+                  typeof skinMeta?.c === 'number'
+                    ? skinMeta.c
+                    : matchedMerakiSkin?.cost
+                    ? parseInt(String(matchedMerakiSkin.cost), 10) || 975
+                    : 975;
 
                 return {
                   id: String(s.id),
@@ -281,7 +297,7 @@ async function buildChampionRostersAndDetails(
                   rarityColor: rarityInfo.rarityColor,
                   releaseDate: relDate || storePrice.releaseDate,
                   releaseYear: relYear,
-                  cost: matchedMerakiSkin?.cost ?? 975,
+                  cost: finalCost,
                 };
               });
 
@@ -841,50 +857,69 @@ export async function getChampionDetail(
             (s: any) => s.parentSkin === undefined || s.parentSkin === null
           );
 
-          // Enrich with Meraki skin release dates, rarities, and store costs
+          // Enrich with bundled championMetadata or Meraki skin release dates, rarities, and store costs
+          const metaChamp =
+            championMetadataMap[cleanTarget] ||
+            championMetadataMap[champId.toLowerCase().replace(/[^a-z0-9]/g, '')] ||
+            null;
+
+          let merakiChamp: any = null;
           try {
             const merakiRes = await fetch(
               `https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/${champId}.json`
             );
             if (merakiRes.ok) {
-              const merakiChamp = (await merakiRes.json()) as any;
-              champData.storeData = {
-                ip: merakiChamp.price?.blueEssence ?? 4800,
-                rp: merakiChamp.price?.rp ?? 880,
-                releaseDate: merakiChamp.releaseDate || '2012-01-01',
-              };
-              champData.releaseDate = merakiChamp.releaseDate;
-
-              champData.skins = champData.skins.map((s: any) => {
-                if (s.num === 0) {
-                  const baseYear = merakiChamp.releaseDate ? new Date(merakiChamp.releaseDate).getFullYear() : 2011;
-                  return {
-                    ...s,
-                    rarity: 'Regular',
-                    rarityColor: '#2E8D4C',
-                    releaseDate: merakiChamp.releaseDate,
-                    releaseYear: isNaN(baseYear) ? 2011 : baseYear,
-                    cost: 0,
-                  };
-                }
-                const matched = merakiChamp.skins?.find((m: any) => String(m.id) === String(s.id));
-                const rarityInfo = mapSkinRarity(matched?.rarity);
-                const relDate = matched?.release || merakiChamp.releaseDate;
-                const dObj = relDate ? new Date(relDate) : null;
-                const baseYear = merakiChamp.releaseDate ? new Date(merakiChamp.releaseDate).getFullYear() : 2012;
-                return {
-                  ...s,
-                  rarity: rarityInfo.rarity,
-                  rarityColor: rarityInfo.rarityColor,
-                  releaseDate: relDate,
-                  releaseYear: dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : baseYear,
-                  cost: matched?.cost ?? 975,
-                };
-              });
+              merakiChamp = (await merakiRes.json()) as any;
             }
           } catch (mErr) {
             console.warn('[MetaService] Meraki detail fallback error:', (mErr as Error).message);
           }
+
+          const relDateFinal = metaChamp?.d || merakiChamp?.releaseDate || '2012-01-01';
+          const relYearFinal = metaChamp?.y || (relDateFinal ? new Date(relDateFinal).getFullYear() : 2011);
+
+          champData.storeData = {
+            ip: metaChamp?.be ?? merakiChamp?.price?.blueEssence ?? 4800,
+            rp: metaChamp?.rp ?? merakiChamp?.price?.rp ?? 880,
+            releaseDate: relDateFinal,
+          };
+          champData.releaseDate = relDateFinal;
+
+          champData.skins = champData.skins.map((s: any) => {
+            if (s.num === 0) {
+              return {
+                ...s,
+                rarity: 'Regular',
+                rarityColor: '#2E8D4C',
+                releaseDate: relDateFinal,
+                releaseYear: isNaN(relYearFinal) ? 2011 : relYearFinal,
+                cost: 0,
+              };
+            }
+            const skinMeta = metaChamp?.s?.[String(s.id)];
+            const matched = merakiChamp?.skins?.find((m: any) => String(m.id) === String(s.id));
+            const skinRarity = skinMeta?.r || matched?.rarity || 'Regular';
+            const rarityInfo = mapSkinRarity(skinRarity);
+            const relDate = skinMeta?.d || matched?.release || relDateFinal;
+            const skinYear = skinMeta?.y;
+            const dObj = relDate ? new Date(relDate) : null;
+            const finalYear = skinYear || (dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : relYearFinal);
+            const finalCost =
+              typeof skinMeta?.c === 'number'
+                ? skinMeta.c
+                : matched?.cost
+                ? parseInt(String(matched.cost), 10) || 975
+                : 975;
+
+            return {
+              ...s,
+              rarity: rarityInfo.rarity,
+              rarityColor: rarityInfo.rarityColor,
+              releaseDate: relDate,
+              releaseYear: finalYear,
+              cost: finalCost,
+            };
+          });
         }
         // Cache in memory
         if (!memoryCache) {

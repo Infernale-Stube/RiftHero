@@ -332,13 +332,6 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
             {peakTier} {peakRank} · {peakLp} LP
           </span>
         </div>
-
-        {longestWinStreak > 1 && (
-          <div className="flex items-center gap-1">
-            <span className="font-semibold text-zinc-500 uppercase tracking-wide">{t('summoner.winStreak')}:</span>
-            <span className="font-bold text-emerald-400">{longestWinStreak}W {t('summoner.longestStreak')}</span>
-          </div>
-        )}
       </div>
     </div>
   );
