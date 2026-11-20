@@ -1106,7 +1106,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               </div>
             ) : (
               <div className="absolute inset-x-0 inset-y-0 flex">
-                {timelineData.map((col) => (
+                {timelineData.map((col, colIdx) => (
                   <div
                     key={col.year}
                     className="relative flex-1 flex flex-col justify-between items-center h-full group/col"
@@ -1122,43 +1122,117 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                         const tierIdx = timelineLadderTiers.indexOf(node.tier);
                         const yTop = tierIdx !== -1 ? (tierIdx / (timelineLadderTiers.length - 1)) * 176 + 4 : 88;
                         const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
+                        const isNearRightEdge = colIdx >= timelineData.length - 2;
+
+                        // -------------------------------------------------------------
+                        // SINGLE SKIN IN NODE
+                        // -------------------------------------------------------------
+                        if (node.skins.length === 1) {
+                          const singleSkin = node.skins[0];
+                          const globalSkinIdx = skins.findIndex((s) => s.id === singleSkin.id);
+
+                          return (
+                            <div
+                              key={node.tier}
+                              className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10 hover:z-50"
+                              style={{ top: `${yTop}px` }}
+                              onClick={() => {
+                                if (globalSkinIdx !== -1) {
+                                  setSelectedSkinIndex(globalSkinIdx);
+                                  scrollThumbnailIntoView(globalSkinIdx);
+                                }
+                              }}
+                            >
+                              <div
+                                className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 group-hover:scale-125 ${
+                                  isCurrentActive
+                                    ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
+                                    : 'hover:ring-2 hover:ring-amber-400'
+                                }`}
+                                style={{
+                                  border: `2.5px solid ${node.rarityColor}`,
+                                  boxShadow: `0 0 14px ${node.rarityColor}90`,
+                                }}
+                              >
+                                <Image
+                                  src={getChampionLoadingUrl(data.id, singleSkin.num)}
+                                  alt={singleSkin.name}
+                                  fill
+                                  className="object-cover object-top"
+                                  unoptimized
+                                />
+                              </div>
+
+                              {/* Tooltip on hover */}
+                              <div
+                                className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-50 whitespace-nowrap ${
+                                  yTop < 50 ? 'top-full mt-2' : 'bottom-full mb-2'
+                                }`}
+                              >
+                                <div className="rounded-lg bg-black/95 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xl backdrop-blur-md flex items-center gap-1.5">
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: node.rarityColor }}
+                                  />
+                                  <span>{singleSkin.name === 'default' ? t('championWiki.defaultSkin') : singleSkin.name}</span>
+                                  <span className="text-[9px] text-zinc-400">({col.year})</span>
+                                </div>
+                                {yTop >= 50 && (
+                                  <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
+                                )}
+                                {yTop < 50 && (
+                                  <div className="w-1.5 h-1.5 rotate-45 bg-black border-l border-t border-white/20 -mb-1 order-first" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // -------------------------------------------------------------
+                        // MULTIPLE SKINS IN NODE (FAN OUT / UNFOLD SIDEWAYS ON HOVER)
+                        // -------------------------------------------------------------
+                        const activeInNode = node.skins.find((s) => s.num === activeSkin?.num);
+                        const displayPrimarySkin = activeInNode || node.skins[0];
 
                         return (
                           <div
                             key={node.tier}
-                            className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10"
+                            className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10 hover:z-50"
                             style={{ top: `${yTop}px` }}
-                            onClick={() => {
-                              const targetSkin = node.skins[0];
-                              const idx = skins.findIndex((s) => s.id === targetSkin.id);
-                              if (idx !== -1) {
-                                setSelectedSkinIndex(idx);
-                                scrollThumbnailIntoView(idx);
-                              }
-                            }}
                           >
-                            <div
-                              className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 group-hover:scale-125 ${
-                                isCurrentActive
-                                  ? 'ring-2 ring-white scale-110'
-                                  : 'hover:ring-2 hover:ring-amber-400'
-                              }`}
-                              style={{
-                                border: `2.5px solid ${node.rarityColor}`,
-                                boxShadow: `0 0 14px ${node.rarityColor}90`,
-                              }}
-                            >
-                              <Image
-                                src={getChampionLoadingUrl(data.id, node.skins[0].num)}
-                                alt={node.skins[0].name}
-                                fill
-                                className="object-cover object-top"
-                                unoptimized
+                            {/* Collapsed state (visible when NOT hovered) */}
+                            <div className="relative group-hover:opacity-0 transition-opacity duration-150">
+                              {/* Stacked offset layer behind */}
+                              <div
+                                className="absolute -right-1 top-0.5 h-10 w-10 rounded-full opacity-40 -z-10"
+                                style={{
+                                  backgroundColor: '#18181b',
+                                  border: `2px solid ${node.rarityColor}`,
+                                }}
                               />
-                            </div>
 
-                            {/* Badge with count if multiple skins exist in this node */}
-                            {node.skins.length > 1 && (
+                              {/* Primary Avatar */}
+                              <div
+                                className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 ${
+                                  isCurrentActive
+                                    ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
+                                    : 'hover:ring-2 hover:ring-amber-400'
+                                }`}
+                                style={{
+                                  border: `2.5px solid ${node.rarityColor}`,
+                                  boxShadow: `0 0 14px ${node.rarityColor}90`,
+                                }}
+                              >
+                                <Image
+                                  src={getChampionLoadingUrl(data.id, displayPrimarySkin.num)}
+                                  alt={displayPrimarySkin.name}
+                                  fill
+                                  className="object-cover object-top"
+                                  unoptimized
+                                />
+                              </div>
+
+                              {/* Count Badge */}
                               <div
                                 className="absolute -top-1 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-md pointer-events-none"
                                 style={{
@@ -1168,23 +1242,73 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                               >
                                 {node.skins.length}
                               </div>
-                            )}
+                            </div>
 
-                            {/* Tooltip on hover */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30 whitespace-nowrap">
-                              <div className="rounded-lg bg-black/90 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl backdrop-blur-md space-y-0.5">
-                                {node.skins.map((s) => (
-                                  <div key={s.id} className="flex items-center gap-1.5">
-                                    <span
-                                      className="h-1.5 w-1.5 rounded-full"
-                                      style={{ backgroundColor: node.rarityColor }}
-                                    />
-                                    <span>{s.name === 'default' ? t('championWiki.defaultSkin') : s.name}</span>
-                                    <span className="text-[9px] text-zinc-400">({col.year})</span>
+                            {/* Expanded Tray on Hover (opens sideways so all skins are visible and clickable) */}
+                            <div
+                              className={`absolute top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1.5 p-1 rounded-full bg-[#0c1017]/95 border border-white/25 shadow-[0_0_25px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all duration-200 animate-in fade-in zoom-in-95 ${
+                                isNearRightEdge ? 'right-0' : 'left-0'
+                              }`}
+                            >
+                              {node.skins.map((skin) => {
+                                const isSelected = skin.num === activeSkin?.num;
+                                const globalSkinIdx = skins.findIndex((s) => s.id === skin.id);
+
+                                return (
+                                  <div key={skin.id} className="relative group/skin">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (globalSkinIdx !== -1) {
+                                          setSelectedSkinIndex(globalSkinIdx);
+                                          scrollThumbnailIntoView(globalSkinIdx);
+                                        }
+                                      }}
+                                      className={`relative h-10 w-10 shrink-0 rounded-full overflow-hidden transition-all duration-150 cursor-pointer hover:scale-110 ${
+                                        isSelected
+                                          ? 'ring-2 ring-white scale-105 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
+                                          : 'hover:ring-2 hover:ring-amber-400'
+                                      }`}
+                                      style={{
+                                        border: `2.5px solid ${node.rarityColor}`,
+                                        boxShadow: `0 0 10px ${node.rarityColor}80`,
+                                      }}
+                                      title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
+                                    >
+                                      <Image
+                                        src={getChampionLoadingUrl(data.id, skin.num)}
+                                        alt={skin.name}
+                                        fill
+                                        className="object-cover object-top"
+                                        unoptimized
+                                      />
+                                    </button>
+
+                                    {/* Individual Skin Tooltip */}
+                                    <div
+                                      className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/skin:flex flex-col items-center pointer-events-none z-50 whitespace-nowrap ${
+                                        yTop < 50 ? 'top-full mt-2' : 'bottom-full mb-2'
+                                      }`}
+                                    >
+                                      <div className="rounded-lg bg-black/95 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xl backdrop-blur-md flex items-center gap-1.5">
+                                        <span
+                                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                                          style={{ backgroundColor: node.rarityColor }}
+                                        />
+                                        <span>{skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}</span>
+                                        <span className="text-[9px] text-zinc-400">({col.year})</span>
+                                      </div>
+                                      {yTop >= 50 && (
+                                        <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
+                                      )}
+                                      {yTop < 50 && (
+                                        <div className="w-1.5 h-1.5 rotate-45 bg-black border-l border-t border-white/20 -mb-1 order-first" />
+                                      )}
+                                    </div>
                                   </div>
-                                ))}
-                              </div>
-                              <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
+                                );
+                              })}
                             </div>
                           </div>
                         );
