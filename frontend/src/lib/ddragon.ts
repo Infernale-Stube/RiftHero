@@ -197,47 +197,6 @@ export function getChampionLoadingUrl(championName?: string | null, skinNum: num
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_${skinNum}.jpg`;
 }
 
-export interface CDragonChroma {
-  id: number;
-  name: string;
-  colors: string[];
-  chromaPath: string;
-}
-
-export function getCDragonChromaImageUrl(chromaPath: string): string {
-  if (!chromaPath) return '';
-  const clean = chromaPath.replace(/^\/?lol-game-data\/assets\//i, '').toLowerCase();
-  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/${clean}`;
-}
-
-export async function fetchCDragonChampionChromas(championKey: string | number): Promise<Record<string, CDragonChroma[]>> {
-  if (!championKey) return {};
-  try {
-    const res = await fetch(
-      `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/${championKey}.json`
-    );
-    if (!res.ok) return {};
-    const json = await res.json();
-    const result: Record<string, CDragonChroma[]> = {};
-    if (Array.isArray(json?.skins)) {
-      for (const skin of json.skins) {
-        if (Array.isArray(skin.chromas) && skin.chromas.length > 0) {
-          result[String(skin.id)] = skin.chromas.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            colors: Array.isArray(c.colors) && c.colors.length > 0 ? c.colors : ['#666666'],
-            chromaPath: c.chromaPath || c.tilePath || '',
-          }));
-        }
-      }
-    }
-    return result;
-  } catch (err) {
-    console.warn('[CDragon] Failed to fetch chromas:', err);
-    return {};
-  }
-}
-
 export function getChampionPassiveIconUrl(imageFull: string, version?: string): string {
   if (!imageFull) return '';
   const v = version || getDDragonVersion();

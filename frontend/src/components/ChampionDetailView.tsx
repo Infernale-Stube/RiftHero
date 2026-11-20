@@ -35,9 +35,6 @@ import {
   getMajorMinorPatch,
   getDDragonVersion,
   PositionKey,
-  CDragonChroma,
-  fetchCDragonChampionChromas,
-  getCDragonChromaImageUrl,
 } from '@/lib/ddragon';
 import { fetchChampionDetailApi, fetchTierList, TierListChampionItem } from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
@@ -102,10 +99,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
 
-  // Chromas State
-  const [chromasMap, setChromasMap] = useState<Record<string, CDragonChroma[]>>({});
-  const [selectedChromaId, setSelectedChromaId] = useState<number | null>(null);
-
   // Interactive Rarity Filters for Skin Timeline
   const [enabledRarities, setEnabledRarities] = useState<Set<RarityTier>>(
     () => new Set<RarityTier>(['Regular', 'Epic', 'Legendary', 'Mythic', 'Transcendent'])
@@ -152,20 +145,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       .catch(() => {});
   }, [slug, locale]);
 
-  // Fetch CommunityDragon Chromas
-  useEffect(() => {
-    if (data?.key) {
-      fetchCDragonChampionChromas(data.key).then((res) => {
-        setChromasMap(res);
-      });
-    }
-  }, [data?.key]);
-
-  // Reset chroma when skin changes
-  useEffect(() => {
-    setSelectedChromaId(null);
-  }, [selectedSkinIndex]);
-
   const patchString = getMajorMinorPatch(version);
 
   // Position & class metadata
@@ -191,10 +170,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   }, [data]);
 
   const activeSkin = skins[selectedSkinIndex] || skins[0] || null;
-  const currentSkinChromas = chromasMap[String(activeSkin?.id)] || [];
-  const activeChroma = selectedChromaId
-    ? currentSkinChromas.find((c) => c.id === selectedChromaId)
-    : null;
 
   // Selected spell
   const selectedSpell = useMemo(() => {
@@ -351,10 +326,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const beCost = (data.storeData?.ip ?? 4800).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
   const rpCost = (data.storeData?.rp ?? 880).toLocaleString(locale.startsWith('en') ? 'en-US' : 'de-DE');
   const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
-
-  const spotlightImageSrc = activeChroma?.chromaPath
-    ? getCDragonChromaImageUrl(activeChroma.chromaPath)
-    : getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0);
 
   // =========================================================================
   // SUB-RENDER: PROFILE HEADER (NO SKINS BADGE, NO LEADERBOARD BADGE)
@@ -627,84 +598,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
-  // SUB-RENDER: SPOTLIGHT SPLASH CARD (CHROMAS BAR + SPLASH ART + CAROUSEL)
+  // SUB-RENDER: SPOTLIGHT SPLASH CARD (SPLASH ART + CAROUSEL)
   // =========================================================================
   const renderSpotlightSplashCard = () => (
     <div className="flex flex-col gap-3">
-      {/* Top Bar above Splash: Chromas Control matching screenshot */}
-      <div className="flex items-center justify-between text-xs font-bold min-h-[32px]">
-        <div className="flex items-center gap-2">
-          {/* Chromatic Color Wheel Button with Glowing Amber Ring */}
-          <div
-            className="relative flex h-7 w-7 items-center justify-center rounded-full p-1 bg-gradient-to-tr from-amber-500/20 to-orange-500/20 ring-2 ring-orange-500 shadow-[0_0_10px_rgba(251,146,60,0.4)] shrink-0"
-            title={currentSkinChromas.length > 0 ? `${currentSkinChromas.length} Chromas verfügbar` : 'Keine Chromas'}
-          >
-            <svg viewBox="0 0 24 24" className="w-full h-full" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="url(#chromaGrad)" strokeWidth="3" />
-              <defs>
-                <linearGradient id="chromaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ef4444" />
-                  <stop offset="25%" stopColor="#f59e0b" />
-                  <stop offset="50%" stopColor="#10b981" />
-                  <stop offset="75%" stopColor="#06b6d4" />
-                  <stop offset="100%" stopColor="#a855f7" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-
-          {/* Chromas Capsule or "No Chromas" Text */}
-          {currentSkinChromas.length === 0 ? (
-            <span className="text-xs font-semibold text-zinc-400">No Chromas</span>
-          ) : (
-            <div className="flex items-center gap-1.5 rounded-full bg-[#0c1017] border border-white/10 px-2 py-1 shadow-md">
-              {/* Swatch 0: Base / No Chroma */}
-              <button
-                type="button"
-                onClick={() => setSelectedChromaId(null)}
-                title="Basis-Splashart (Kein Chroma)"
-                className={`relative h-4 w-4 rounded-full overflow-hidden bg-white border border-white/20 transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                  selectedChromaId === null
-                    ? 'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.7)]'
-                    : 'hover:scale-110 opacity-80 hover:opacity-100'
-                }`}
-              >
-                <span className="absolute w-full h-[1.5px] bg-red-600 rotate-45" />
-              </button>
-
-              {/* Chroma Swatches */}
-              {currentSkinChromas.map((chroma) => {
-                const isSelected = selectedChromaId === chroma.id;
-                const bg =
-                  chroma.colors.length >= 2
-                    ? `linear-gradient(90deg, ${chroma.colors[0]} 50%, ${chroma.colors[1]} 50%)`
-                    : chroma.colors[0] || '#666';
-
-                return (
-                  <button
-                    key={chroma.id}
-                    type="button"
-                    onClick={() => setSelectedChromaId(chroma.id)}
-                    title={chroma.name}
-                    className={`relative h-4 w-4 rounded-full border border-white/20 transition-all cursor-pointer shrink-0 ${
-                      isSelected
-                        ? 'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.7)] scale-110'
-                        : 'hover:scale-110 opacity-90 hover:opacity-100'
-                    }`}
-                    style={{ background: bg }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Main Spotlight Splash Art Card */}
       <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-white/[0.08] bg-black shadow-2xl group">
         <Image
-          src={spotlightImageSrc}
-          alt={activeChroma?.name || activeSkin?.name || data.name}
+          src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
+          alt={activeSkin?.name || data.name}
           fill
           className="object-cover object-top brightness-95 group-hover:scale-[1.02] transition-transform duration-700"
           priority
@@ -1292,7 +1194,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             {renderBaseStatsCard()}
           </div>
 
-          {/* Right Column: Spotlight Splash Art + Chromas + Strip */}
+          {/* Right Column: Spotlight Splash Art + Strip */}
           <div className="lg:col-span-6 flex flex-col gap-3">
             {renderSpotlightSplashCard()}
           </div>
