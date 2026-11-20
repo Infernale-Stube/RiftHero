@@ -232,6 +232,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   const activeSkin = skins[selectedSkinIndex] || skins[0] || null;
 
+  const activeSkinDisplayName = useMemo(() => {
+    if (!activeSkin || !data) return '';
+    if (activeSkin.num === 0 || activeSkin.name === 'default') {
+      return locale === 'de' ? `Klassische(r) ${data.name}` : `Classic ${data.name}`;
+    }
+    return activeSkin.name;
+  }, [activeSkin, data, locale]);
+
   // Selected spell
   const selectedSpell = useMemo(() => {
     if (!data || selectedSpellIndex < 0 || selectedSpellIndex >= data.spells.length) {
@@ -719,11 +727,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   // =========================================================================
   const renderSpotlightSplashCard = () => (
     <div className="flex flex-col gap-3">
-      {/* Main Spotlight Splash Art Card */}
-      <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-white/[0.08] bg-black shadow-2xl group">
+      {/* Main Spotlight Splash Art Card (Borderless) */}
+      <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-black shadow-2xl group">
         <Image
           src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
-          alt={activeSkin?.name || data.name}
+          alt={activeSkinDisplayName}
           fill
           className="object-cover object-top brightness-95 group-hover:scale-[1.02] transition-transform duration-700"
           priority
@@ -735,7 +743,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           {/* Top Badge: Cost */}
           <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
             <Gem className="h-3 w-3 text-amber-400" />
-            <span>{activeSkin?.num === 0 ? 'Base Skin' : `${activeSkin?.cost || 975} RP`}</span>
+            <span>{activeSkin?.num === 0 ? (locale === 'de' ? 'Klassischer Skin' : 'Base Skin') : `${activeSkin?.cost || 975} RP`}</span>
           </div>
 
           {/* Bottom Badge: Rarity */}
@@ -788,9 +796,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       <div className="flex items-center gap-3 my-1.5">
         <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-amber-500/50" />
         <span className="text-xs sm:text-sm font-black tracking-widest text-amber-400 uppercase text-center px-2">
-          {activeSkin?.num === 0
-            ? (activeSkin?.name === 'default' ? data.name : activeSkin?.name)
-            : activeSkin?.name}
+          {activeSkinDisplayName}
         </span>
         <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-500/30 to-amber-500/50" />
       </div>
@@ -800,7 +806,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handlePrevSkin}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 border border-white/10 text-zinc-300 hover:border-orange-500 hover:text-white transition-all cursor-pointer mr-2 shadow-md active:scale-95"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-orange-400 transition-all cursor-pointer mr-2 shadow-md active:scale-95"
           title="Vorheriger Skin"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -820,8 +826,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 onClick={() => setSelectedSkinIndex(idx)}
                 className={`group relative h-13 w-13 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-2 border-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.6)] scale-105'
-                    : 'border border-transparent opacity-70 hover:opacity-100 hover:scale-105'
+                    ? 'ring-2 ring-orange-500 shadow-[0_0_14px_rgba(249,115,22,0.6)] scale-105'
+                    : 'opacity-70 hover:opacity-100 hover:scale-105'
                 }`}
                 title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
               >
@@ -841,25 +847,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <button
           type="button"
           onClick={handleNextSkin}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 border border-white/10 text-zinc-300 hover:border-orange-500 hover:text-white transition-all cursor-pointer ml-2 shadow-md active:scale-95"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-orange-400 transition-all cursor-pointer ml-2 shadow-md active:scale-95"
           title="Nächster Skin"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Progress Track Indicator */}
-      <div className="w-full h-1 bg-white/[0.08] rounded-full overflow-hidden mt-1 mb-1">
-        <div
-          className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-300"
-          style={{
-            width: `${((selectedSkinIndex + 1) / Math.max(skins.length, 1)) * 100}%`,
-          }}
-        />
-      </div>
-
-      {/* Skin Counter */}
-      <div className="text-center">
+      {/* Skin Counter (Leiste/Balken removed) */}
+      <div className="text-center pt-0.5">
         <span className="text-xs font-bold text-zinc-400 select-none">
           {selectedSkinIndex + 1} / {skins.length}
         </span>

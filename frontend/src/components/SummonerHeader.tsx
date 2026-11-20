@@ -249,7 +249,7 @@ export default function SummonerHeader({
                   className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 transition-transform duration-200 group-hover:scale-105"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400">
                     {rc.title}
                   </span>
                   {hasRank ? (
@@ -259,7 +259,7 @@ export default function SummonerHeader({
                           {rc.rank!.tier} {rc.rank!.rank}
                         </span>
                         <span className="text-zinc-500 font-bold text-xs">·</span>
-                        <span className="text-xs font-black text-sky-400 shrink-0">
+                        <span className="text-xs font-black text-orange-400 shrink-0">
                           {rc.rank!.leaguePoints} LP
                         </span>
                       </div>
@@ -267,7 +267,15 @@ export default function SummonerHeader({
                         <span className="font-bold text-emerald-400">{rc.rank!.wins}W</span>
                         <span className="font-bold text-rose-400">{rc.rank!.losses}L</span>
                         <span className="text-zinc-500">•</span>
-                        <span>{rc.rank!.winrate}% WR</span>
+                        <span className={`font-bold ${
+                          rc.rank!.winrate > 50
+                            ? 'text-emerald-400'
+                            : rc.rank!.winrate < 50
+                            ? 'text-rose-400'
+                            : 'text-zinc-400'
+                        }`}>
+                          {rc.rank!.winrate}% WR
+                        </span>
                       </div>
                     </>
                   ) : (

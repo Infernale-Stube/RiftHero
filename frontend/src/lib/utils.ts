@@ -34,9 +34,9 @@ export function getKdaColor(kda: number): string {
 }
 
 export function getWinrateColor(winrate: number): string {
-  if (winrate >= 60) return 'text-emerald-400 font-bold';
-  if (winrate >= 50) return 'text-sky-400 font-medium';
-  return 'text-slate-400';
+  if (winrate > 50) return 'text-emerald-400 font-bold';
+  if (winrate < 50) return 'text-rose-400 font-bold';
+  return 'text-zinc-400 font-bold';
 }
 
 export const TIER_BASE_LP: Record<string, number> = {

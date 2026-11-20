@@ -45,16 +45,16 @@ export default function RankCard({
 
   return (
     <div className="flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] p-4 shadow-xl">
-      {/* If Multi-Mode: Show Segmented Toggle between Ranked Solo, Flex, and 5s */}
+      {/* If Multi-Mode: Show Segmented Toggle between Ranked Solo, Flex, and 5s (Borderless) */}
       {isMultiMode ? (
-        <div className="flex rounded-lg bg-black/50 p-1 border border-white/[0.06] mb-3.5">
+        <div className="flex rounded-lg bg-black/50 p-1 mb-3.5">
           <button
             type="button"
             onClick={() => setActiveMode('solo')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
+            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
               activeMode === 'solo'
-                ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
-                : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
             {t('summoner.soloRank') || 'Ranked Solo/Duo'}
@@ -62,10 +62,10 @@ export default function RankCard({
           <button
             type="button"
             onClick={() => setActiveMode('flex')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
+            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
               activeMode === 'flex'
-                ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
-                : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
             {t('summoner.flexRank') || 'Ranked Flex'}
@@ -74,10 +74,10 @@ export default function RankCard({
             <button
               type="button"
               onClick={() => setActiveMode('5s')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer border ${
+              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
                 activeMode === '5s'
-                  ? 'border-orange-500 text-orange-400 bg-transparent shadow-[0_0_10px_rgba(249,115,22,0.25)]'
-                  : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'text-orange-400 bg-white/[0.06] shadow-sm font-extrabold'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
               }`}
             >
               {t('summoner.ranked5sRank') || 'Ranked 5s'}
@@ -112,7 +112,7 @@ export default function RankCard({
                 {currentRank.tier} {currentRank.rank}
               </span>
               <span className="text-zinc-500 font-bold">-</span>
-              <span className="text-xs font-black text-sky-400">
+              <span className="text-xs font-black text-orange-400">
                 {currentRank.leaguePoints} LP
               </span>
             </div>
@@ -120,7 +120,15 @@ export default function RankCard({
             <div className="mt-0.5 flex items-center gap-1.5 text-xs">
               <span className="font-bold text-emerald-400">{currentRank.wins}W</span>
               <span className="font-bold text-rose-400">{currentRank.losses}L</span>
-              <span className="text-zinc-400 font-semibold">({currentRank.winrate}%)</span>
+              <span className={`font-bold ${
+                currentRank.winrate > 50
+                  ? 'text-emerald-400'
+                  : currentRank.winrate < 50
+                  ? 'text-rose-400'
+                  : 'text-zinc-400'
+              }`}>
+                ({currentRank.winrate}%)
+              </span>
             </div>
           </div>
         </div>
