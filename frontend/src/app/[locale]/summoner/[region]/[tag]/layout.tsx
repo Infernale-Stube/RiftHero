@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { fetchSummonerProfile, fetchLiveGame } from '@/lib/api';
 import { SummonerProfileResponse, LiveGameResponse } from '@/types';
 import SummonerHeader from '@/components/SummonerHeader';
 import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { SummonerContext } from './SummonerContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -15,8 +16,9 @@ export default function SummonerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const params = useParams();
+  const pathname = usePathname();
   const region = (params?.region as string) || 'euw';
   const tag = (params?.tag as string) || '';
 
@@ -127,7 +129,43 @@ export default function SummonerLayout({
         refreshTimestamp,
       }}
     >
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 space-y-4">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumbs
+          items={(() => {
+            const summonerName = profileData
+              ? `${profileData.summoner.gameName}#${profileData.summoner.tagLine}`
+              : decodeURIComponent(tag).replace('-', '#');
+            const basePath = `/${locale}/summoner/${region}/${encodeURIComponent(tag)}`;
+
+            if (pathname.endsWith('/live')) {
+              return [
+                { label: summonerName, href: basePath },
+                { label: t('nav.liveGame') || 'Live Game' },
+              ];
+            }
+            if (pathname.endsWith('/champions')) {
+              return [
+                { label: summonerName, href: basePath },
+                { label: t('nav.champions') || 'Champions' },
+              ];
+            }
+            if (pathname.endsWith('/masteries')) {
+              return [
+                { label: summonerName, href: basePath },
+                { label: t('nav.masteries') || 'Masteries' },
+              ];
+            }
+            if (pathname.endsWith('/challenges')) {
+              return [
+                { label: summonerName, href: basePath },
+                { label: t('nav.challenges') || 'Challenges' },
+              ];
+            }
+            return [{ label: summonerName }];
+          })()}
+        />
+
         <AutoRefreshWatcher
           region={region}
           tag={tag}

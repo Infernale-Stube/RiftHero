@@ -26,6 +26,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { getMajorMinorPatch, getDDragonVersion, getItemIconUrl } from '@/lib/ddragon';
 import { fetchItemsRosterApi } from '@/lib/api';
 import { fetchDDragonItemsList } from '@/lib/ddragon';
@@ -316,13 +317,11 @@ export default function ItemsListView() {
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
       {/* Breadcrumb Navigation */}
-      <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-        <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
-          {t('nav.home') || 'Startseite'}
-        </Link>
-        <span className="text-zinc-600">/</span>
-        <span className="text-white font-semibold">{t('nav.items') || 'Items'}</span>
-      </nav>
+      <Breadcrumbs
+        items={[
+          { label: t('nav.items') || 'Items' },
+        ]}
+      />
 
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-white/[0.08] pb-6">

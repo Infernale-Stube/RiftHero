@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import {
   fetchDDragonChampionsList,
   getChampionIconUrl,
@@ -184,15 +185,11 @@ export default function ChampionsListView() {
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
       {/* Breadcrumb Navigation */}
-      <nav className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-        <Link href={`/${locale}`} className="hover:text-amber-400 transition-colors">
-          {t('nav.home') || 'Startseite'}
-        </Link>
-        <span className="text-zinc-600">/</span>
-        <span className="text-white font-semibold">
-          {t('nav.champions') || 'Champions'}
-        </span>
-      </nav>
+      <Breadcrumbs
+        items={[
+          { label: t('nav.champions') || 'Champions' },
+        ]}
+      />
 
       {/* Filter Bar (LoLDB Style Sticky-like Container) */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-4">

@@ -17,6 +17,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import {
   getPositionIconUrl,
   getChampionIconUrl,
@@ -153,7 +154,14 @@ export default function TierListView() {
   const totalMatches = tierData?.totalMatches ?? 0;
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        items={[
+          { label: t('nav.tierList') || 'Tier List' },
+        ]}
+      />
+
       {/* Top Banner / Hero */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
