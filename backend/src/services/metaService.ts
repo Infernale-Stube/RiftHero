@@ -613,6 +613,12 @@ export async function getChampionDetail(
       const data = (await res.json()) as any;
       if (data && data.data && data.data[champId]) {
         const champData = data.data[champId];
+        // Filter out chromas from skins (chromas have parentSkin property in DDragon)
+        if (champData && Array.isArray(champData.skins)) {
+          champData.skins = champData.skins.filter(
+            (s: any) => s.parentSkin === undefined || s.parentSkin === null
+          );
+        }
         // Cache in memory
         if (!memoryCache) {
           memoryCache = { ...snapshot, timestamp: Date.now() };

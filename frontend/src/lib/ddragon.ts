@@ -233,6 +233,7 @@ export interface DDragonSkin {
   num: number;
   name: string;
   chromas: boolean;
+  parentSkin?: number;
 }
 
 export interface DDragonChampionDetail extends DDragonChampionSummary {
@@ -314,7 +315,13 @@ export async function fetchDDragonChampionDetail(
       if (res.ok) {
         const data = await res.json();
         if (data && data.data && data.data[found.id]) {
-          return { version: data.version || v, champion: data.data[found.id] };
+          const champ = data.data[found.id];
+          if (champ && Array.isArray(champ.skins)) {
+            champ.skins = champ.skins.filter(
+              (s: DDragonSkin) => s.parentSkin === undefined || s.parentSkin === null
+            );
+          }
+          return { version: data.version || v, champion: champ };
         }
       }
     }

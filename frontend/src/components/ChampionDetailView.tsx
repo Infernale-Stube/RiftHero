@@ -155,14 +155,23 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   }
 
   const selectedSpell = selectedSpellIndex === -1 ? null : data.spells[selectedSpellIndex];
-  const activeSkin = data.skins[selectedSkinIndex] || data.skins[0];
+
+  // Filter out chromas (entries with parentSkin or chroma recolor variants)
+  const skins = useMemo(() => {
+    if (!data?.skins) return [];
+    return data.skins.filter((s) => s.parentSkin === undefined || s.parentSkin === null);
+  }, [data?.skins]);
+
+  const activeSkin = skins[selectedSkinIndex] || skins[0] || data.skins[0];
 
   const handleNextSkin = () => {
-    setSelectedSkinIndex((prev) => (prev + 1) % data.skins.length);
+    if (skins.length === 0) return;
+    setSelectedSkinIndex((prev) => (prev + 1) % skins.length);
   };
 
   const handlePrevSkin = () => {
-    setSelectedSkinIndex((prev) => (prev - 1 + data.skins.length) % data.skins.length);
+    if (skins.length === 0) return;
+    setSelectedSkinIndex((prev) => (prev - 1 + skins.length) % skins.length);
   };
 
   return (
@@ -227,7 +236,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            {t('championWiki.tabSkins')} ({data.skins.length})
+            {t('championWiki.tabSkins')} ({skins.length})
           </button>
         </div>
 
@@ -308,6 +317,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                   {/* Difficulty Badge */}
                   <div className="inline-flex items-center gap-1 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-400">
                     <span>Diff {metaPos?.difficulty ?? data.info?.difficulty ?? 5}/10</span>
+                  </div>
+
+                  {/* Total Unique Skins Badge (Chromas excluded) */}
+                  <div className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-zinc-300">
+                    <Layers className="h-3 w-3 text-amber-400" />
+                    <span>{skins.length} Skins</span>
                   </div>
 
                   {/* Live Meta Tier (from tier list table) */}
@@ -424,14 +439,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               </h2>
             </div>
             <div className="rounded-full bg-black/70 border border-white/10 px-3 py-1 text-xs font-mono font-bold text-zinc-300 backdrop-blur-md">
-              {selectedSkinIndex + 1} / {data.skins.length}
+              {selectedSkinIndex + 1} / {skins.length}
             </div>
           </div>
         </div>
 
-        {/* Thumbnail Selector Strip for Skins */}
+        {/* Thumbnail Selector Strip for Skins (Chromas excluded) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-          {data.skins.map((skin, idx) => {
+          {skins.map((skin, idx) => {
             const isSelected = selectedSkinIndex === idx;
             return (
               <button
@@ -804,7 +819,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 <p className="text-xs text-zinc-400 leading-relaxed">
                   {t('championWiki.detailFaqSkinsDesc', {
                     name: data.name,
-                    count: data.skins.length,
+                    count: skins.length,
                   })}
                 </p>
               </div>
