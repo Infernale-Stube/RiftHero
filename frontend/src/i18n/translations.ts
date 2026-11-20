@@ -215,6 +215,7 @@ export interface TranslationDictionary {
     redBans: string;
     championWinrate: string;
     rankedWinrate: string;
+    avgRank: string;
     noData: string;
     draftBans: string;
     you: string;
@@ -444,6 +445,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redBans: 'Rotes Team',
       championWinrate: 'Champ Winrate',
       rankedWinrate: 'Ranked Winrate',
+      avgRank: 'Ø Rang',
       noData: 'Keine Daten',
       draftBans: 'Gebannte Champions',
       you: 'DU',
@@ -671,6 +673,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redBans: 'Red Team',
       championWinrate: 'Champ Winrate',
       rankedWinrate: 'Ranked Winrate',
+      avgRank: 'Avg. Rank',
       noData: 'No Data',
       draftBans: 'Champion Bans',
       you: 'YOU',

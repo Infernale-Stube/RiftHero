@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { fetchSummonerStatus } from '@/lib/api';
 
 interface AutoRefreshWatcherProps {
@@ -17,7 +16,6 @@ export default function AutoRefreshWatcher({
   isUpdating: initialUpdating,
   onRefreshCompleted,
 }: AutoRefreshWatcherProps) {
-  const router = useRouter();
   const [updating, setUpdating] = useState(initialUpdating);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -45,8 +43,6 @@ export default function AutoRefreshWatcher({
 
           if (onRefreshCompleted) {
             onRefreshCompleted();
-          } else {
-            router.refresh();
           }
           return;
         }
@@ -83,7 +79,7 @@ export default function AutoRefreshWatcher({
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [updating, region, tag, router, onRefreshCompleted]);
+  }, [updating, region, tag, onRefreshCompleted]);
 
   // Completely silent background watcher as requested: no toasts or popups
   return null;

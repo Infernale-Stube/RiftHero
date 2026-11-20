@@ -38,3 +38,136 @@ export function getWinrateColor(winrate: number): string {
   if (winrate >= 50) return 'text-sky-400 font-medium';
   return 'text-slate-400';
 }
+
+export const TIER_BASE_LP: Record<string, number> = {
+  IRON: 0,
+  BRONZE: 400,
+  SILVER: 800,
+  GOLD: 1200,
+  PLATINUM: 1600,
+  EMERALD: 2000,
+  DIAMOND: 2400,
+  MASTER: 2800,
+  GRANDMASTER: 3200,
+  CHALLENGER: 3600,
+};
+
+export const DIVISION_OFFSET_LP: Record<string, number> = {
+  IV: 0,
+  III: 100,
+  II: 200,
+  I: 300,
+};
+
+export interface TeamAverageRank {
+  tier: string;
+  division?: string;
+  lp?: number;
+  formatted: string;
+  count: number;
+  totalPlayers: number;
+}
+
+export function calculateTeamAverageRank(
+  participants: Array<{
+    rank?: {
+      tier: string;
+      rank?: string;
+      leaguePoints?: number;
+    } | null;
+  }>
+): TeamAverageRank | null {
+  const pointsList: number[] = [];
+
+  for (const p of participants) {
+    if (!p.rank || !p.rank.tier) continue;
+    const tier = p.rank.tier.toUpperCase();
+    if (tier === 'UNRANKED') continue;
+
+    const base = TIER_BASE_LP[tier];
+    if (base === undefined) continue;
+
+    if (tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER') {
+      pointsList.push(base + (p.rank.leaguePoints || 0));
+    } else {
+      const div = (p.rank.rank || 'IV').toUpperCase();
+      const divOffset = DIVISION_OFFSET_LP[div] ?? 0;
+      pointsList.push(base + divOffset + (p.rank.leaguePoints || 0));
+    }
+  }
+
+  if (pointsList.length === 0) {
+    return null;
+  }
+
+  const avgPoints = Math.round(pointsList.reduce((a, b) => a + b, 0) / pointsList.length);
+
+  if (avgPoints >= 3600) {
+    const lp = avgPoints - 3600;
+    return {
+      tier: 'CHALLENGER',
+      lp,
+      formatted: `Challenger (${lp} LP)`,
+      count: pointsList.length,
+      totalPlayers: participants.length,
+    };
+  }
+  if (avgPoints >= 3200) {
+    const lp = avgPoints - 3200;
+    return {
+      tier: 'GRANDMASTER',
+      lp,
+      formatted: `Grandmaster (${lp} LP)`,
+      count: pointsList.length,
+      totalPlayers: participants.length,
+    };
+  }
+  if (avgPoints >= 2800) {
+    const lp = avgPoints - 2800;
+    return {
+      tier: 'MASTER',
+      lp,
+      formatted: `Master (${lp} LP)`,
+      count: pointsList.length,
+      totalPlayers: participants.length,
+    };
+  }
+
+  const standardTiers = [
+    { tier: 'DIAMOND', base: 2400 },
+    { tier: 'EMERALD', base: 2000 },
+    { tier: 'PLATINUM', base: 1600 },
+    { tier: 'GOLD', base: 1200 },
+    { tier: 'SILVER', base: 800 },
+    { tier: 'BRONZE', base: 400 },
+    { tier: 'IRON', base: 0 },
+  ];
+
+  for (const st of standardTiers) {
+    if (avgPoints >= st.base) {
+      const remainder = avgPoints - st.base;
+      const divIndex = Math.min(3, Math.floor(remainder / 100));
+      const divisions = ['IV', 'III', 'II', 'I'];
+      const division = divisions[divIndex];
+      const lp = remainder % 100;
+      const formattedTier = st.tier.charAt(0) + st.tier.slice(1).toLowerCase();
+      return {
+        tier: st.tier,
+        division,
+        lp,
+        formatted: `${formattedTier} ${division} (${lp} LP)`,
+        count: pointsList.length,
+        totalPlayers: participants.length,
+      };
+    }
+  }
+
+  return {
+    tier: 'IRON',
+    division: 'IV',
+    lp: 0,
+    formatted: 'Iron IV (0 LP)',
+    count: pointsList.length,
+    totalPlayers: participants.length,
+  };
+}

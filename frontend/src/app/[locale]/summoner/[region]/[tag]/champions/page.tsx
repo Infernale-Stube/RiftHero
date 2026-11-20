@@ -1,28 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchChampionStats } from '@/lib/api';
 import { ChampionStatSummary } from '@/types';
 import ChampionStatsView from '@/components/ChampionStatsView';
 import { useSummonerContext } from '../SummonerContext';
 
 export default function SummonerChampionsPage() {
-  const { region, tag, profileData } = useSummonerContext();
+  const { region, tag, profileData, refreshTimestamp } = useSummonerContext();
   const [champStats, setChampStats] = useState<ChampionStatSummary[]>([]);
   const [activeQueue, setActiveQueue] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loadChampionStats = useCallback(
-    async (queue: string) => {
+    async (queue: string, isSilent = false) => {
       if (!region || !tag) return;
-      setIsLoading(true);
+      if (!isSilent) setIsLoading(true);
       try {
         const stats = await fetchChampionStats(region, tag, queue);
         setChampStats(stats);
       } catch (err) {
         console.error('Failed to load champion stats:', err);
       } finally {
-        setIsLoading(false);
+        if (!isSilent) setIsLoading(false);
       }
     },
     [region, tag]
@@ -32,7 +32,16 @@ export default function SummonerChampionsPage() {
     if (profileData?.summoner) {
       loadChampionStats(activeQueue);
     }
-  }, [profileData?.summoner, activeQueue, loadChampionStats]);
+  }, [profileData?.summoner?.id, activeQueue, loadChampionStats]);
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    loadChampionStats(activeQueue, true);
+  }, [refreshTimestamp, activeQueue, loadChampionStats]);
 
   return (
     <div className="w-full">

@@ -26,6 +26,7 @@ export default function SummonerLayout({
 
   const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
   const loadProfile = useCallback(async () => {
     if (!region || !tag) return;
@@ -59,6 +60,7 @@ export default function SummonerLayout({
 
   const handleRefreshCompleted = () => {
     loadProfile();
+    setRefreshTimestamp(Date.now());
   };
 
   if (isLoadingProfile) {
@@ -122,6 +124,7 @@ export default function SummonerLayout({
         isLoadingLive,
         reloadProfile: loadProfile,
         reloadLiveGame: loadLiveGame,
+        refreshTimestamp,
       }}
     >
       <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">

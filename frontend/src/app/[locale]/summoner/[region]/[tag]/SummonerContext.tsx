@@ -13,6 +13,7 @@ export interface SummonerContextValue {
   isLoadingLive: boolean;
   reloadProfile: () => Promise<void>;
   reloadLiveGame: () => Promise<void>;
+  refreshTimestamp: number;
 }
 
 export const SummonerContext = createContext<SummonerContextValue | null>(null);

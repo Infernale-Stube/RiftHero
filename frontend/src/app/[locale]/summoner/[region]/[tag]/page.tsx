@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   fetchSummonerMatches,
@@ -25,7 +25,7 @@ export default function SummonerMatchesPage() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { region, tag, profileData } = useSummonerContext();
+  const { region, tag, profileData, refreshTimestamp } = useSummonerContext();
 
   // Legacy tab redirects
   useEffect(() => {
@@ -51,9 +51,9 @@ export default function SummonerMatchesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const loadMatchesAndStats = useCallback(
-    async (queue: string) => {
+    async (queue: string, isSilent = false) => {
       if (!region || !tag) return;
-      setIsLoadingMatches(true);
+      if (!isSilent) setIsLoadingMatches(true);
       try {
         const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
           fetchSummonerMatches(region, tag, queue, 10, 0),
@@ -69,17 +69,28 @@ export default function SummonerMatchesPage() {
       } catch (err: any) {
         console.error('Failed to load matches/stats:', err);
       } finally {
-        setIsLoadingMatches(false);
+        if (!isSilent) setIsLoadingMatches(false);
       }
     },
     [region, tag]
   );
 
+  // Initial load when profile becomes available or when queue tab changes
   useEffect(() => {
     if (profileData?.summoner) {
       loadMatchesAndStats(activeQueue);
     }
-  }, [profileData?.summoner, activeQueue, loadMatchesAndStats]);
+  }, [profileData?.summoner?.id, activeQueue, loadMatchesAndStats]);
+
+  // Silent in-place refresh when background sync finishes (zero layout jump or flash!)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    loadMatchesAndStats(activeQueue, true);
+  }, [refreshTimestamp, activeQueue, loadMatchesAndStats]);
 
   const handleLoadMore = async () => {
     if (isLoadingMore || matches.length >= totalMatches) return;

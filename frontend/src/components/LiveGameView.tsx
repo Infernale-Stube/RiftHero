@@ -12,8 +12,8 @@ import {
   getRuneIconUrl,
   getStyleIconUrl,
 } from '@/lib/ddragon';
-import { getRankEmblemUrl } from './RankBadge';
-import { getWinrateColor } from '@/lib/utils';
+import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
+import { getWinrateColor, calculateTeamAverageRank } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 interface LiveGameViewProps {
@@ -34,6 +34,31 @@ export default function LiveGameView({
   onRefresh,
 }: LiveGameViewProps) {
   const { t, locale } = useTranslation();
+
+  // Live timer for active match
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    if (!liveData?.inGame || !liveData.game?.gameStartTime) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const startTime = liveData.game.gameStartTime;
+    const initialElapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+    setElapsedSeconds(initialElapsed);
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [liveData]);
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   if (isLoading) {
     return (
@@ -70,8 +95,12 @@ export default function LiveGameView({
 
   const { game } = liveData;
 
+  const blueAvg = calculateTeamAverageRank(game.blueTeam);
+  const redAvg = calculateTeamAverageRank(game.redTeam);
+
   const renderRoster = (team: LiveGameParticipant[], isBlue: boolean) => {
     const sortedTeam = team;
+    const teamAvg = isBlue ? blueAvg : redAvg;
 
     // Bans belonging to this team
     const teamBans = (game.bans || []).filter(
@@ -80,22 +109,62 @@ export default function LiveGameView({
 
     return (
       <div className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 overflow-hidden shadow-xl backdrop-blur-md">
-        {/* Team Header with Integrated Champion Bans */}
+        {/* Team Header with Integrated Champion Bans & Average Rank */}
         <div
-          className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b ${
+          className={`flex items-center justify-between px-4 sm:px-5 py-3 border-b flex-wrap gap-2 ${
             isBlue
               ? 'bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-transparent border-blue-500/20 text-blue-300'
               : 'bg-gradient-to-r from-rose-950/80 via-rose-900/40 to-transparent border-rose-500/20 text-rose-300'
           }`}
         >
-          {/* Team Label & Icon */}
-          <div className="flex items-center gap-2 font-black uppercase tracking-wider text-xs sm:text-sm">
-            {isBlue ? (
-              <Shield className="h-4 w-4 text-blue-400 shrink-0" />
+          {/* Team Label & Icon & Average Rank Badge */}
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 font-black uppercase tracking-wider text-xs sm:text-sm">
+              {isBlue ? (
+                <Shield className="h-4 w-4 text-blue-400 shrink-0" />
+              ) : (
+                <Swords className="h-4 w-4 text-rose-400 shrink-0" />
+              )}
+              <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
+            </div>
+
+            {/* Average Rank Badge */}
+            {teamAvg ? (
+              <div
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 border shadow-sm backdrop-blur-sm ${
+                  isBlue
+                    ? 'bg-blue-950/80 border-blue-500/40 text-blue-200'
+                    : 'bg-rose-950/80 border-rose-500/40 text-rose-200'
+                }`}
+                title={`Team Average: ${teamAvg.formatted} (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
+              >
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                  {t('live.avgRank')}:
+                </span>
+                <div className="relative h-4 w-4 shrink-0">
+                  <Image
+                    src={getRankEmblemUrl(teamAvg.tier)}
+                    alt={teamAvg.tier}
+                    width={18}
+                    height={18}
+                    className="h-full w-full object-contain filter drop-shadow"
+                    unoptimized
+                  />
+                </div>
+                <span className={`text-xs font-black uppercase tracking-wide ${TIER_COLORS[teamAvg.tier]?.text || 'text-white'}`}>
+                  {teamAvg.tier} {teamAvg.division || ''}
+                </span>
+                {teamAvg.lp !== undefined && (
+                  <span className="text-[10px] font-semibold text-zinc-400">
+                    {teamAvg.lp} LP
+                  </span>
+                )}
+              </div>
             ) : (
-              <Swords className="h-4 w-4 text-rose-400 shrink-0" />
+              <div className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 bg-zinc-900/60 border border-zinc-800 text-[10px] font-medium text-zinc-500">
+                <span>{t('live.avgRank')}: {t('summoner.unranked')}</span>
+              </div>
             )}
-            <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
           </div>
 
           {/* Integrated Champion Bans in Header */}
@@ -369,6 +438,125 @@ export default function LiveGameView({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Live Match Summary & Team Rank Comparison Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 px-5 py-3.5 shadow-xl backdrop-blur-md">
+        {/* Left: Live Status & Queue */}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+          <div className="flex items-center gap-2 rounded-full bg-rose-500/10 border border-rose-500/30 px-3 py-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+            </span>
+            <span className="text-[11px] font-black tracking-wider text-rose-400 uppercase">
+              {t('live.gameActive')}
+            </span>
+          </div>
+
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-white">
+              {game.queueName || game.gameMode || "Summoner's Rift"}
+            </span>
+            {elapsedSeconds > 0 && (
+              <span className="text-[11px] text-zinc-400 font-medium">
+                {t('live.gameLength')}:{' '}
+                <span className="text-amber-400 font-bold font-mono">
+                  {formatTimer(elapsedSeconds)}
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Center: Average Rank Team Matchup */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 bg-black/50 rounded-xl px-4 py-2 border border-white/[0.06] w-full md:w-auto">
+          {/* Blue Team Avg */}
+          <div className="flex items-center gap-2 text-right">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">
+                {t('live.blueTeam')}
+              </span>
+              <span
+                className={`text-xs font-black uppercase ${
+                  blueAvg ? TIER_COLORS[blueAvg.tier]?.text : 'text-zinc-400'
+                }`}
+              >
+                {blueAvg ? `${blueAvg.tier} ${blueAvg.division || ''}` : t('summoner.unranked')}
+              </span>
+              {blueAvg?.lp !== undefined && (
+                <span className="text-[10px] text-zinc-400 -mt-0.5 font-medium">
+                  Ø {blueAvg.lp} LP
+                </span>
+              )}
+            </div>
+            {blueAvg && (
+              <div className="relative h-7 w-7 shrink-0">
+                <Image
+                  src={getRankEmblemUrl(blueAvg.tier)}
+                  alt={blueAvg.tier}
+                  width={28}
+                  height={28}
+                  className="h-full w-full object-contain filter drop-shadow"
+                  unoptimized
+                />
+              </div>
+            )}
+          </div>
+
+          {/* VS Divider */}
+          <div className="flex flex-col items-center px-1">
+            <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">
+              VS
+            </span>
+            <span className="text-[8px] font-bold text-zinc-600 uppercase">
+              {t('live.avgRank')}
+            </span>
+          </div>
+
+          {/* Red Team Avg */}
+          <div className="flex items-center gap-2 text-left">
+            {redAvg && (
+              <div className="relative h-7 w-7 shrink-0">
+                <Image
+                  src={getRankEmblemUrl(redAvg.tier)}
+                  alt={redAvg.tier}
+                  width={28}
+                  height={28}
+                  className="h-full w-full object-contain filter drop-shadow"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">
+                {t('live.redTeam')}
+              </span>
+              <span
+                className={`text-xs font-black uppercase ${
+                  redAvg ? TIER_COLORS[redAvg.tier]?.text : 'text-zinc-400'
+                }`}
+              >
+                {redAvg ? `${redAvg.tier} ${redAvg.division || ''}` : t('summoner.unranked')}
+              </span>
+              {redAvg?.lp !== undefined && (
+                <span className="text-[10px] text-zinc-400 -mt-0.5 font-medium">
+                  Ø {redAvg.lp} LP
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Refresh button */}
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-bold text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-all shadow-sm active:scale-95 shrink-0"
+          title={t('live.refreshTitle')}
+        >
+          <RefreshCw className="h-3.5 w-3.5 text-orange-400" />
+          <span>{t('live.refresh')}</span>
+        </button>
+      </div>
+
       {/* Team Rosters Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {renderRoster(game.blueTeam, true)}
