@@ -11,6 +11,8 @@ import {
   getSpellIconUrl,
   getRuneIconUrl,
   getStyleIconUrl,
+  getPositionIconUrl,
+  assignTeamPositions,
 } from '@/lib/ddragon';
 import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
 import { getWinrateColor, calculateTeamAverageRank } from '@/lib/utils';
@@ -74,7 +76,7 @@ export default function LiveGameView({
   const redAvg = calculateTeamAverageRank(game.redTeam);
 
   const renderRoster = (team: LiveGameParticipant[], isBlue: boolean) => {
-    const sortedTeam = team;
+    const sortedSlots = assignTeamPositions(team);
     const teamAvg = isBlue ? blueAvg : redAvg;
 
     // Bans belonging to this team
@@ -160,45 +162,60 @@ export default function LiveGameView({
             )}
           </div>
 
-          {/* Integrated Champion Bans in Header */}
+          {/* Integrated Champion Bans in Header (Always 5 Slots) */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden sm:inline">
               Bans:
             </span>
-            {teamBans.length > 0 ? (
-              teamBans.map((b) => (
+            {[0, 1, 2, 3, 4].map((slotIdx) => {
+              const b = teamBans[slotIdx];
+              const isValid = Boolean(
+                b &&
+                b.championId > 0 &&
+                b.championName &&
+                b.championName.toLowerCase() !== 'none'
+              );
+
+              return (
                 <div
-                  key={b.pickTurn}
-                  className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden border border-rose-500/40 bg-black/60 shadow-sm shrink-0"
-                  title={`Ban: ${b.championName}`}
+                  key={b?.pickTurn ?? slotIdx}
+                  className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden border border-white/10 bg-black/60 shadow-sm shrink-0 flex items-center justify-center"
+                  title={isValid ? `Ban: ${b.championName}` : 'Kein Ban'}
                 >
-                  <Image
-                    src={getChampionIconUrl(b.championName)}
-                    alt={b.championName}
-                    width={32}
-                    height={32}
-                    className="h-full w-full object-cover grayscale brightness-75 contrast-125"
-                    unoptimized
-                  />
-                  {/* Diagonal Red Ban Line */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
-                  </div>
-                  {/* Ban Icon */}
-                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 border border-rose-500 flex items-center justify-center">
-                    <Ban className="h-2 w-2 text-rose-400" />
-                  </div>
+                  {isValid ? (
+                    <>
+                      <Image
+                        src={getChampionIconUrl(b.championName)}
+                        alt={b.championName}
+                        width={32}
+                        height={32}
+                        className="h-full w-full object-cover grayscale brightness-75 contrast-125"
+                        unoptimized
+                      />
+                      {/* Diagonal Red Ban Line */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
+                      </div>
+                      {/* Ban Icon */}
+                      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 border border-rose-500 flex items-center justify-center">
+                        <Ban className="h-2 w-2 text-rose-400" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full bg-white/[0.02]">
+                      <Ban className="h-3 w-3 text-zinc-600/60" />
+                    </div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <span className="text-[10px] font-semibold text-zinc-500">None</span>
-            )}
+              );
+            })}
           </div>
         </div>
 
         {/* Players List */}
         <div className="flex flex-col gap-2 p-3">
-          {sortedTeam.map((p) => {
+          {sortedSlots.map(({ role: pRole, participant: p }) => {
+            if (!p) return null;
             const pRiotId = p.riotId || p.summonerName || 'Player';
             const isTarget = pRiotId.toLowerCase().includes(gameName.toLowerCase());
             const targetTag = region.toUpperCase();
@@ -342,11 +359,29 @@ export default function LiveGameView({
                         )}
                       </div>
 
-                      {/* Line 2: Champion Name */}
+                      {/* Line 2: Champion Name & Role */}
                       <div className="flex items-center gap-1.5 text-xs text-zinc-300 mt-0.5">
                         <span className="font-semibold text-zinc-200 truncate">
                           {p.championName}
                         </span>
+                        {pRole && (
+                          <div
+                            className="flex items-center gap-1 rounded bg-white/[0.06] border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-300 shrink-0"
+                            title={pRole}
+                          >
+                            <Image
+                              src={getPositionIconUrl(pRole)}
+                              alt={pRole}
+                              width={11}
+                              height={11}
+                              className="object-contain"
+                              unoptimized
+                            />
+                            <span className="font-bold text-[9px] text-zinc-400 uppercase tracking-tight">
+                              {pRole}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

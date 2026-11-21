@@ -11,6 +11,7 @@ import {
   Coins,
   Trophy,
   Award,
+  Ban,
 } from 'lucide-react';
 import { FormattedMatch, MatchParticipant, DeepLolScore } from '@/types';
 import {
@@ -24,6 +25,8 @@ import {
   getObjectiveIconUrl,
   getParticipantPosition,
   getParticipantPositionOrder,
+  assignTeamPositions,
+  POSITION_KEYS_ORDER,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -119,7 +122,9 @@ function BanSlot({ champId }: { champId?: number | null }) {
           <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45 pointer-events-none" />
         </>
       ) : (
-        <div className="w-1 h-1 rounded-full bg-white/[0.08]" />
+        <div className="flex items-center justify-center w-full h-full bg-white/[0.03]">
+          <Ban className="h-2.5 w-2.5 text-zinc-600/70" />
+        </div>
       )}
     </div>
   );
@@ -171,12 +176,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const playerPos = getParticipantPosition(participant);
 
   // Sort teams by standard position order: TOP -> JUNGLE -> MID -> ADC -> SUPPORT
-  const sortedBlueTeam = [...blueTeam].sort(
-    (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
-  );
-  const sortedRedTeam = [...redTeam].sort(
-    (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
-  );
+  const sortedBlueTeamSlots = assignTeamPositions(blueTeam);
+  const sortedRedTeamSlots = assignTeamPositions(redTeam);
+  const sortedBlueTeam = sortedBlueTeamSlots.map((s) => s.participant).filter(Boolean) as MatchParticipant[];
+  const sortedRedTeam = sortedRedTeamSlots.map((s) => s.participant).filter(Boolean) as MatchParticipant[];
 
   // Compute game-wide stats
   const allParticipants = [...blueTeam, ...redTeam];
@@ -211,13 +214,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
     totals?: { kills: number; deaths: number; assists: number; gold: number; damage: number },
     teamRawData?: any
   ) => {
-    const sortedTeam = [...team].sort(
-      (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
-    );
+    const sortedSlots = assignTeamPositions(team);
 
-    const bans: number[] = (teamRawData?.bans || [])
-      .map((b: any) => b.championId)
-      .filter((id: number) => id > 0);
+    const rawBans = (teamRawData?.bans || []).map((b: any) => b.championId ?? -1);
+    const bans: number[] = Array.from({ length: 5 }, (_, idx) => rawBans[idx] ?? -1);
     const obj = teamRawData?.objectives || {};
 
     const sideTowers = obj.tower?.kills ?? 0;
@@ -373,7 +373,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
         {/* Players List */}
         <div className="divide-y divide-white/[0.04]">
-          {sortedTeam.map((p) => {
+          {sortedSlots.map(({ role: pRole, participant: p }) => {
+            if (!p) return null;
             const isTarget = p.puuid === participant.puuid;
             const targetTag = p.riotIdTagline || region.toUpperCase();
             const formattedTag = `${p.riotIdGameName}-${targetTag}`;
@@ -381,7 +382,6 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             const pKeystone = getRuneIconUrl(p.primaryRune);
             const pStyle = getStyleIconUrl(p.secondaryStyle);
             const pScore = formatScore(p.score);
-            const pRole = getParticipantPosition(p);
 
             return (
               <div
@@ -864,12 +864,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
         {/* Right Side: 5 Matchups with centered Role Icon Separator + Expand Button */}
         <div className="flex items-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-white/[0.06]">
           <div className="flex flex-col gap-1.5 text-xs">
-            {[0, 1, 2, 3, 4].map((i) => {
-              const blueP = sortedBlueTeam[i];
-              const redP = sortedRedTeam[i];
-              const pos =
-                (blueP ? getParticipantPosition(blueP) : null) ||
-                (redP ? getParticipantPosition(redP) : null);
+            {POSITION_KEYS_ORDER.map((posKey, i) => {
+              const blueP = sortedBlueTeamSlots[i]?.participant;
+              const redP = sortedRedTeamSlots[i]?.participant;
+              const pos = posKey;
               const isBlueCurrent = blueP?.puuid === participant.puuid;
               const isRedCurrent = redP?.puuid === participant.puuid;
               const blueFormatted = blueP
@@ -880,7 +878,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 : '';
 
               return (
-                <div key={i} className="flex items-center gap-2.5">
+                <div key={posKey} className="flex items-center gap-2.5">
                   {/* Blue Player */}
                   <div className="flex items-center gap-1.5 w-[95px] sm:w-[110px] min-w-0">
                     {blueP && (
@@ -913,20 +911,16 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   {/* Role Icon Divider */}
                   <div
                     className="flex items-center justify-center shrink-0 w-4"
-                    title={pos || 'Role'}
+                    title={pos}
                   >
-                    {pos ? (
-                      <Image
-                        src={getPositionIconUrl(pos)}
-                        alt={pos}
-                        width={14}
-                        height={14}
-                        className="h-4 w-4 object-contain opacity-70 hover:opacity-100 transition-opacity"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="text-[8px] text-zinc-600">•</span>
-                    )}
+                    <Image
+                      src={getPositionIconUrl(pos)}
+                      alt={pos}
+                      width={14}
+                      height={14}
+                      className="h-4 w-4 object-contain opacity-70 hover:opacity-100 transition-opacity"
+                      unoptimized
+                    />
                   </div>
 
                   {/* Red Player */}

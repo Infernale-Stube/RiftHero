@@ -20,6 +20,10 @@ export interface TranslationDictionary {
     champions: string;
     items: string;
     home: string;
+    liveGame: string;
+    masteries: string;
+    challenges: string;
+    matches: string;
   };
   navigation: {
     home: string;
@@ -416,6 +420,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
       champions: 'Champions',
       items: 'Items',
       home: 'Startseite',
+      liveGame: 'Live Game',
+      masteries: 'Masteries',
+      challenges: 'Challenges',
+      matches: 'Match History',
     },
     navigation: {
       home: 'Startseite',
@@ -812,6 +820,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
       champions: 'Champions',
       items: 'Items',
       home: 'Homepage',
+      liveGame: 'Live Game',
+      masteries: 'Masteries',
+      challenges: 'Challenges',
+      matches: 'Match History',
     },
     navigation: {
       home: 'Homepage',

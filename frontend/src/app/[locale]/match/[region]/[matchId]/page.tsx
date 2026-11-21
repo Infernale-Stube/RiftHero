@@ -36,6 +36,7 @@ import {
   getPositionIconUrl,
   getParticipantPosition,
   getParticipantPositionOrder,
+  assignTeamPositions,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
@@ -250,15 +251,14 @@ export default function MatchDetailPage() {
 
         {/* Players List Table */}
         <div className="divide-y divide-white/[0.04] flex flex-col flex-1">
-          {[...team]
-            .sort((a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b))
-            .map((p, pIndex) => {
+          {assignTeamPositions(team)
+            .map(({ role: pos, participant: p }, pIndex) => {
+            if (!p) return null;
             const isHighlighted =
               activeHighlightPuuid === p.puuid ||
               activeHighlightPuuid === `participant${pIndex + (isBlue ? 1 : 6)}` ||
               activeHighlightPuuid === `participant${p.puuid}`;
 
-            const pos = getParticipantPosition(p);
             const targetTag = p.riotIdTagline || region.toUpperCase();
             const formattedTag = `${p.riotIdGameName}-${targetTag}`;
             const damagePct = p.damageShare ?? (teamDetail.totalDamage > 0
@@ -513,30 +513,49 @@ export default function MatchDetailPage() {
         </div>
 
         {/* Team Bans Footer */}
-        {teamDetail.bans && teamDetail.bans.length > 0 && (
+        {teamDetail.bans && (
           <div className="p-3 border-t border-white/[0.06] bg-black/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 text-slate-400 font-semibold">
               <Ban className="h-3.5 w-3.5 text-rose-400" />
               <span>{t('matchDetail.bans')}</span>
             </div>
             <div className="flex items-center gap-1">
-              {teamDetail.bans.map((ban, bIdx) => (
-                <div
-                  key={bIdx}
-                  className="relative h-6 w-6 overflow-hidden rounded border border-white/10 bg-black/80"
-                  title={`Gebannt: ${ban.championName}`}
-                >
-                  <Image
-                    src={getChampionIconUrl(ban.championName)}
-                    alt={ban.championName}
-                    width={24}
-                    height={24}
-                    className="h-full w-full object-cover grayscale opacity-70"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-rose-950/40" />
-                </div>
-              ))}
+              {[0, 1, 2, 3, 4].map((slotIdx) => {
+                const ban = teamDetail.bans?.[slotIdx];
+                const isValid = Boolean(
+                  ban &&
+                  ban.championId > 0 &&
+                  ban.championName &&
+                  ban.championName.toLowerCase() !== 'none'
+                );
+
+                return (
+                  <div
+                    key={slotIdx}
+                    className="relative h-6 w-6 overflow-hidden rounded border border-white/10 bg-black/80 flex items-center justify-center shrink-0"
+                    title={isValid ? `Gebannt: ${ban.championName}` : 'Kein Ban'}
+                  >
+                    {isValid ? (
+                      <>
+                        <Image
+                          src={getChampionIconUrl(ban.championName)}
+                          alt={ban.championName}
+                          width={24}
+                          height={24}
+                          className="h-full w-full object-cover grayscale opacity-70"
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 bg-rose-950/40" />
+                        <div className="absolute inset-x-0 top-1/2 h-[1px] bg-rose-500/80 -rotate-45 pointer-events-none" />
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full bg-white/[0.02]">
+                        <Ban className="h-2.5 w-2.5 text-zinc-600/70" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

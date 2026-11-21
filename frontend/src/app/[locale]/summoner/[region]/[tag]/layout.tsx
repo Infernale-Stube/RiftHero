@@ -166,25 +166,25 @@ export default function SummonerLayout({
               : decodeURIComponent(tag).replace('-', '#');
             const basePath = `/${locale}/summoner/${region}/${encodeURIComponent(tag)}`;
 
-            if (pathname.endsWith('/live')) {
+            if (pathname.includes('/live')) {
               return [
                 { label: summonerName, href: basePath },
                 { label: t('nav.liveGame') || 'Live Game' },
               ];
             }
-            if (pathname.endsWith('/champions')) {
+            if (pathname.includes('/champions')) {
               return [
                 { label: summonerName, href: basePath },
                 { label: t('nav.champions') || 'Champions' },
               ];
             }
-            if (pathname.endsWith('/masteries')) {
+            if (pathname.includes('/masteries')) {
               return [
                 { label: summonerName, href: basePath },
                 { label: t('nav.masteries') || 'Masteries' },
               ];
             }
-            if (pathname.endsWith('/challenges')) {
+            if (pathname.includes('/challenges')) {
               return [
                 { label: summonerName, href: basePath },
                 { label: t('nav.challenges') || 'Challenges' },

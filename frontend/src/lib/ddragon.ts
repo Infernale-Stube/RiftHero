@@ -670,8 +670,12 @@ export function getDragonSubtypeName(subType: string): string {
   return 'Drake';
 }
 
+import championPositionsRaw from '@/lib/championPositions.json';
+
 // Player Positions: TOP, JUNGLE, MID, ADC, SUPPORT
 export type PositionKey = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+
+export const POSITION_KEYS_ORDER: PositionKey[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
 
 export const POSITION_ICONS: Record<PositionKey, string> = {
   TOP: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png',
@@ -688,6 +692,163 @@ export const POSITION_ORDER_MAP: Record<PositionKey, number> = {
   ADC: 4,
   SUPPORT: 5,
 };
+
+export const SUPPORT_ITEM_IDS = new Set<number>([
+  // Season 14+ Support Items
+  3865, // World Atlas
+  3866, // Runic Compass
+  3867, // Bounty of Worlds
+  3869, // Celestial Opposition
+  3870, // Dream Maker
+  3871, // Zaz'Zak's Realmspike
+  3876, // Solstice Sleigh
+  3877, // Bloodsong
+  // Seasons 10-13 Support Items
+  3850, // Spellthief's Edge
+  3851, // Frostfang
+  3853, // Shard of True Ice
+  3854, // Steel Shoulderguards
+  3855, // Runesteel Spaulders
+  3857, // Pauldrons of Whiterock
+  3858, // Relic Shield
+  3859, // Targon's Buckler
+  3860, // Bulwark of the Mountain
+  3862, // Spectral Sickle
+  3863, // Harrowing Crescent
+  3864, // Black Mist Scythe
+  // Legacy Support Items
+  3301, 3302, 3303, 3096, 3097, 3098, 3069, 3401, 3092, 2049, 2045,
+]);
+
+// Fast lookup map for champion positions
+const champPositionsMap = new Map<string, { role: string; recommendedPositions: string[] }>();
+Object.values(championPositionsRaw as Record<string, any>).forEach((c) => {
+  if (c.id) champPositionsMap.set(String(c.id).toLowerCase().replace(/[^a-z0-9]/g, ''), c);
+  if (c.name) champPositionsMap.set(String(c.name).toLowerCase().replace(/[^a-z0-9]/g, ''), c);
+  if (c.key) champPositionsMap.set(String(c.key).toLowerCase().replace(/[^a-z0-9]/g, ''), c);
+});
+
+function roleStringToPositionKey(role?: string | null): PositionKey | null {
+  if (!role) return null;
+  const r = role.toUpperCase().trim();
+  if (r === 'TOP') return 'TOP';
+  if (r === 'JUNGLE') return 'JUNGLE';
+  if (r === 'MIDDLE' || r === 'MID') return 'MID';
+  if (r === 'BOTTOM' || r === 'BOT' || r === 'ADC') return 'ADC';
+  if (r === 'SUPPORT' || r === 'UTILITY') return 'SUPPORT';
+  return null;
+}
+
+export interface TeamMemberLike {
+  championName?: string;
+  championId?: number;
+  spell1Id?: number;
+  spell2Id?: number;
+  items?: number[];
+  teamPosition?: string | null;
+  lane?: string | null;
+  role?: string | null;
+}
+
+export interface AssignedTeamSlot<T> {
+  role: PositionKey;
+  participant?: T;
+}
+
+export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): AssignedTeamSlot<T>[] {
+  const roles: PositionKey[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+  if (!team || team.length === 0) {
+    return roles.map((r) => ({ role: r }));
+  }
+
+  // If not standard 5-player team (e.g. Arena 2v2 or incomplete), sort by normal position order
+  if (team.length !== 5) {
+    const sorted = [...team].sort(
+      (a, b) => getParticipantPositionOrder(a) - getParticipantPositionOrder(b)
+    );
+    return roles.map((r, idx) => ({
+      role: r,
+      participant: sorted[idx],
+    }));
+  }
+
+  const assigned = new Map<T, PositionKey>();
+  const unassignedPlayers = [...team];
+  const unassignedRoles = new Set<PositionKey>(roles);
+
+  // 1. Jungler Filter: Smite (spell ID 11)
+  const smiteIdx = unassignedPlayers.findIndex(
+    (p) => p.spell1Id === 11 || p.spell2Id === 11
+  );
+  if (smiteIdx !== -1) {
+    const jglPlayer = unassignedPlayers[smiteIdx];
+    assigned.set(jglPlayer, 'JUNGLE');
+    unassignedRoles.delete('JUNGLE');
+    unassignedPlayers.splice(smiteIdx, 1);
+  }
+
+  // 2. Support Filter: Support Item
+  const supIdx = unassignedPlayers.findIndex((p) =>
+    p.items?.some((id) => SUPPORT_ITEM_IDS.has(id))
+  );
+  if (supIdx !== -1 && unassignedRoles.has('SUPPORT')) {
+    const supPlayer = unassignedPlayers[supIdx];
+    assigned.set(supPlayer, 'SUPPORT');
+    unassignedRoles.delete('SUPPORT');
+    unassignedPlayers.splice(supIdx, 1);
+  }
+
+  // 3. Assign remaining roles according to champion main role from championPositions table
+  const remRoles = Array.from(unassignedRoles);
+
+  function getPermutations<P>(arr: P[]): P[][] {
+    if (arr.length <= 1) return [arr];
+    const res: P[][] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+      for (const p of getPermutations(rest)) {
+        res.push([arr[i], ...p]);
+      }
+    }
+    return res;
+  }
+
+  const rolePerms = getPermutations(remRoles);
+  let bestPerm = rolePerms[0] || remRoles;
+  let bestScore = -1;
+
+  for (const perm of rolePerms) {
+    let score = 0;
+    for (let i = 0; i < unassignedPlayers.length; i++) {
+      const p = unassignedPlayers[i];
+      const targetRole = perm[i];
+      const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cInfo = champPositionsMap.get(clean);
+      const mainPos = roleStringToPositionKey(cInfo?.role);
+      const recPos = (cInfo?.recommendedPositions || []).map(roleStringToPositionKey);
+
+      if (mainPos === targetRole) score += 20;
+      else if (recPos.includes(targetRole)) score += 10;
+
+      // Secondary hint from Riot API
+      const apiPos = normalizePosition(p.teamPosition, p.lane, p.role);
+      if (apiPos === targetRole) score += 5;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestPerm = perm;
+    }
+  }
+
+  for (let i = 0; i < unassignedPlayers.length; i++) {
+    assigned.set(unassignedPlayers[i], bestPerm[i]);
+  }
+
+  return roles.map((role) => ({
+    role,
+    participant: team.find((member) => assigned.get(member) === role),
+  }));
+}
 
 export function normalizePosition(
   teamPosition?: string | null,
