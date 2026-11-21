@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -63,36 +64,293 @@ interface ChampionDetailViewProps {
   slug: string;
 }
 
-const ALL_RARITIES = [
+const LOLDB_RARITY_ORDER = [
+  'Regular',
+  'Epic',
+  'Legendary',
+  'Mythic',
+  'Ultimate',
   'Transcendent',
   'Exalted',
-  'Ultimate',
-  'Mythic',
-  'Legendary',
-  'Epic',
-  'Regular',
 ] as const;
-type RarityTier = (typeof ALL_RARITIES)[number];
+type RarityTier = (typeof LOLDB_RARITY_ORDER)[number];
 
-const RARITY_COLORS: Record<RarityTier, string> = {
-  Transcendent: '#a855f7',
-  Exalted: '#f43f5e',
-  Ultimate: '#eab308',
-  Mythic: '#d946ef',
-  Legendary: '#ef4444',
-  Epic: '#06b6d4',
-  Regular: '#22c55e',
+const LOLDB_RARITY_RANKS: Record<string, number> = {
+  Regular: 1,
+  Epic: 2,
+  Legendary: 3,
+  Mythic: 4,
+  Ultimate: 5,
+  Transcendent: 6,
+  Exalted: 7,
 };
 
-function getRarityGemIconUrl(tier: RarityTier): string | null {
-  if (tier === 'Regular') return null;
-  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/${tier.toLowerCase()}.png`;
+const LOLDB_RARITY_COLORS: Record<string, string> = {
+  Regular: '#2E8D4C',
+  Epic: '#0FAEB6',
+  Legendary: '#DB1523',
+  Mythic: '#B034B6',
+  Ultimate: '#EA8617',
+  Exalted: '#C5D8B0',
+  Transcendent: '#C7A8DD',
+};
+
+const LOLDB_RARITY_ICONS: Record<string, string> = {
+  Regular:
+    'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/summoner-icon-rare.png',
+  Epic:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/epic.png',
+  Legendary:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/legendary.png',
+  Ultimate:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/ultimate.png',
+  Mythic:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/mythic.png',
+  Transcendent:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/cn-gem-11.png',
+  Exalted:
+    'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/rarity-gem-icons/exalted.png',
+};
+
+const ALL_RARITIES = LOLDB_RARITY_ORDER;
+const RARITY_COLORS = LOLDB_RARITY_COLORS;
+
+function getRarityGemIconUrl(tier: RarityTier | string): string | null {
+  return LOLDB_RARITY_ICONS[tier] ?? null;
 }
 
 const BE_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-be-150.png';
 const RP_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-rp-72.png';
+
+interface TimelineSkinData {
+  id: string;
+  num: number;
+  name: string;
+  year: number;
+  rank: number;
+  tier: string;
+  image: string;
+  price?: string | number;
+}
+
+function LolDBGroupNode({
+  group,
+  activeSkinNum,
+  onSelectSkin,
+  onTooltipChange,
+}: {
+  group: {
+    year: number;
+    rank: number;
+    tier: string;
+    px: number;
+    py: number;
+    skins: TimelineSkinData[];
+  };
+  activeSkinNum?: number;
+  onSelectSkin: (num: number) => void;
+  onTooltipChange: (info: any) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hoveredSkinName, setHoveredSkinName] = useState<string | null>(null);
+  const count = group.skins.length;
+  const color = LOLDB_RARITY_COLORS[group.tier] ?? '#6b7280';
+
+  return (
+    <div
+      className="pointer-events-auto absolute"
+      style={{
+        left: group.px,
+        top: group.py,
+        width: 40,
+        height: 40,
+        transform: 'translate(-50%, -50%)',
+        zIndex: isExpanded ? 50 : 10,
+        cursor: 'pointer',
+      }}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => {
+        setIsExpanded(false);
+        setHoveredSkinName(null);
+        onTooltipChange(null);
+      }}
+    >
+      {group.skins.map((skin, r) => {
+        const offset = (r - (count - 1) / 2) * 44;
+        const isHovered = hoveredSkinName === skin.name;
+        const isSelected = skin.num === activeSkinNum;
+
+        return (
+          <div
+            key={skin.id}
+            className="absolute"
+            style={{
+              left: 0,
+              top: 0,
+              width: 40,
+              height: 40,
+              transform: `translateX(${isExpanded ? offset : 0}px)`,
+              zIndex: isHovered ? 100 : count - r,
+              transition: 'transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              setHoveredSkinName(skin.name);
+              const rect = e.currentTarget.getBoundingClientRect();
+              onTooltipChange({
+                name: skin.name,
+                tier: skin.tier,
+                px: rect.left + rect.width / 2,
+                py: rect.top,
+                image: skin.image,
+                price: skin.price,
+                year: skin.year,
+              });
+            }}
+            onMouseLeave={() => {
+              setHoveredSkinName(null);
+              onTooltipChange(null);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSkin(skin.num);
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                boxShadow:
+                  isHovered || isSelected
+                    ? `0 0 0 2px ${color}, 0 0 14px ${color}55`
+                    : '0 0 0 0px transparent',
+                transition: 'box-shadow 0.2s ease',
+              }}
+            />
+            <img
+              src={skin.image}
+              alt={skin.name}
+              className={`h-full w-full rounded-full object-cover transition-transform duration-200 ${
+                isSelected ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.8)]' : ''
+              } ${isHovered ? 'scale-110' : ''}`}
+              style={{ border: `3px solid ${color}` }}
+              onError={(e) => {
+                (e.currentTarget as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+        );
+      })}
+
+      {!isExpanded && (
+        <div
+          className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold text-white shadow-md"
+          style={{
+            background: color,
+            zIndex: 20,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.6)',
+          }}
+        >
+          {count}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LolDBTooltip({ info }: { info: any }) {
+  if (!info) return null;
+  const color = LOLDB_RARITY_COLORS[info.tier] ?? '#ffffff';
+  const isTop = info.py < 180;
+  const clampedX =
+    typeof window !== 'undefined'
+      ? Math.max(148, Math.min(window.innerWidth - 148, info.px))
+      : info.px;
+
+  return (
+    <div
+      className="pointer-events-none fixed z-[200]"
+      style={{
+        left: clampedX,
+        top: isTop ? info.py + 48 : info.py - 12,
+        transform: isTop ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+      }}
+    >
+      {isTop && (
+        <div className="flex justify-center">
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderBottom: `6px solid ${color}60`,
+            }}
+          />
+        </div>
+      )}
+      <div
+        className="w-72 overflow-hidden rounded-xl shadow-2xl"
+        style={{
+          background: 'rgba(7, 8, 11, 0.97)',
+          border: `1px solid ${color}40`,
+          backdropFilter: 'blur(16px)',
+        }}
+      >
+        <div
+          className="h-[3px] w-full"
+          style={{ background: `linear-gradient(90deg, ${color}, ${color}44)` }}
+        />
+        <div className="flex gap-3 p-3">
+          {info.image && (
+            <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-lg bg-black">
+              <img
+                src={info.image}
+                alt={info.name}
+                className="h-full w-full object-cover object-center"
+              />
+              <div className="absolute inset-y-0 right-0 w-5 bg-gradient-to-r from-transparent to-black/40" />
+            </div>
+          )}
+          <div className="flex min-w-0 flex-col justify-center gap-1">
+            <p className="truncate text-sm font-bold leading-tight text-white">{info.name}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold" style={{ color }}>
+                {info.tier}
+              </span>
+              <span className="text-zinc-500">•</span>
+              <span className="text-zinc-400 font-mono text-[11px]">{info.year}</span>
+            </div>
+            {info.price && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <img
+                  src={RP_ICON_URL}
+                  alt="RP"
+                  className="h-3.5 w-3.5 object-contain"
+                />
+                <span className="text-xs font-bold text-amber-400">{info.price}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {!isTop && (
+        <div className="flex justify-center">
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: `6px solid ${color}60`,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Formats YYYY-MM-DD into "December 14, 2011" (en) or "14. Dezember 2011" (de)
 function formatReleaseDate(dateStr?: string, locale = 'de'): string {
@@ -127,10 +385,40 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
 
-  // Interactive Rarity Filters for Skin Timeline
-  const [enabledRarities, setEnabledRarities] = useState<Set<RarityTier>>(
-    () => new Set<RarityTier>(ALL_RARITIES)
-  );
+  // LolDB Skin Timeline State
+  const [hiddenRarities, setHiddenRarities] = useState<Set<string>>(() => new Set());
+  const [timelineTooltip, setTimelineTooltip] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const timelineCanvasRef = useRef<HTMLDivElement>(null);
+  const [timelineDims, setTimelineDims] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 260,
+  });
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const el = timelineCanvasRef.current;
+    if (!el) return;
+    setTimelineDims({ width: el.clientWidth, height: 260 });
+    const ro = new ResizeObserver(() => {
+      if (el) setTimelineDims({ width: el.clientWidth, height: 260 });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handleDismiss = () => setTimelineTooltip(null);
+    window.addEventListener('scroll', handleDismiss, { passive: true });
+    window.addEventListener('touchmove', handleDismiss, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleDismiss);
+      window.removeEventListener('touchmove', handleDismiss);
+    };
+  }, []);
 
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
   const sameYearCarouselRef = useRef<HTMLDivElement>(null);
@@ -286,74 +574,181 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     };
   }, [data, selectedLevel]);
 
-  // Dynamic ladder tiers for Y-axis (only tiers actually present on this champion, top-to-bottom hierarchy)
-  const timelineLadderTiers = useMemo<RarityTier[]>(() => {
-    const present = new Set<RarityTier>();
-    for (const s of skins) {
-      if (s.num !== 0) {
-        const raw = (s.rarity || 'Regular') as RarityTier;
-        const tier = ALL_RARITIES.includes(raw) ? raw : 'Regular';
-        present.add(tier);
-      }
-    }
-    const list = ALL_RARITIES.filter((tier) => present.has(tier));
-    if (list.length === 0) return ['Regular'];
-    return list;
-  }, [skins]);
-
-  // Legend order (bottom-to-top hierarchy for top filters: Regular -> Epic -> Legendary -> ...)
-  const timelineLegendTiers = useMemo<RarityTier[]>(() => {
-    return [...timelineLadderTiers].reverse();
-  }, [timelineLadderTiers]);
-
-  // Skin Timeline Data Grouping (excludes base skin num 0)
-  const timelineData = useMemo(() => {
+  // Filtered cosmetic skins for LolDB Timeline
+  const timelineFilteredSkins = useMemo<TimelineSkinData[]>(() => {
     if (!data || !skins || skins.length === 0) return [];
+    const champRelYear = data.releaseDate ? parseInt(data.releaseDate.slice(0, 4), 10) : 2011;
+    return skins
+      .filter((s) => s.num !== 0)
+      .map((s) => {
+        const rawRarity = (s.rarity || 'Regular') as string;
+        const tier = LOLDB_RARITY_ORDER.includes(rawRarity as any) ? rawRarity : 'Regular';
+        const year = s.releaseYear && !isNaN(s.releaseYear) ? s.releaseYear : (champRelYear || 2015);
+        return {
+          id: String(s.id),
+          num: s.num,
+          name: s.name === 'default' ? (t('championWiki.defaultSkin') || 'Base Skin') : s.name,
+          year,
+          rank: LOLDB_RARITY_RANKS[tier] ?? 1,
+          tier,
+          image: getChampionLoadingUrl(data.id, s.num),
+          price: s.cost ? `${s.cost} RP` : undefined,
+        };
+      });
+  }, [data, skins, t]);
 
-    const cosmeticSkins = skins.filter((s) => s.num !== 0);
-    const yearMap = new Map<number, Map<RarityTier, DDragonSkin[]>>();
-
-    for (const s of cosmeticSkins) {
-      const rawRarity = (s.rarity || 'Regular') as RarityTier;
-      const tier: RarityTier = ALL_RARITIES.includes(rawRarity) ? rawRarity : 'Regular';
-
-      if (!enabledRarities.has(tier)) continue;
-
-      const y = s.releaseYear && !isNaN(s.releaseYear) ? s.releaseYear : 2020;
-      if (!yearMap.has(y)) {
-        yearMap.set(y, new Map());
-      }
-      const tierMap = yearMap.get(y)!;
-      if (!tierMap.has(tier)) {
-        tierMap.set(tier, []);
-      }
-      tierMap.get(tier)!.push(s);
+  const { singlesFlat, groupsFlat, allFlat, minYear, maxYear, maxRank, displayRankMap, hasTimelineData } = useMemo(() => {
+    if (timelineFilteredSkins.length === 0) {
+      return {
+        singlesFlat: [],
+        groupsFlat: [],
+        allFlat: [],
+        minYear: 2011,
+        maxYear: 2026,
+        maxRank: 1,
+        displayRankMap: new Map<number, number>(),
+        hasTimelineData: false,
+      };
     }
 
-    const sortedYears = Array.from(yearMap.keys()).sort((a, b) => a - b);
-
-    return sortedYears.map((year) => {
-      const tierMap = yearMap.get(year)!;
-      const nodes = Array.from(tierMap.entries()).map(([tier, skinList]) => ({
-        tier,
-        rarityColor: RARITY_COLORS[tier],
-        skins: skinList,
-      }));
-      return { year, nodes };
+    const years = timelineFilteredSkins.map((s) => s.year);
+    const groupsMap: Record<string, TimelineSkinData[]> = {};
+    timelineFilteredSkins.forEach((s) => {
+      const key = `${s.year}_${s.rank}`;
+      (groupsMap[key] ??= []).push(s);
     });
-  }, [data, skins, enabledRarities]);
 
-  const toggleRarity = (tier: RarityTier) => {
-    setEnabledRarities((prev) => {
-      const next = new Set(prev);
-      if (next.has(tier)) {
-        if (next.size > 1) next.delete(tier);
-      } else {
-        next.add(tier);
-      }
-      return next;
-    });
-  };
+    const singlesFlat = Object.values(groupsMap).filter((g) => g.length === 1).map((g) => g[0]);
+    const groupsFlat = Object.values(groupsMap).filter((g) => g.length >= 2);
+    const presentRanks = Array.from(new Set(timelineFilteredSkins.map((s) => s.rank))).sort((a, b) => a - b);
+    const displayRankMap = new Map<number, number>(presentRanks.map((rank, idx) => [rank, idx + 1]));
+
+    return {
+      singlesFlat,
+      groupsFlat,
+      allFlat: timelineFilteredSkins,
+      minYear: Math.min(...years),
+      maxYear: Math.max(...years),
+      maxRank: presentRanks.length,
+      displayRankMap,
+      hasTimelineData: true,
+    };
+  }, [timelineFilteredSkins]);
+
+  const activeLegendTiers = useMemo<string[]>(() => {
+    return LOLDB_RARITY_ORDER.filter((tier) => allFlat.some((s) => s.tier === tier));
+  }, [allFlat]);
+
+  const timelineGeometry = useMemo(() => {
+    const { width, height } = timelineDims;
+    if (width === 0 || !hasTimelineData) {
+      return {
+        singles: [] as Array<TimelineSkinData & { px: number; py: number }>,
+        groups: [] as Array<{
+          year: number;
+          rank: number;
+          tier: string;
+          px: number;
+          py: number;
+          skins: TimelineSkinData[];
+        }>,
+        yearLabels: [] as Array<{ year: number; px: number; py: number }>,
+        rarityAxisItems: [] as Array<{ tier: string; py: number }>,
+        svgGeometry: {
+          baseline: 0,
+          gridLines: [] as Array<{ y: number }>,
+          stems: [] as Array<{ id: string; x: number; y: number; height: number; tier: string }>,
+          spotlightCols: [] as Array<{ x: number; y: number; h: number }>,
+          yearTicks: [] as Array<{ x: number; y: number }>,
+        },
+      };
+    }
+
+    const r = minYear - 0.8;
+    const a = maxYear + 0.8;
+    const l = maxRank + 0.6;
+    const availW = width - 48 - 24;
+    const availH = height - 16 - 44;
+
+    const getX = (year: number) => 48 + ((year - r) / (a - r)) * availW;
+    const getY = (rank: number) => 16 + (1 - (displayRankMap.get(rank) ?? rank) / l) * availH;
+
+    const baseline = getY(0);
+
+    const singles = singlesFlat.map((s) => ({
+      ...s,
+      px: getX(s.year),
+      py: getY(s.rank),
+    }));
+
+    const groups = groupsFlat.map((g) => ({
+      year: g[0].year,
+      rank: g[0].rank,
+      tier: g[0].tier,
+      px: getX(g[0].year),
+      py: getY(g[0].rank),
+      skins: g,
+    }));
+
+    const presentYears = Array.from(new Set(allFlat.map((s) => s.year))).sort((a, b) => a - b);
+    const yearLabelY = baseline + 14;
+    const yearLabels = presentYears.map((year) => ({
+      year,
+      px: getX(year),
+      py: yearLabelY,
+    }));
+
+    const rarityAxisItems = activeLegendTiers.map((tier) => ({
+      tier,
+      py: getY(LOLDB_RARITY_RANKS[tier]),
+    }));
+
+    const gridLines = activeLegendTiers.map((tier) => ({
+      y: getY(LOLDB_RARITY_RANKS[tier]),
+    }));
+
+    const spotlightCols = presentYears.map((year) => ({
+      x: getX(year) - 24,
+      y: 16,
+      h: availH,
+    }));
+
+    const stems = [
+      ...singles.map((s, idx) => ({
+        id: `s-${idx}`,
+        x: s.px - 0.75,
+        y: s.py,
+        height: Math.max(0, baseline - s.py),
+        tier: s.tier,
+      })),
+      ...groups.map((g, idx) => ({
+        id: `g-${idx}`,
+        x: g.px - 0.75,
+        y: g.py,
+        height: Math.max(0, baseline - g.py),
+        tier: g.tier,
+      })),
+    ];
+
+    const yearTicks = presentYears.map((year) => ({
+      x: getX(year),
+      y: baseline,
+    }));
+
+    return {
+      singles,
+      groups,
+      yearLabels,
+      rarityAxisItems,
+      svgGeometry: {
+        baseline,
+        gridLines,
+        stems,
+        spotlightCols,
+        yearTicks,
+      },
+    };
+  }, [timelineDims, hasTimelineData, singlesFlat, groupsFlat, allFlat, minYear, maxYear, maxRank, displayRankMap, activeLegendTiers]);
 
   const scrollThumbnailIntoView = (index: number) => {
     if (!thumbnailStripRef.current) return;
@@ -994,343 +1389,251 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
-  // SUB-RENDER: SKIN TIMELINE CARD (FULL GRAPH MATCHING REFERENCE SCREENSHOT)
+  // SUB-RENDER: SKIN TIMELINE CARD (EXACT LOLDB ARCHITECTURE & DESIGN)
   // =========================================================================
-  const renderTimelineCard = () => (
-    <div className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
-        <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-          {t('championWiki.skinTimeline') || 'Skin Timeline'}
-        </h2>
+  const renderTimelineCard = () => {
+    if (!hasTimelineData) return null;
 
-        {/* Dynamic Clickable Legend Filters with official gem icons */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold select-none">
-          {timelineLegendTiers.map((tier) => {
-            const isEnabled = enabledRarities.has(tier);
-            const color = RARITY_COLORS[tier];
-            const gemUrl = getRarityGemIconUrl(tier);
-            return (
-              <button
-                key={tier}
-                type="button"
-                onClick={() => toggleRarity(tier)}
-                className={`flex items-center gap-1.5 transition-all cursor-pointer ${
-                  isEnabled
-                    ? 'opacity-100 text-zinc-300 hover:text-white'
-                    : 'opacity-40 text-zinc-600 line-through hover:opacity-60'
-                }`}
-                title={isEnabled ? `${tier} ausblenden` : `${tier} einblenden`}
-              >
-                {gemUrl ? (
-                  <Image
-                    src={gemUrl}
-                    alt={tier}
-                    width={16}
-                    height={16}
-                    className={`h-4 w-4 object-contain transition-all ${
-                      isEnabled
-                        ? 'drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]'
-                        : 'grayscale opacity-40'
-                    }`}
-                    unoptimized
-                  />
-                ) : (
-                  <span
-                    className="h-2.5 w-2.5 rounded-full transition-transform shrink-0"
-                    style={{
-                      backgroundColor: color,
-                      boxShadow: isEnabled ? `0 0 8px ${color}80` : 'none',
-                      transform: isEnabled ? 'scale(1)' : 'scale(0.8)',
-                    }}
-                  />
-                )}
-                <span>{tier}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    const { baseline, gridLines, stems, spotlightCols, yearTicks } = timelineGeometry.svgGeometry;
+    const { singles, groups, yearLabels, rarityAxisItems } = timelineGeometry;
+    const { width, height } = timelineDims;
+    const minCanvasWidth = Math.max(320, 72 + (maxYear - minYear + 3) * 48);
 
-      {/* Horizontal Timeline Scroll Canvas */}
-      <div className="overflow-x-auto pb-4 scrollbar-thin">
-        <div className="relative min-w-[860px] h-[280px] bg-black/40 rounded-2xl border border-white/[0.06] p-4 flex">
-          {/* Left Y-Axis: Dynamic Rarity Gem Icons from Riot */}
-          <div className="w-14 shrink-0 flex flex-col justify-between h-[224px] py-1 items-center border-r border-white/[0.06]">
-            {timelineLadderTiers.map((tier) => {
-              const isEnabled = enabledRarities.has(tier);
-              const gemUrl = getRarityGemIconUrl(tier);
+    return (
+      <section className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md">
+        {/* Header matching LolDB */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+          <div className="text-lg font-semibold text-white">
+            {t('championWiki.skinTimeline') || 'Skin Timeline'}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {activeLegendTiers.map((tier) => {
+              const isHidden = hiddenRarities.has(tier);
+              const color = LOLDB_RARITY_COLORS[tier] ?? '#fff';
               return (
-                <div
+                <button
                   key={tier}
-                  className={`flex items-center justify-center h-8 transition-opacity ${
-                    isEnabled ? 'opacity-100' : 'opacity-25'
-                  }`}
-                  title={tier}
+                  type="button"
+                  onClick={() => {
+                    setHiddenRarities((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(tier)) next.delete(tier);
+                      else next.add(tier);
+                      return next;
+                    });
+                  }}
+                  className="flex cursor-pointer items-center gap-1.5 text-[10px] transition-opacity"
+                  style={{ opacity: isHidden ? 0.25 : 0.65 }}
                 >
-                  {gemUrl ? (
-                    <Image
-                      src={gemUrl}
-                      alt={tier}
-                      width={22}
-                      height={22}
-                      className="h-5 w-5 object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]"
-                      unoptimized
-                    />
-                  ) : (
-                    <span className="h-4 w-4 rounded-full border-2 border-[#22c55e] bg-[#22c55e]/50 shadow-[0_0_8px_#22c55e]" />
-                  )}
-                </div>
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ background: isHidden ? '#374151' : color }}
+                  />
+                  <span className={isHidden ? 'text-white/25 line-through' : 'text-white/55'}>
+                    {tier}
+                  </span>
+                </button>
               );
             })}
           </div>
+        </div>
 
-          {/* Main Timeline Grid */}
-          <div className="relative flex-1 h-full pl-2">
-            {/* Dynamic horizontal dashed lines for each active tier */}
-            {timelineLadderTiers.map((tier, idx) => {
-              const y = (idx / (timelineLadderTiers.length - 1)) * 176 + 24;
-              return (
-                <div
-                  key={tier}
-                  className="absolute inset-x-0 border-b border-dashed border-white/[0.05] pointer-events-none"
-                  style={{ top: `${y}px` }}
-                />
-              );
-            })}
-            {/* Bottom axis line */}
-            <div className="absolute inset-x-0 bottom-6 border-b border-white/[0.1] pointer-events-none" />
+        {/* Scrollable canvas container */}
+        <div
+          className="overflow-x-auto rounded-xl scrollbar-thin"
+          style={{ WebkitOverflowScrolling: 'touch', overflowY: 'clip' }}
+        >
+          <div
+            ref={timelineCanvasRef}
+            className="relative rounded-xl border border-white/[0.07] bg-black/25 backdrop-blur-sm"
+            style={{ height: 260, overflow: 'visible', minWidth: minCanvasWidth }}
+          >
+            {width > 0 && (
+              <>
+                <svg
+                  className="pointer-events-none absolute inset-0 overflow-visible"
+                  width={width}
+                  height={height}
+                >
+                  <defs>
+                    {stems.map((s) => (
+                      <linearGradient key={s.id} id={`stem-${s.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0.55" />
+                        <stop offset="100%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0" />
+                      </linearGradient>
+                    ))}
+                    <linearGradient id="baseline-grad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                      <stop offset="15%" stopColor="rgba(255,255,255,0.18)" />
+                      <stop offset="85%" stopColor="rgba(255,255,255,0.18)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                    </linearGradient>
+                  </defs>
 
-            {timelineData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
-                Keine Skins für die ausgewählten Filterkriterien vorhanden.
-              </div>
-            ) : (
-              <div className="absolute inset-x-0 inset-y-0 flex">
-                {timelineData.map((col, colIdx) => (
-                  <div
-                    key={col.year}
-                    className="relative flex-1 flex flex-col justify-between items-center h-full group/col"
-                  >
-                    {/* Vertical subtle line */}
-                    <div className="absolute inset-x-0 top-0 bottom-6 flex justify-center pointer-events-none">
-                      <div className="w-[1px] h-full bg-gradient-to-b from-white/[0.02] via-white/[0.06] to-white/[0.2]" />
-                    </div>
+                  {/* Spotlight Columns behind each active year */}
+                  {spotlightCols.map(({ x, y, h }, idx) => (
+                    <rect key={idx} x={x} y={y} width={48} height={h} fill="rgba(255,255,255,0.016)" rx={3} />
+                  ))}
 
-                    {/* Nodes in this year */}
-                    <div className="relative w-full h-[224px]">
-                      {col.nodes.map((node) => {
-                        const tierIdx = timelineLadderTiers.indexOf(node.tier);
-                        const yTop = tierIdx !== -1 ? (tierIdx / (timelineLadderTiers.length - 1)) * 176 + 4 : 88;
-                        const isCurrentActive = node.skins.some((s) => s.num === activeSkin?.num);
-                        const isNearRightEdge = colIdx >= timelineData.length - 2;
+                  {/* Dashed Horizontal Grid Lines */}
+                  {gridLines.map(({ y }, idx) => (
+                    <line
+                      key={idx}
+                      x1={48}
+                      x2={width - 24}
+                      y1={y}
+                      y2={y}
+                      stroke="rgba(255,255,255,0.045)"
+                      strokeWidth={1}
+                      strokeDasharray="3 6"
+                    />
+                  ))}
 
-                        // -------------------------------------------------------------
-                        // SINGLE SKIN IN NODE
-                        // -------------------------------------------------------------
-                        if (node.skins.length === 1) {
-                          const singleSkin = node.skins[0];
-                          const globalSkinIdx = skins.findIndex((s) => s.id === singleSkin.id);
+                  {/* Stems */}
+                  {stems.filter((s) => !hiddenRarities.has(s.tier)).map((s) => (
+                    <rect key={s.id} x={s.x} y={s.y} width={1.5} height={s.height} fill={`url(#stem-${s.id})`} />
+                  ))}
 
-                          return (
-                            <div
-                              key={node.tier}
-                              className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10 hover:z-50"
-                              style={{ top: `${yTop}px` }}
-                              onClick={() => {
-                                if (globalSkinIdx !== -1) {
-                                  setSelectedSkinIndex(globalSkinIdx);
-                                  scrollThumbnailIntoView(globalSkinIdx);
-                                }
-                              }}
-                            >
-                              <div
-                                className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 group-hover:scale-125 ${
-                                  isCurrentActive
-                                    ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
-                                    : 'hover:ring-2 hover:ring-amber-400'
-                                }`}
-                                style={{
-                                  border: `2.5px solid ${node.rarityColor}`,
-                                  boxShadow: `0 0 14px ${node.rarityColor}90`,
-                                }}
-                              >
-                                <Image
-                                  src={getChampionLoadingUrl(data.id, singleSkin.num)}
-                                  alt={singleSkin.name}
-                                  fill
-                                  className="object-cover object-top"
-                                  unoptimized
-                                />
-                              </div>
+                  {/* Baseline Line */}
+                  <line x1={48} x2={width - 24} y1={baseline} y2={baseline} stroke="url(#baseline-grad)" strokeWidth={1} />
 
-                              {/* Tooltip on hover */}
-                              <div
-                                className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-50 whitespace-nowrap ${
-                                  yTop < 50 ? 'top-full mt-2' : 'bottom-full mb-2'
-                                }`}
-                              >
-                                <div className="rounded-lg bg-black/95 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xl backdrop-blur-md flex items-center gap-1.5">
-                                  <span
-                                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: node.rarityColor }}
-                                  />
-                                  <span>{singleSkin.name === 'default' ? t('championWiki.defaultSkin') : singleSkin.name}</span>
-                                  <span className="text-[9px] text-zinc-400">({col.year})</span>
-                                </div>
-                                {yTop >= 50 && (
-                                  <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
-                                )}
-                                {yTop < 50 && (
-                                  <div className="w-1.5 h-1.5 rotate-45 bg-black border-l border-t border-white/20 -mb-1 order-first" />
-                                )}
-                              </div>
-                            </div>
-                          );
+                  {/* Diamond Year Ticks */}
+                  {yearTicks.map(({ x, y }, idx) => (
+                    <rect
+                      key={idx}
+                      x={x - 3}
+                      y={y - 3}
+                      width={6}
+                      height={6}
+                      fill="rgba(255,255,255,0.22)"
+                      transform={`rotate(45, ${x}, ${y})`}
+                    />
+                  ))}
+                </svg>
+
+                {/* HTML Layer on top of SVG */}
+                <div className="absolute inset-0 overflow-visible">
+                  {/* Left Y-Axis: Gem Icons */}
+                  {rarityAxisItems.map(({ tier, py }) => {
+                    const iconUrl = LOLDB_RARITY_ICONS[tier];
+                    if (!iconUrl) return null;
+                    return (
+                      <img
+                        key={tier}
+                        src={iconUrl}
+                        alt={tier}
+                        title={tier}
+                        width={18}
+                        height={18}
+                        className="pointer-events-none absolute select-none object-contain"
+                        style={{
+                          left: 24,
+                          top: py,
+                          transform: 'translate(-50%, -50%)',
+                          opacity: 0.5,
+                          filter: `drop-shadow(0 0 4px ${LOLDB_RARITY_COLORS[tier]}66)`,
+                        }}
+                        draggable={false}
+                      />
+                    );
+                  })}
+
+                  {/* Singles */}
+                  {singles.filter((s) => !hiddenRarities.has(s.tier)).map((s) => {
+                    const color = LOLDB_RARITY_COLORS[s.tier] ?? '#6b7280';
+                    const isSelected = s.num === activeSkin?.num;
+                    const globalIdx = skins.findIndex((sk) => sk.num === s.num);
+
+                    return (
+                      <div
+                        key={s.name}
+                        className="absolute group/single cursor-pointer"
+                        style={{
+                          left: s.px - 20,
+                          top: s.py - 20,
+                          width: 40,
+                          height: 40,
+                        }}
+                        onClick={() => {
+                          if (globalIdx !== -1) {
+                            setSelectedSkinIndex(globalIdx);
+                            scrollThumbnailIntoView(globalIdx);
+                          }
+                        }}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setTimelineTooltip({
+                            name: s.name,
+                            tier: s.tier,
+                            px: rect.left + rect.width / 2,
+                            py: rect.top,
+                            image: s.image,
+                            price: s.price,
+                            year: s.year,
+                          });
+                        }}
+                        onMouseLeave={() => setTimelineTooltip(null)}
+                      >
+                        <div
+                          className="absolute inset-0 rounded-full opacity-40 blur-[6px]"
+                          style={{ background: color }}
+                        />
+                        <img
+                          src={s.image}
+                          alt={s.name}
+                          className={`relative h-full w-full rounded-full object-cover transition-transform duration-200 group-hover/single:scale-115 ${
+                            isSelected ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.8)]' : ''
+                          }`}
+                          style={{
+                            border: `3px solid ${color}`,
+                            boxShadow: `0 0 0 1px ${color}30 inset`,
+                          }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Groups */}
+                  {groups.filter((g) => !hiddenRarities.has(g.tier)).map((g, gIdx) => (
+                    <LolDBGroupNode
+                      key={`${g.year}_${g.rank}_${gIdx}`}
+                      group={g}
+                      activeSkinNum={activeSkin?.num}
+                      onSelectSkin={(num) => {
+                        const idx = skins.findIndex((sk) => sk.num === num);
+                        if (idx !== -1) {
+                          setSelectedSkinIndex(idx);
+                          scrollThumbnailIntoView(idx);
                         }
+                      }}
+                      onTooltipChange={setTimelineTooltip}
+                    />
+                  ))}
 
-                        // -------------------------------------------------------------
-                        // MULTIPLE SKINS IN NODE (FAN OUT / UNFOLD SIDEWAYS ON HOVER)
-                        // -------------------------------------------------------------
-                        const activeInNode = node.skins.find((s) => s.num === activeSkin?.num);
-                        const displayPrimarySkin = activeInNode || node.skins[0];
-
-                        return (
-                          <div
-                            key={node.tier}
-                            className="absolute left-1/2 -translate-x-1/2 group cursor-pointer z-10 hover:z-50"
-                            style={{ top: `${yTop}px` }}
-                          >
-                            {/* Collapsed state (visible when NOT hovered) */}
-                            <div className="relative group-hover:opacity-0 transition-opacity duration-150">
-                              {/* Stacked offset layer behind */}
-                              <div
-                                className="absolute -right-1 top-0.5 h-10 w-10 rounded-full opacity-40 -z-10"
-                                style={{
-                                  backgroundColor: '#18181b',
-                                  border: `2px solid ${node.rarityColor}`,
-                                }}
-                              />
-
-                              {/* Primary Avatar */}
-                              <div
-                                className={`relative h-10 w-10 rounded-full overflow-hidden transition-all duration-200 ${
-                                  isCurrentActive
-                                    ? 'ring-2 ring-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
-                                    : 'hover:ring-2 hover:ring-amber-400'
-                                }`}
-                                style={{
-                                  border: `2.5px solid ${node.rarityColor}`,
-                                  boxShadow: `0 0 14px ${node.rarityColor}90`,
-                                }}
-                              >
-                                <Image
-                                  src={getChampionLoadingUrl(data.id, displayPrimarySkin.num)}
-                                  alt={displayPrimarySkin.name}
-                                  fill
-                                  className="object-cover object-top"
-                                  unoptimized
-                                />
-                              </div>
-
-                              {/* Count Badge */}
-                              <div
-                                className="absolute -top-1 -right-1.5 h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-md pointer-events-none"
-                                style={{
-                                  backgroundColor: node.rarityColor,
-                                  border: '1.5px solid #0c1017',
-                                }}
-                              >
-                                {node.skins.length}
-                              </div>
-                            </div>
-
-                            {/* Expanded Tray on Hover (opens sideways so all skins are visible and clickable) */}
-                            <div
-                              className={`absolute top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1.5 p-1 rounded-full bg-[#0c1017]/95 border border-white/25 shadow-[0_0_25px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all duration-200 animate-in fade-in zoom-in-95 ${
-                                isNearRightEdge ? 'right-0' : 'left-0'
-                              }`}
-                            >
-                              {node.skins.map((skin) => {
-                                const isSelected = skin.num === activeSkin?.num;
-                                const globalSkinIdx = skins.findIndex((s) => s.id === skin.id);
-
-                                return (
-                                  <div key={skin.id} className="relative group/skin">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (globalSkinIdx !== -1) {
-                                          setSelectedSkinIndex(globalSkinIdx);
-                                          scrollThumbnailIntoView(globalSkinIdx);
-                                        }
-                                      }}
-                                      className={`relative h-10 w-10 shrink-0 rounded-full overflow-hidden transition-all duration-150 cursor-pointer hover:scale-110 ${
-                                        isSelected
-                                          ? 'ring-2 ring-white scale-105 shadow-[0_0_12px_rgba(255,255,255,0.7)]'
-                                          : 'hover:ring-2 hover:ring-amber-400'
-                                      }`}
-                                      style={{
-                                        border: `2.5px solid ${node.rarityColor}`,
-                                        boxShadow: `0 0 10px ${node.rarityColor}80`,
-                                      }}
-                                      title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
-                                    >
-                                      <Image
-                                        src={getChampionLoadingUrl(data.id, skin.num)}
-                                        alt={skin.name}
-                                        fill
-                                        className="object-cover object-top"
-                                        unoptimized
-                                      />
-                                    </button>
-
-                                    {/* Individual Skin Tooltip */}
-                                    <div
-                                      className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/skin:flex flex-col items-center pointer-events-none z-50 whitespace-nowrap ${
-                                        yTop < 50 ? 'top-full mt-2' : 'bottom-full mb-2'
-                                      }`}
-                                    >
-                                      <div className="rounded-lg bg-black/95 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xl backdrop-blur-md flex items-center gap-1.5">
-                                        <span
-                                          className="h-1.5 w-1.5 rounded-full shrink-0"
-                                          style={{ backgroundColor: node.rarityColor }}
-                                        />
-                                        <span>{skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}</span>
-                                        <span className="text-[9px] text-zinc-400">({col.year})</span>
-                                      </div>
-                                      {yTop >= 50 && (
-                                        <div className="w-1.5 h-1.5 rotate-45 bg-black border-r border-b border-white/20 -mt-1" />
-                                      )}
-                                      {yTop < 50 && (
-                                        <div className="w-1.5 h-1.5 rotate-45 bg-black border-l border-t border-white/20 -mb-1 order-first" />
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
+                  {/* Year Labels below Baseline */}
+                  {yearLabels.map(({ year, px, py }) => (
+                    <div
+                      key={year}
+                      className="pointer-events-none absolute font-mono text-[10px] text-white/35 select-none"
+                      style={{ left: px, top: py, transform: 'translateX(-50%)' }}
+                    >
+                      {year}
                     </div>
-
-                    {/* Bottom Year Label with Diamond Marker */}
-                    <div className="h-6 flex flex-col items-center justify-end z-10">
-                      <div className="w-2 h-2 rotate-45 bg-zinc-600 group-hover/col:bg-amber-400 transition-colors shadow-sm -mb-1" />
-                      <span className="text-[10px] font-bold text-zinc-400 group-hover/col:text-amber-400 transition-colors mt-2 select-none">
-                        {col.year}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
+
+        {/* Floating Tooltip via Portal */}
+        {isMounted && timelineTooltip && createPortal(<LolDBTooltip info={timelineTooltip} />, document.body)}
+      </section>
+    );
+  };
 
   // =========================================================================
   // SUB-RENDER: ABILITIES & PASSIVE SECTION

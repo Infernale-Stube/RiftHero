@@ -219,20 +219,38 @@ export async function getRecentSummoners(limit = 10) {
 export async function searchSummoners(query: string, region?: string, limit = 6) {
   if (!query || query.trim().length === 0) return [];
 
-  const parts = query.trim().split('#');
-  const nameQuery = parts[0];
-  const tagQuery = parts[1];
+  const raw = query.trim();
+  let nameQuery = raw;
+  let tagQuery: string | undefined = undefined;
 
-  const whereClause: any = {
-    gameName: { contains: nameQuery, mode: 'insensitive' },
-  };
+  if (raw.includes('#')) {
+    const parts = raw.split('#');
+    nameQuery = parts[0]?.trim() || '';
+    tagQuery = parts[1]?.trim() || undefined;
+  } else if (raw.includes('-') && !raw.includes(' ')) {
+    const parts = raw.split('-');
+    nameQuery = parts[0]?.trim() || '';
+    tagQuery = parts[1]?.trim() || undefined;
+  }
+
+  const whereClause: any = {};
+
+  if (nameQuery) {
+    whereClause.gameName = { contains: nameQuery, mode: 'insensitive' };
+  }
 
   if (tagQuery) {
     whereClause.tagLine = { contains: tagQuery, mode: 'insensitive' };
   }
 
-  if (region) {
-    whereClause.region = normalizeRegion(region);
+  if (!nameQuery && !tagQuery) return [];
+
+  if (region && region.toLowerCase() !== 'all') {
+    try {
+      whereClause.region = normalizeRegion(region);
+    } catch {
+      // ignore invalid region
+    }
   }
 
   const matches = await prisma.summoner.findMany({
@@ -246,12 +264,17 @@ export async function searchSummoners(query: string, region?: string, limit = 6)
     },
   });
 
-  return matches.map((m) => ({
-    gameName: m.gameName,
-    tagLine: m.tagLine,
-    region: m.region,
-    profileIconId: m.profileIconId,
-    summonerLevel: Number(m.summonerLevel),
-    tier: m.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5')?.tier || 'UNRANKED',
-  }));
+  return matches.map((m) => {
+    const soloRank = m.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
+    return {
+      gameName: m.gameName,
+      tagLine: m.tagLine,
+      region: m.region,
+      profileIconId: m.profileIconId,
+      summonerLevel: Number(m.summonerLevel),
+      tier: soloRank?.tier || 'UNRANKED',
+      rank: soloRank?.rank || '',
+      leaguePoints: soloRank?.leaguePoints ?? 0,
+    };
+  });
 }

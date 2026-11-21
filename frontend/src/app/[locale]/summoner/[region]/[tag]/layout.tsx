@@ -60,6 +60,34 @@ export default function SummonerLayout({
     loadLiveGame();
   }, [loadProfile, loadLiveGame]);
 
+  // Persist visited profile with avatar & level to recent searches
+  useEffect(() => {
+    if (!profileData?.summoner) return;
+    try {
+      const raw = localStorage.getItem('rifthero_recent_searches');
+      const list = raw ? JSON.parse(raw) : [];
+      const updated = [
+        {
+          gameName: profileData.summoner.gameName,
+          tagLine: profileData.summoner.tagLine,
+          region: profileData.summoner.region,
+          profileIconId: profileData.summoner.profileIconId,
+          summonerLevel: Number(profileData.summoner.summonerLevel),
+          timestamp: Date.now(),
+        },
+        ...list.filter(
+          (item: any) =>
+            !(
+              item.gameName.toLowerCase() === profileData.summoner!.gameName.toLowerCase() &&
+              item.tagLine.toLowerCase() === profileData.summoner!.tagLine.toLowerCase() &&
+              item.region.toLowerCase() === profileData.summoner!.region.toLowerCase()
+            )
+        ),
+      ].slice(0, 8);
+      localStorage.setItem('rifthero_recent_searches', JSON.stringify(updated));
+    } catch {}
+  }, [profileData?.summoner]);
+
   const handleRefreshCompleted = () => {
     loadProfile();
     setRefreshTimestamp(Date.now());

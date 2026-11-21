@@ -251,11 +251,24 @@ export interface RecentSummoner {
   } | null;
 }
 
+export interface SummonerSearchResult {
+  gameName: string;
+  tagLine: string;
+  region: string;
+  profileIconId: number;
+  summonerLevel: number;
+  tier: string;
+  rank?: string;
+  leaguePoints?: number;
+}
+
 export interface RecentSearchItem {
   gameName: string;
   tagLine: string;
   region: string;
   profileIconId?: number;
+  summonerLevel?: number;
+  tier?: string;
   timestamp: number;
 }
 

@@ -281,7 +281,9 @@ export interface TranslationDictionary {
     baseStats: string;
     skins: string;
     hp: string;
+    hpRegen: string;
     mana: string;
+    manaRegen: string;
     armor: string;
     mr: string;
     attackDamage: string;
@@ -677,7 +679,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       baseStats: 'Basis-Attribute zum aktuellen Patch',
       skins: 'Skins & Artworks',
       hp: 'Leben',
+      hpRegen: 'LP-Regen',
       mana: 'Mana / Ressource',
+      manaRegen: 'Mana-Regen',
       armor: 'Rüstung',
       mr: 'Magieresistenz',
       attackDamage: 'Angriffsschaden',
@@ -1071,7 +1075,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       baseStats: 'Base Statistics for Active Patch',
       skins: 'Skins & Artworks',
       hp: 'Health',
+      hpRegen: 'HP Regen',
       mana: 'Mana / Resource',
+      manaRegen: 'Mana Regen',
       armor: 'Armor',
       mr: 'Magic Resist',
       attackDamage: 'Attack Damage',

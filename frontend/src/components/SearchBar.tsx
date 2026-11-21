@@ -15,12 +15,13 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RecentSearchItem } from '@/types';
+import { RecentSearchItem, SummonerSearchResult } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { getChampionIconUrl, getItemIconUrl } from '@/lib/ddragon';
+import { getChampionIconUrl, getItemIconUrl, getProfileIconUrl } from '@/lib/ddragon';
 import championPositionsRaw from '@/lib/championPositions.json';
-import { fetchItemsRosterApi } from '@/lib/api';
+import { fetchItemsRosterApi, searchSummonersApi } from '@/lib/api';
 import { fetchDDragonItemsList } from '@/lib/ddragon';
+import { TIER_COLORS } from '@/components/RankBadge';
 
 const REGIONS = [
   { code: 'euw', label: 'EUW' },
@@ -58,6 +59,8 @@ export default function SearchBar({
   const [isFocused, setIsFocused] = useState(false);
   const [recentList, setRecentList] = useState<RecentSearchItem[]>([]);
   const [itemsList, setItemsList] = useState<ItemSearchItem[]>(() => cachedItemsMap[locale] || []);
+  const [matchingSummoners, setMatchingSummoners] = useState<SummonerSearchResult[]>([]);
+  const [isSearchingSummoners, setIsSearchingSummoners] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load items for instant client-side autocomplete
@@ -134,6 +137,45 @@ export default function SearchBar({
 
   const trimmedQuery = input.trim().toLowerCase();
 
+  // Search existing profiles from database
+  useEffect(() => {
+    const trimmed = input.trim();
+    if (!trimmed || trimmed.length < 1) {
+      setMatchingSummoners([]);
+      setIsSearchingSummoners(false);
+      return;
+    }
+
+    let isCurrent = true;
+    setIsSearchingSummoners(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchSummonersApi(trimmed);
+        if (isCurrent) {
+          // Prioritize profiles matching the currently selected region
+          results.sort((a, b) => {
+            const aMatch = a.region.toLowerCase() === region.toLowerCase();
+            const bMatch = b.region.toLowerCase() === region.toLowerCase();
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+          });
+          setMatchingSummoners(results);
+        }
+      } catch {
+        if (isCurrent) setMatchingSummoners([]);
+      } finally {
+        if (isCurrent) setIsSearchingSummoners(false);
+      }
+    }, 180);
+
+    return () => {
+      isCurrent = false;
+      clearTimeout(timer);
+    };
+  }, [input, region]);
+
   // Champions matching
   const matchingChamps = useMemo(() => {
     if (!trimmedQuery) return [];
@@ -155,7 +197,13 @@ export default function SearchBar({
       .slice(0, 4);
   }, [trimmedQuery, itemsList]);
 
-  const navigateToSummoner = (gameName: string, tagLine: string, reg: string) => {
+  const navigateToSummoner = (
+    gameName: string,
+    tagLine: string,
+    reg: string,
+    profileIconId?: number,
+    summonerLevel?: number
+  ) => {
     // Save to LocalStorage
     try {
       const raw = localStorage.getItem('rifthero_recent_searches');
@@ -165,6 +213,8 @@ export default function SearchBar({
           gameName,
           tagLine,
           region: reg,
+          profileIconId,
+          summonerLevel,
           timestamp: Date.now(),
         },
         ...list.filter(
@@ -387,12 +437,85 @@ export default function SearchBar({
       {/* Auto-Suggest Dropdown (when focused) */}
       {isFocused && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 max-h-[420px] overflow-y-auto">
-          {/* CASE A: User entered a search query -> Show matching Champions, Items & Summoner Action */}
+          {/* CASE A: User entered a search query -> Show matching Summoners (DB), Champions, Items & Summoner Action */}
           {trimmedQuery.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {/* 1. MATCHING CHAMPIONS */}
-              {matchingChamps.length > 0 && (
+              {/* 1. MATCHING SUMMONERS FROM DATABASE */}
+              {matchingSummoners.length > 0 && (
                 <div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                    <User className="h-3.5 w-3.5" />
+                    <span>{locale === 'de' ? 'Spieler-Profile' : 'Summoner Profiles'}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {matchingSummoners.map((summoner) => (
+                      <div
+                        key={`${summoner.region}-${summoner.gameName}-${summoner.tagLine}`}
+                        onClick={() =>
+                          navigateToSummoner(
+                            summoner.gameName,
+                            summoner.tagLine,
+                            summoner.region,
+                            summoner.profileIconId,
+                            summoner.summonerLevel
+                          )
+                        }
+                        className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-1.5 hover:bg-white/[0.06] transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Player Profile Picture from DB + Level Badge */}
+                          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-400/60 transition-colors bg-zinc-950 shadow-sm">
+                            <Image
+                              src={getProfileIconUrl(summoner.profileIconId)}
+                              alt={summoner.gameName}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20">
+                              {summoner.summonerLevel}
+                            </div>
+                          </div>
+
+                          {/* Name, Tag, Level & Region */}
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                                {summoner.gameName}
+                              </span>
+                              <span className="text-xs text-zinc-400 font-medium shrink-0">
+                                #{summoner.tagLine}
+                              </span>
+                              <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 shrink-0">
+                                {summoner.region.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                              <span className="text-zinc-400">
+                                Level {summoner.summonerLevel}
+                              </span>
+                              {summoner.tier && summoner.tier !== 'UNRANKED' && (
+                                <>
+                                  <span className="text-zinc-600">•</span>
+                                  <span className="text-amber-300 font-semibold uppercase">
+                                    {summoner.tier} {summoner.rank || ''}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <ArrowRight className="h-3.5 w-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:text-amber-400 transition-all transform group-hover:translate-x-0.5 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. MATCHING CHAMPIONS */}
+              {matchingChamps.length > 0 && (
+                <div className={matchingSummoners.length > 0 ? 'border-t border-white/[0.04] pt-2' : ''}>
                   <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-400">
                     <Sparkles className="h-3.5 w-3.5" />
                     <span>{locale === 'de' ? 'Champions' : 'Champions'}</span>
@@ -430,9 +553,9 @@ export default function SearchBar({
                 </div>
               )}
 
-              {/* 2. MATCHING ITEMS */}
+              {/* 3. MATCHING ITEMS */}
               {matchingItems.length > 0 && (
-                <div className={matchingChamps.length > 0 ? 'border-t border-white/[0.04] pt-2' : ''}>
+                <div className={(matchingSummoners.length > 0 || matchingChamps.length > 0) ? 'border-t border-white/[0.04] pt-2' : ''}>
                   <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-cyan-400">
                     <Package className="h-3.5 w-3.5" />
                     <span>{locale === 'de' ? 'Items' : 'Items'}</span>
@@ -471,8 +594,8 @@ export default function SearchBar({
                 </div>
               )}
 
-              {/* 3. SUMMONER SEARCH OPTION */}
-              <div className={(matchingChamps.length > 0 || matchingItems.length > 0) ? 'border-t border-white/[0.06] pt-2' : ''}>
+              {/* 4. SUMMONER SEARCH OPTION */}
+              <div className={(matchingSummoners.length > 0 || matchingChamps.length > 0 || matchingItems.length > 0) ? 'border-t border-white/[0.06] pt-2' : ''}>
                 <div
                   onClick={() => {
                     let g = input.trim();
@@ -500,7 +623,7 @@ export default function SearchBar({
                         </span>
                       </div>
                       <span className="text-[11px] text-zinc-400 truncate">
-                        {locale === 'de' ? 'Spieler-Profil aufrufen' : 'Search summoner profile'}
+                        {locale === 'de' ? 'Spieler-Profil aufrufen / neu crawlen' : 'Search summoner profile'}
                       </span>
                     </div>
                   </div>
@@ -530,19 +653,52 @@ export default function SearchBar({
                     <div
                       key={`${item.region}-${item.gameName}-${item.tagLine}`}
                       onClick={() =>
-                        navigateToSummoner(item.gameName, item.tagLine, item.region)
+                        navigateToSummoner(
+                          item.gameName,
+                          item.tagLine,
+                          item.region,
+                          item.profileIconId,
+                          item.summonerLevel
+                        )
                       }
-                      className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 hover:bg-white/[0.06] transition-colors"
+                      className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-1.5 hover:bg-white/[0.06] transition-colors"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-400">
-                          {item.region}
-                        </span>
-                        <div className="flex items-center gap-1 truncate">
-                          <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">
-                            {item.gameName}
-                          </span>
-                          <span className="text-xs text-zinc-400">#{item.tagLine}</span>
+                        {item.profileIconId ? (
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-400/50 transition-colors bg-zinc-950 shadow-sm">
+                            <Image
+                              src={getProfileIconUrl(item.profileIconId)}
+                              alt={item.gameName}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            {item.summonerLevel != null && (
+                              <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-0.5 py-0.1 text-[7px] font-black text-amber-300">
+                                {item.summonerLevel}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                            <User className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
+                              {item.gameName}
+                            </span>
+                            <span className="text-xs text-zinc-400 shrink-0">#{item.tagLine}</span>
+                            <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 shrink-0">
+                              {item.region.toUpperCase()}
+                            </span>
+                          </div>
+                          {item.summonerLevel != null && (
+                            <span className="text-[11px] text-zinc-400">
+                              Level {item.summonerLevel}
+                            </span>
+                          )}
                         </div>
                       </div>
 

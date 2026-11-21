@@ -412,24 +412,6 @@ export default function ChampionsListView() {
                         {primaryPos}
                       </span>
                     </div>
-
-                    {/* Meta Tier Badge (only if available) */}
-                    {champ.meta ? (
-                      <div
-                        className={`flex items-center gap-1 rounded-md backdrop-blur-md px-1.5 py-0.5 border shadow-sm ${
-                          champ.meta.tier === 'S+'
-                            ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
-                            : champ.meta.tier === 'S'
-                            ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-300'
-                            : champ.meta.tier === 'A'
-                            ? 'bg-sky-500/25 border-sky-500/50 text-sky-300'
-                            : 'bg-zinc-800/80 border-white/10 text-zinc-300'
-                        }`}
-                      >
-                        <span className="text-[9px] font-black">{champ.meta.tier}</span>
-                        <span className="text-[9px] font-semibold opacity-90">{champ.meta.winrate}</span>
-                      </div>
-                    ) : null}
                   </div>
 
                   {/* Bottom Content Area */}

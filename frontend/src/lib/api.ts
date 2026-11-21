@@ -11,6 +11,7 @@ import {
   SummonerMasteriesResponse,
   ItemsRosterResponse,
   ItemRosterItem,
+  SummonerSearchResult,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -413,6 +414,32 @@ export async function fetchItemDetailApi(
     return await res.json();
   } catch {
     return null;
+  }
+}
+
+export async function searchSummonersApi(
+  query: string,
+  region?: string,
+  limit = 6
+): Promise<SummonerSearchResult[]> {
+  if (!query || !query.trim()) return [];
+  const baseUrl = getApiBaseUrl();
+  try {
+    const params = new URLSearchParams({
+      q: query.trim(),
+      limit: String(limit),
+    });
+    if (region && region.toLowerCase() !== 'all') {
+      params.set('region', region);
+    }
+    const res = await fetch(`${baseUrl}/search?${params.toString()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to search summoners:', err);
+    return [];
   }
 }
 
