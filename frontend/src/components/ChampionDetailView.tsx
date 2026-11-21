@@ -389,9 +389,9 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [hiddenRarities, setHiddenRarities] = useState<Set<string>>(() => new Set());
   const [timelineTooltip, setTimelineTooltip] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const timelineCanvasRef = useRef<HTMLDivElement>(null);
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
   const [timelineDims, setTimelineDims] = useState<{ width: number; height: number }>({
-    width: 900,
+    width: 0,
     height: 260,
   });
 
@@ -401,7 +401,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
   useEffect(() => {
     if (isLoading || !data) return;
-    const el = timelineCanvasRef.current;
+    const el = timelineContainerRef.current;
     if (!el) return;
 
     const measure = () => {
@@ -1466,13 +1466,13 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
         {/* Scrollable canvas container */}
         <div
-          className="overflow-x-auto rounded-xl scrollbar-thin"
+          ref={timelineContainerRef}
+          className="w-full overflow-x-auto rounded-xl scrollbar-thin"
           style={{ WebkitOverflowScrolling: 'touch', overflowY: 'clip' }}
         >
           <div
-            ref={timelineCanvasRef}
             className="relative rounded-xl border border-white/[0.07] bg-black/25 backdrop-blur-sm"
-            style={{ height: 260, width: canvasWidth, minWidth: minCanvasWidth, overflow: 'visible' }}
+            style={{ height: 260, width: canvasWidth, minWidth: '100%', overflow: 'visible' }}
           >
             <svg
               className="pointer-events-none absolute inset-0 overflow-visible"
