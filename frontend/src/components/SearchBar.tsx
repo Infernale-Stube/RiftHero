@@ -21,7 +21,6 @@ import { getChampionIconUrl, getItemIconUrl, getProfileIconUrl } from '@/lib/ddr
 import championPositionsRaw from '@/lib/championPositions.json';
 import { fetchItemsRosterApi, searchSummonersApi } from '@/lib/api';
 import { fetchDDragonItemsList } from '@/lib/ddragon';
-import { TIER_COLORS } from '@/components/RankBadge';
 
 const REGIONS = [
   { code: 'euw', label: 'EUW' },
@@ -323,7 +322,7 @@ export default function SearchBar({
   };
 
   return (
-    <div ref={containerRef} className={cn('relative w-full', className)}>
+    <div ref={containerRef} className={cn('relative w-full text-left', className)}>
       <form
         onSubmit={handleSubmit}
         className={cn(
@@ -436,7 +435,7 @@ export default function SearchBar({
 
       {/* Auto-Suggest Dropdown (when focused) */}
       {isFocused && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 max-h-[420px] overflow-y-auto">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 max-h-[420px] overflow-y-auto text-left">
           {/* CASE A: User entered a search query -> Show matching Summoners (DB), Champions, Items & Summoner Action */}
           {trimmedQuery.length > 0 ? (
             <div className="flex flex-col gap-2">
@@ -478,7 +477,7 @@ export default function SearchBar({
                           </div>
 
                           {/* Name, Tag, Level & Region */}
-                          <div className="flex flex-col min-w-0">
+                          <div className="flex flex-col min-w-0 items-start text-left">
                             <div className="flex items-center gap-1.5 truncate">
                               <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
                                 {summoner.gameName}
@@ -490,18 +489,10 @@ export default function SearchBar({
                                 {summoner.region.toUpperCase()}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                            <div className="flex items-center gap-2 text-[11px] text-zinc-400 text-left">
                               <span className="text-zinc-400">
                                 Level {summoner.summonerLevel}
                               </span>
-                              {summoner.tier && summoner.tier !== 'UNRANKED' && (
-                                <>
-                                  <span className="text-zinc-600">•</span>
-                                  <span className="text-amber-300 font-semibold uppercase">
-                                    {summoner.tier} {summoner.rank || ''}
-                                  </span>
-                                </>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -663,9 +654,9 @@ export default function SearchBar({
                       }
                       className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-1.5 hover:bg-white/[0.06] transition-colors"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         {item.profileIconId ? (
-                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-400/50 transition-colors bg-zinc-950 shadow-sm">
+                          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-400/60 transition-colors bg-zinc-950 shadow-sm">
                             <Image
                               src={getProfileIconUrl(item.profileIconId)}
                               alt={item.gameName}
@@ -674,17 +665,17 @@ export default function SearchBar({
                               unoptimized
                             />
                             {item.summonerLevel != null && (
-                              <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-0.5 py-0.1 text-[7px] font-black text-amber-300">
+                              <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20">
                                 {item.summonerLevel}
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
                             <User className="h-4 w-4" />
                           </div>
                         )}
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex flex-col min-w-0 items-start text-left">
                           <div className="flex items-center gap-1.5 truncate">
                             <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors truncate">
                               {item.gameName}
@@ -695,7 +686,7 @@ export default function SearchBar({
                             </span>
                           </div>
                           {item.summonerLevel != null && (
-                            <span className="text-[11px] text-zinc-400">
+                            <span className="text-[11px] text-zinc-400 text-left">
                               Level {item.summonerLevel}
                             </span>
                           )}

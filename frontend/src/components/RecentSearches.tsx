@@ -56,7 +56,7 @@ export default function RecentSearches() {
   if (!mounted || searches.length === 0) return null;
 
   return (
-    <div className="w-full">
+    <div className="w-full text-left">
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
           <History className="h-3.5 w-3.5 text-amber-400" />
@@ -80,7 +80,7 @@ export default function RecentSearches() {
               className="group flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-amber-500/50 hover:bg-[#131924] shadow-sm"
             >
               {item.profileIconId && (
-                <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-lg border border-white/10 group-hover:border-amber-400/50 transition-colors bg-zinc-950">
+                <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-white/10 group-hover:border-amber-400/50 transition-colors bg-zinc-950">
                   <Image
                     src={getProfileIconUrl(item.profileIconId)}
                     alt={item.gameName}
@@ -89,7 +89,7 @@ export default function RecentSearches() {
                     unoptimized
                   />
                   {item.summonerLevel != null && (
-                    <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-0.5 py-0.1 text-[6px] font-black text-amber-300">
+                    <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[7px] font-black text-amber-300 border-t border-l border-white/20">
                       {item.summonerLevel}
                     </div>
                   )}

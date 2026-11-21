@@ -98,12 +98,12 @@ export default function HomeView() {
         </p>
 
         {/* Central Search Bar */}
-        <div className="w-full max-w-3xl sm:max-w-4xl">
+        <div className="w-full max-w-3xl sm:max-w-4xl text-left">
           <SearchBar defaultRegion="euw" />
         </div>
 
         {/* Recent Searches (from LocalStorage) */}
-        <div className="w-full max-w-3xl sm:max-w-4xl mt-5">
+        <div className="w-full max-w-3xl sm:max-w-4xl mt-5 text-left">
           <RecentSearches />
         </div>
       </div>
