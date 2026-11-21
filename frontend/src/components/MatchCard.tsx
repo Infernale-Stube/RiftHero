@@ -12,6 +12,9 @@ import {
   Trophy,
   Award,
   Ban,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { FormattedMatch, MatchParticipant, DeepLolScore } from '@/types';
 import {
@@ -134,6 +137,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const { locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
+  const [copiedMatchId, setCopiedMatchId] = useState(false);
 
   const isNewMatch = isNew ?? match.isNew;
   const [isDismissed, setIsDismissed] = useState(false);
@@ -1037,6 +1041,36 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             redTeamTotals,
             redTeamData
           )}
+
+          {/* Match Footer Info: Match ID & Details Link */}
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-3 px-1 border-t border-white/[0.04]">
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="text-zinc-500 font-sans">Match ID:</span>
+              <span className="text-zinc-400 font-semibold select-all">{match.matchId}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(match.matchId);
+                    setCopiedMatchId(true);
+                    setTimeout(() => setCopiedMatchId(false), 2000);
+                  }
+                }}
+                className="p-1 hover:text-amber-400 text-zinc-500 transition-colors"
+                title="Match ID kopieren"
+                aria-label="Match ID kopieren"
+              >
+                {copiedMatchId ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+              </button>
+            </div>
+            <Link
+              href={`/${locale}/match/${region}/${match.matchId}`}
+              className="hover:text-amber-400 text-zinc-400 transition-colors flex items-center gap-1 font-medium font-sans"
+            >
+              <span>Match Details</span>
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
       )}
     </div>

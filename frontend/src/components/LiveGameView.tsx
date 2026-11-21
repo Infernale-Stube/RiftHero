@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Radio, RefreshCw, Ban } from 'lucide-react';
+import { Radio, RefreshCw, Ban, Copy, Check } from 'lucide-react';
 import { LiveGameResponse, LiveGameParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -37,6 +37,7 @@ export default function LiveGameView({
   onRefresh,
 }: LiveGameViewProps) {
   const { t, locale } = useTranslation();
+  const [copiedId, setCopiedId] = useState(false);
 
   if (isLoading) {
     return (
@@ -100,14 +101,10 @@ export default function LiveGameView({
               <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
             </div>
 
-            {/* Average Rank & Winrate Badge */}
+            {/* Average Rank & Winrate */}
             {teamAvg ? (
               <div
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1 shadow-sm backdrop-blur-sm ${
-                  isBlue
-                    ? 'bg-blue-950/80 text-blue-200'
-                    : 'bg-rose-950/80 text-rose-200'
-                }`}
+                className="flex items-center gap-2 text-zinc-300"
                 title={`Team Average: ${teamAvg.formatted} · Winrate: ${teamAvg.avgWinrate ?? '—'}% (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
               >
                 {/* Rank Section */}
@@ -151,7 +148,7 @@ export default function LiveGameView({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 bg-zinc-900/60 text-[10px] font-medium text-zinc-500">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500">
                 <span>{t('live.avgRank')}: {t('summoner.unranked')}</span>
               </div>
             )}
@@ -418,7 +415,47 @@ export default function LiveGameView({
   const sortedRedSlots = assignTeamPositions(game.redTeam);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
+      {/* Live Game Status & Match ID Bar */}
+      <div className="flex items-center justify-between px-1 text-xs text-zinc-400">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+          </span>
+          <span className="font-bold text-slate-200">{game.queueName || 'Live Game'}</span>
+          {game.gameMode && <span className="text-zinc-500 font-medium">• {game.gameMode}</span>}
+        </div>
+
+        {game.gameId ? (
+          <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400">
+            <span className="text-zinc-500 font-sans">Match ID:</span>
+            <span className="text-zinc-300 font-semibold select-all">
+              {game.gameId}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                  navigator.clipboard.writeText(String(game.gameId));
+                  setCopiedId(true);
+                  setTimeout(() => setCopiedId(false), 2000);
+                }
+              }}
+              className="p-1 hover:text-amber-400 text-zinc-400 transition-colors"
+              title="Match ID kopieren"
+              aria-label="Match ID kopieren"
+            >
+              {copiedId ? (
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+        ) : null}
+      </div>
+
       {/* Team Headers */}
       <div className="flex flex-col lg:flex-row gap-3 w-full">
         <div className="flex-1 min-w-0">
