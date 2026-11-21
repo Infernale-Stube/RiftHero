@@ -336,8 +336,8 @@ export default function SummonerHeader({
               onClick={() => onTabChange?.('live')}
               className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
                 currentTab === 'live'
-                  ? 'text-amber-400 font-black after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                  : 'text-amber-400 hover:text-amber-300 font-bold'
+                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <span className="relative flex h-2 w-2 mr-0.5">
@@ -345,9 +345,6 @@ export default function SummonerHeader({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
               </span>
               <span>{t('summoner.tabLive')}</span>
-              <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
-                LIVE
-              </span>
             </Link>
           )}
         </div>
