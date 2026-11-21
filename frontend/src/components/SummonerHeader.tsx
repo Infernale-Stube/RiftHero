@@ -306,73 +306,75 @@ export default function SummonerHeader({
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}
-        <div className="mt-6 -mx-6 flex items-center gap-6 border-t border-white/[0.08] px-6 pt-3 text-xs font-bold overflow-x-auto">
-          <Link
-            href={basePath}
-            onClick={() => onTabChange?.('matches')}
-            className={`relative pb-2 shrink-0 transition-colors ${
-              currentTab === 'matches'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {t('summoner.tabMatches')}
-          </Link>
-
-          <Link
-            href={`${basePath}/champions`}
-            onClick={() => onTabChange?.('champions')}
-            className={`relative pb-2 shrink-0 transition-colors ${
-              currentTab === 'champions'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {t('summoner.tabChampions')}
-          </Link>
-
-          <Link
-            href={`${basePath}/masteries`}
-            onClick={() => onTabChange?.('masteries')}
-            className={`relative pb-2 shrink-0 transition-colors ${
-              currentTab === 'masteries'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {t('summoner.tabMasteries')}
-          </Link>
-
-          <Link
-            href={`${basePath}/challenges`}
-            onClick={() => onTabChange?.('challenges')}
-            className={`relative pb-2 shrink-0 transition-colors ${
-              currentTab === 'challenges'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {t('summoner.tabChallenges')}
-          </Link>
-
-          {/* Live Game Tab: Only shown when in an active live game */}
-          {(isLive || currentTab === 'live') && (
+        <div className="relative z-10 mt-6 w-full border-t border-white/[0.08] pt-3">
+          <div className="flex items-center gap-6 text-xs font-bold overflow-x-auto">
             <Link
-              href={`${basePath}/live`}
-              onClick={() => onTabChange?.('live')}
-              className={`relative flex items-center gap-1.5 pb-2 shrink-0 transition-colors ${
-                currentTab === 'live'
+              href={basePath}
+              onClick={() => onTabChange?.('matches')}
+              className={`relative pb-2 shrink-0 transition-colors ${
+                currentTab === 'matches'
                   ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span className="relative flex h-2 w-2 mr-0.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-              </span>
-              <span>{t('summoner.tabLive')}</span>
+              {t('summoner.tabMatches')}
             </Link>
-          )}
+
+            <Link
+              href={`${basePath}/champions`}
+              onClick={() => onTabChange?.('champions')}
+              className={`relative pb-2 shrink-0 transition-colors ${
+                currentTab === 'champions'
+                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {t('summoner.tabChampions')}
+            </Link>
+
+            <Link
+              href={`${basePath}/masteries`}
+              onClick={() => onTabChange?.('masteries')}
+              className={`relative pb-2 shrink-0 transition-colors ${
+                currentTab === 'masteries'
+                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {t('summoner.tabMasteries')}
+            </Link>
+
+            <Link
+              href={`${basePath}/challenges`}
+              onClick={() => onTabChange?.('challenges')}
+              className={`relative pb-2 shrink-0 transition-colors ${
+                currentTab === 'challenges'
+                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {t('summoner.tabChallenges')}
+            </Link>
+
+            {/* Live Game Tab: Only shown when in an active live game */}
+            {(isLive || currentTab === 'live') && (
+              <Link
+                href={`${basePath}/live`}
+                onClick={() => onTabChange?.('live')}
+                className={`relative flex items-center gap-1.5 pb-2 shrink-0 transition-colors ${
+                  currentTab === 'live'
+                    ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <span className="relative flex h-2 w-2 mr-0.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                </span>
+                <span>{t('summoner.tabLive')}</span>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </div>
