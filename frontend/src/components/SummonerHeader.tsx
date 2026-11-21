@@ -141,8 +141,8 @@ export default function SummonerHeader({
         <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           {/* Left Block: Avatar + Name + Pills */}
           <div className="flex items-center gap-5">
-            {/* Circular Avatar */}
-            <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/10 shadow-xl">
+            {/* Circular Avatar with Yellow/Amber Accent Border */}
+            <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 sm:border-[2.5px] border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
               <Image
                 src={getProfileIconUrl(summoner.profileIconId)}
                 alt={summoner.gameName}
@@ -214,8 +214,8 @@ export default function SummonerHeader({
           </div>
         </div>
 
-        {/* Ranks Showcase Row: Side-by-side, larger emblems and stats */}
-        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Ranks Showcase Row: Borderless & Larger Cards */}
+        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
           {rankCards.map((rc) => {
             const hasRank = !!rc.rank;
             const theme = hasRank
@@ -225,30 +225,30 @@ export default function SummonerHeader({
             return (
               <div
                 key={rc.id}
-                className="group relative flex items-center gap-3.5 rounded-xl border border-white/[0.07] bg-[#090d12]/75 hover:bg-[#090d12]/90 hover:border-white/[0.14] px-4 py-3 backdrop-blur-md transition-all duration-200 shadow-lg"
+                className="group relative flex items-center gap-4 rounded-2xl bg-[#090d12]/80 hover:bg-[#090d12]/95 px-5 py-4 backdrop-blur-md transition-all duration-200 shadow-xl"
               >
                 <RankBadge
                   tier={rc.rank?.tier || 'UNRANKED'}
-                  size="md"
+                  size="lg"
                   showGlow={hasRank}
-                  className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 transition-transform duration-200 group-hover:scale-105"
+                  className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 transition-transform duration-200 group-hover:scale-105"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
                     {rc.title}
                   </span>
                   {hasRank ? (
                     <>
-                      <div className="flex items-baseline gap-1.5 leading-tight mt-0.5 truncate">
-                        <span className={`text-sm sm:text-base font-black uppercase tracking-tight ${theme.text} truncate`}>
+                      <div className="flex items-baseline gap-1.5 leading-tight mt-1 truncate">
+                        <span className={`text-base sm:text-lg font-black uppercase tracking-tight ${theme.text} truncate`}>
                           {rc.rank!.tier} {rc.rank!.rank}
                         </span>
                         <span className="text-zinc-500 font-bold text-xs">·</span>
-                        <span className="text-xs font-black text-amber-400 shrink-0">
+                        <span className="text-sm font-black text-amber-400 shrink-0">
                           {rc.rank!.leaguePoints} LP
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium">
+                      <div className="mt-1.5 flex items-center gap-2 text-xs text-zinc-400 font-medium">
                         <span className="font-bold text-emerald-400">{rc.rank!.wins}W</span>
                         <span className="font-bold text-rose-400">{rc.rank!.losses}L</span>
                         <span className="text-zinc-500">•</span>
@@ -265,10 +265,10 @@ export default function SummonerHeader({
                     </>
                   ) : (
                     <>
-                      <span className="text-sm font-bold text-zinc-400 mt-0.5">
+                      <span className="text-base font-bold text-zinc-400 mt-1">
                         {t('summoner.unranked')}
                       </span>
-                      <span className="text-[11px] text-zinc-500 mt-0.5">
+                      <span className="text-xs text-zinc-500 mt-0.5">
                         {t('summoner.noGamesRecorded')}
                       </span>
                     </>
