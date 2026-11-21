@@ -136,14 +136,11 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
 
   return (
     <div className="flex flex-col pt-3 border-t border-white/[0.06]">
-      {/* Top Header: Games count + Net Delta with rank badge */}
+      {/* Top Header: Games count + Net Delta */}
       <div className="flex items-center justify-between text-[11px] mb-2 px-1">
         <div className="flex items-center gap-1.5">
           <span className="font-bold text-zinc-400 uppercase tracking-wider text-[10px]">
             {t('summoner.lastGames', { count: points.length })}
-          </span>
-          <span className={`text-[10px] font-bold ${activeTheme.text}`}>
-            • {currentTier} {currentRank}
           </span>
         </div>
 
