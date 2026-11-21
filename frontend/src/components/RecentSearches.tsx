@@ -88,11 +88,6 @@ export default function RecentSearches() {
                     className="object-cover"
                     unoptimized
                   />
-                  {item.summonerLevel != null && (
-                    <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[7px] font-black text-amber-300 border-t border-l border-white/20">
-                      {item.summonerLevel}
-                    </div>
-                  )}
                 </div>
               )}
               <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-400 shrink-0">
@@ -102,11 +97,6 @@ export default function RecentSearches() {
                 {item.gameName}
               </span>
               <span className="text-xs text-zinc-500 shrink-0">#{item.tagLine}</span>
-              {item.summonerLevel != null && !item.profileIconId && (
-                <span className="text-[10px] font-semibold text-zinc-400 bg-white/[0.05] px-1.5 py-0.5 rounded">
-                  Lvl {item.summonerLevel}
-                </span>
-              )}
               <button
                 onClick={(e) => removeSearch(e, item)}
                 className="ml-1 text-zinc-500 hover:text-rose-400 transition-colors"

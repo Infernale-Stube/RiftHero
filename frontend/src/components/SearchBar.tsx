@@ -623,7 +623,7 @@ export default function SearchBar({
                         className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-1.5 hover:bg-white/[0.06] transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          {/* Player Profile Picture from DB + Level Badge */}
+                          {/* Player Profile Picture from DB */}
                           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 group-hover:border-amber-400/60 transition-colors bg-zinc-950 shadow-sm">
                             <Image
                               src={getProfileIconUrl(summoner.profileIconId)}
@@ -632,9 +632,6 @@ export default function SearchBar({
                               className="object-cover"
                               unoptimized
                             />
-                            <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20">
-                              {summoner.summonerLevel}
-                            </div>
                           </div>
 
                           {/* Name, Tag, Level & Region */}
@@ -825,11 +822,6 @@ export default function SearchBar({
                               className="object-cover"
                               unoptimized
                             />
-                            {item.summonerLevel != null && (
-                              <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20">
-                                {item.summonerLevel}
-                              </div>
-                            )}
                           </div>
                         ) : (
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">

@@ -61,9 +61,6 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     className="h-full w-full object-cover"
                     unoptimized
                   />
-                  <div className="absolute bottom-0 right-0 rounded-tl bg-black/80 px-1 text-[9px] font-black text-amber-400">
-                    {s.summonerLevel}
-                  </div>
                 </div>
 
                 {/* Summoner Name & Region */}
