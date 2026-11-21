@@ -89,17 +89,17 @@ export default function SummonerHeader({
   const rankCards = [
     {
       id: 'solo',
-      title: 'Solo/Duo',
+      title: 'Ranked Solo/Duo',
       rank: soloRank,
     },
     {
       id: 'flex',
-      title: 'Flex',
+      title: 'Ranked Flex',
       rank: flexRank,
     },
     {
       id: 'ranked5s',
-      title: '5s',
+      title: 'Ranked 5s',
       rank: ranked5s,
     },
   ];

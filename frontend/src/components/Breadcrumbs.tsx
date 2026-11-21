@@ -34,12 +34,14 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
         return (
           <React.Fragment key={`${item.label}-${index}`}>
             <span className="text-zinc-600 select-none">/</span>
-            {isLast || !item.href ? (
+            {isLast ? (
               <span className="text-amber-400 font-bold select-none">{item.label}</span>
-            ) : (
+            ) : item.href ? (
               <Link href={item.href} className="hover:text-amber-400 transition-colors">
                 {item.label}
               </Link>
+            ) : (
+              <span className="text-zinc-400 select-none cursor-default">{item.label}</span>
             )}
           </React.Fragment>
         );

@@ -165,32 +165,37 @@ export default function SummonerLayout({
               ? `${profileData.summoner.gameName}#${profileData.summoner.tagLine}`
               : decodeURIComponent(tag).replace('-', '#');
             const basePath = `/${locale}/summoner/${region}/${encodeURIComponent(tag)}`;
+            const serverItem = { label: region.toUpperCase() };
 
             if (pathname.includes('/live')) {
               return [
+                serverItem,
                 { label: summonerName, href: basePath },
-                { label: t('nav.liveGame') || 'Live Game' },
+                { label: t('summoner.tabLive') || 'Live Game' },
               ];
             }
             if (pathname.includes('/champions')) {
               return [
+                serverItem,
                 { label: summonerName, href: basePath },
-                { label: t('nav.champions') || 'Champions' },
+                { label: t('summoner.tabChampions') || 'Champions' },
               ];
             }
             if (pathname.includes('/masteries')) {
               return [
+                serverItem,
                 { label: summonerName, href: basePath },
-                { label: t('nav.masteries') || 'Masteries' },
+                { label: t('summoner.tabMasteries') || 'Meisterschaften' },
               ];
             }
             if (pathname.includes('/challenges')) {
               return [
+                serverItem,
                 { label: summonerName, href: basePath },
-                { label: t('nav.challenges') || 'Challenges' },
+                { label: t('summoner.tabChallenges') || 'Herausforderungen' },
               ];
             }
-            return [{ label: summonerName }];
+            return [serverItem, { label: summonerName }];
           })()}
         />
 

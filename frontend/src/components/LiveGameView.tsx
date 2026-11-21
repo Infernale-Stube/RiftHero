@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Radio, RefreshCw, Ban, Copy, Check } from 'lucide-react';
@@ -73,6 +73,52 @@ export default function LiveGameView({
   }
 
   const { game } = liveData;
+
+  // Live Timer for active match
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!game?.gameStartTime || game.gameStartTime <= 0) return;
+
+    const initial = Math.max(0, Math.floor((Date.now() - game.gameStartTime) / 1000));
+    setElapsedSeconds(initial);
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [game?.gameStartTime]);
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const startTimeFormatted = useMemo(() => {
+    if (!game?.gameStartTime || game.gameStartTime <= 0) return null;
+    try {
+      const date = new Date(game.gameStartTime);
+      return date.toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return null;
+    }
+  }, [game?.gameStartTime, locale]);
+
+  const getPlatformPrefix = (reg: string) => {
+    const r = (reg || '').toLowerCase();
+    if (r === 'euw') return 'EUW1';
+    if (r === 'eune') return 'EUN1';
+    if (r === 'na') return 'NA1';
+    if (r === 'kr') return 'KR';
+    return `${r.toUpperCase()}1`;
+  };
+
+  const fullMatchId = game.gameId ? `${getPlatformPrefix(region)}_${game.gameId}` : '';
 
   const blueAvg = calculateTeamAverageRank(game.blueTeam);
   const redAvg = calculateTeamAverageRank(game.redTeam);
@@ -424,20 +470,29 @@ export default function LiveGameView({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
           </span>
           <span className="font-bold text-slate-200">{game.queueName || 'Live Game'}</span>
-          {game.gameMode && <span className="text-zinc-500 font-medium">• {game.gameMode}</span>}
+          {startTimeFormatted && (
+            <span className="text-zinc-400 font-medium">
+              • {locale === 'de' ? 'Start:' : 'Started:'} {startTimeFormatted}
+              {elapsedSeconds > 0 && (
+                <span className="text-amber-400 font-mono ml-1.5 font-bold">
+                  ({formatTimer(elapsedSeconds)})
+                </span>
+              )}
+            </span>
+          )}
         </div>
 
-        {game.gameId ? (
+        {fullMatchId ? (
           <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400">
             <span className="text-zinc-500 font-sans">Match ID:</span>
             <span className="text-zinc-300 font-semibold select-all">
-              {game.gameId}
+              {fullMatchId}
             </span>
             <button
               type="button"
               onClick={() => {
                 if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                  navigator.clipboard.writeText(String(game.gameId));
+                  navigator.clipboard.writeText(fullMatchId);
                   setCopiedId(true);
                   setTimeout(() => setCopiedId(false), 2000);
                 }
