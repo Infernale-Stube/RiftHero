@@ -13,6 +13,7 @@ import {
   Package,
   Coins,
   User,
+  Swords,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RecentSearchItem, SummonerSearchResult } from '@/types';
@@ -21,6 +22,57 @@ import { getChampionIconUrl, getItemIconUrl, getProfileIconUrl } from '@/lib/ddr
 import championPositionsRaw from '@/lib/championPositions.json';
 import { fetchItemsRosterApi, searchSummonersApi } from '@/lib/api';
 import { fetchDDragonItemsList } from '@/lib/ddragon';
+
+export function parseMatchIdQuery(query: string, defaultRegion: string): { isMatchId: boolean; region: string; matchId: string } | null {
+  const clean = query.trim();
+  if (!clean) return null;
+
+  // Format 1: PLATFORM_NUMBER (e.g. EUW1_7182938194, euw1_7182938194, EUW_7182938194, NA1_12345678, KR_12345678)
+  const platformMatch = clean.match(/^([a-zA-Z]{2,5}[0-9]?)_([0-9]{6,14})$/);
+  if (platformMatch) {
+    let plat = platformMatch[1].toUpperCase();
+    const num = platformMatch[2];
+    let reg = defaultRegion.toLowerCase();
+
+    if (plat === 'EUW' || plat === 'EUW1') {
+      plat = 'EUW1';
+      reg = 'euw';
+    } else if (plat === 'EUN' || plat === 'EUN1' || plat === 'EUNE' || plat === 'EUNE1') {
+      plat = 'EUN1';
+      reg = 'eune';
+    } else if (plat === 'NA' || plat === 'NA1') {
+      plat = 'NA1';
+      reg = 'na';
+    } else if (plat === 'KR') {
+      plat = 'KR';
+      reg = 'kr';
+    }
+
+    return {
+      isMatchId: true,
+      region: reg,
+      matchId: `${plat}_${num}`,
+    };
+  }
+
+  // Format 2: Pure numeric ID with 8 to 14 digits (e.g. 7182938194 or #7182938194)
+  const pureNumber = clean.startsWith('#') ? clean.slice(1).trim() : clean;
+  if (/^[0-9]{8,14}$/.test(pureNumber)) {
+    let plat = 'EUW1';
+    const reg = defaultRegion.toLowerCase();
+    if (reg === 'eune') plat = 'EUN1';
+    else if (reg === 'na') plat = 'NA1';
+    else if (reg === 'kr') plat = 'KR';
+
+    return {
+      isMatchId: true,
+      region: reg,
+      matchId: `${plat}_${pureNumber}`,
+    };
+  }
+
+  return null;
+}
 
 const REGIONS = [
   { code: 'euw', label: 'EUW' },
@@ -196,6 +248,16 @@ export default function SearchBar({
       .slice(0, 4);
   }, [trimmedQuery, itemsList]);
 
+  // Match ID detection
+  const detectedMatch = useMemo(() => {
+    return parseMatchIdQuery(input, region);
+  }, [input, region]);
+
+  const navigateToMatch = (reg: string, matchId: string) => {
+    setIsFocused(false);
+    router.push(`/${locale}/match/${reg}/${encodeURIComponent(matchId)}`);
+  };
+
   const navigateToSummoner = (
     gameName: string,
     tagLine: string,
@@ -252,6 +314,12 @@ export default function SearchBar({
 
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    // 0. Match ID Check
+    if (detectedMatch) {
+      navigateToMatch(detectedMatch.region, detectedMatch.matchId);
+      return;
+    }
 
     // 1. Explicit Riot ID format with '#'
     if (trimmed.includes('#')) {
@@ -381,11 +449,11 @@ export default function SearchBar({
             placeholder={
               compact
                 ? locale === 'de'
-                  ? 'Spieler, Champion oder Item suchen...'
-                  : 'Search summoner, champion or item...'
+                  ? 'Spieler, Champion, Item oder Match-ID...'
+                  : 'Search summoner, champion, item or match ID...'
                 : locale === 'de'
-                ? 'Spieler (z.B. Agurin#EUW), Champion oder Item suchen...'
-                : 'Search summoner (e.g. Faker#T1), champion or item...'
+                ? 'Spieler (z.B. Agurin#EUW), Champion, Item oder Match-ID...'
+                : 'Search summoner (e.g. Faker#T1), champion, item or match ID...'
             }
             className={cn(
               'w-full bg-transparent text-white placeholder-zinc-500 outline-none font-medium truncate',
@@ -439,6 +507,40 @@ export default function SearchBar({
           {/* CASE A: User entered a search query -> Show matching Summoners (DB), Champions, Items & Summoner Action */}
           {trimmedQuery.length > 0 ? (
             <div className="flex flex-col gap-2">
+              {/* 0. MATCH ID DETECTED */}
+              {detectedMatch && (
+                <div className="pb-1.5 border-b border-white/[0.06]">
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                    <Swords className="h-3.5 w-3.5" />
+                    <span>{locale === 'de' ? 'Match-ID erkannt' : 'Match ID Detected'}</span>
+                  </div>
+                  <div
+                    onClick={() => navigateToMatch(detectedMatch.region, detectedMatch.matchId)}
+                    className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400">
+                        <Swords className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-white group-hover:text-amber-400 transition-colors font-mono tracking-tight">
+                            {detectedMatch.matchId}
+                          </span>
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 border border-amber-500/30">
+                            {detectedMatch.region.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-xs text-zinc-400">
+                          {locale === 'de' ? 'Zu den Match-Details springen' : 'View full match details'}
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-amber-400 transform group-hover:translate-x-1 transition-transform shrink-0" />
+                  </div>
+                </div>
+              )}
+
               {/* 1. MATCHING SUMMONERS FROM DATABASE */}
               {matchingSummoners.length > 0 && (
                 <div>

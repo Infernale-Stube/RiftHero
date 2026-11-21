@@ -83,11 +83,18 @@ export async function getMatchDetails(
   rawRegion: string,
   matchIdParam: string
 ): Promise<MatchDetailResponse | null> {
-  // Normalize match ID (e.g. 8005107004 -> EUW1_8005107004 if needed)
-  let matchId = matchIdParam.trim();
+  // Normalize match ID (e.g. 8005107004 -> EUW1_8005107004, or EUW_8005107004 -> EUW1_8005107004)
+  let matchId = matchIdParam.trim().toUpperCase();
   if (!matchId.includes('_')) {
-    const prefix = rawRegion.toUpperCase().startsWith('EUW') ? 'EUW1' : `${rawRegion.toUpperCase()}1`;
+    const regUpper = rawRegion.toUpperCase();
+    const prefix = regUpper === 'KR' ? 'KR' : regUpper.startsWith('EUN') ? 'EUN1' : regUpper.startsWith('NA') ? 'NA1' : 'EUW1';
     matchId = `${prefix}_${matchId}`;
+  } else {
+    const [pfx, ...rest] = matchId.split('_');
+    const numPart = rest.join('_');
+    if (pfx === 'EUW') matchId = `EUW1_${numPart}`;
+    else if (pfx === 'EUN' || pfx === 'EUNE') matchId = `EUN1_${numPart}`;
+    else if (pfx === 'NA') matchId = `NA1_${numPart}`;
   }
 
   // 1. Check if match is already in PostgreSQL

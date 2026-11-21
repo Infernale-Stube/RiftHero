@@ -214,8 +214,8 @@ export default function SummonerHeader({
           </div>
         </div>
 
-        {/* Ranks Showcase Row: Borderless & Larger Cards */}
-        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        {/* Ranks Showcase Row: Background-free & Clean */}
+        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {rankCards.map((rc) => {
             const hasRank = !!rc.rank;
             const theme = hasRank
@@ -225,7 +225,7 @@ export default function SummonerHeader({
             return (
               <div
                 key={rc.id}
-                className="group relative flex items-center gap-4 rounded-2xl bg-[#090d12]/80 hover:bg-[#090d12]/95 px-5 py-4 backdrop-blur-md transition-all duration-200 shadow-xl"
+                className="group relative flex items-center gap-4 py-2 transition-all duration-200"
               >
                 <RankBadge
                   tier={rc.rank?.tier || 'UNRANKED'}
