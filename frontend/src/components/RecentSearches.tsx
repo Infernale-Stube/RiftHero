@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { History, X } from 'lucide-react';
 import { RecentSearchItem } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { getProfileIconUrl } from '@/lib/ddragon';
 
 export default function RecentSearches() {
   const { locale } = useTranslation();
@@ -75,15 +77,36 @@ export default function RecentSearches() {
             <Link
               key={`${item.region}-${item.gameName}-${item.tagLine}`}
               href={`/${locale}/summoner/${item.region}/${encodeURIComponent(formattedTag)}`}
-              className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-amber-500/50 hover:bg-[#131924] shadow-sm"
+              className="group flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-[#0c1017]/80 px-3 py-1.5 text-sm transition-all hover:border-amber-500/50 hover:bg-[#131924] shadow-sm"
             >
-              <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-400">
+              {item.profileIconId && (
+                <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-lg border border-white/10 group-hover:border-amber-400/50 transition-colors bg-zinc-950">
+                  <Image
+                    src={getProfileIconUrl(item.profileIconId)}
+                    alt={item.gameName}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                  {item.summonerLevel != null && (
+                    <div className="absolute bottom-0 right-0 rounded-tl bg-black/85 px-0.5 py-0.1 text-[6px] font-black text-amber-300">
+                      {item.summonerLevel}
+                    </div>
+                  )}
+                </div>
+              )}
+              <span className="rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-400 shrink-0">
                 {item.region}
               </span>
-              <span className="font-bold text-zinc-200 group-hover:text-white transition-colors">
+              <span className="font-bold text-zinc-200 group-hover:text-white transition-colors truncate">
                 {item.gameName}
               </span>
-              <span className="text-xs text-zinc-500">#{item.tagLine}</span>
+              <span className="text-xs text-zinc-500 shrink-0">#{item.tagLine}</span>
+              {item.summonerLevel != null && !item.profileIconId && (
+                <span className="text-[10px] font-semibold text-zinc-400 bg-white/[0.05] px-1.5 py-0.5 rounded">
+                  Lvl {item.summonerLevel}
+                </span>
+              )}
               <button
                 onClick={(e) => removeSearch(e, item)}
                 className="ml-1 text-zinc-500 hover:text-rose-400 transition-colors"

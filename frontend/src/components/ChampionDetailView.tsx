@@ -391,7 +391,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [isMounted, setIsMounted] = useState(false);
   const timelineCanvasRef = useRef<HTMLDivElement>(null);
   const [timelineDims, setTimelineDims] = useState<{ width: number; height: number }>({
-    width: 0,
+    width: 900,
     height: 260,
   });
 
@@ -400,15 +400,31 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   }, []);
 
   useEffect(() => {
+    if (isLoading || !data) return;
     const el = timelineCanvasRef.current;
     if (!el) return;
-    setTimelineDims({ width: el.clientWidth, height: 260 });
-    const ro = new ResizeObserver(() => {
-      if (el) setTimelineDims({ width: el.clientWidth, height: 260 });
+
+    const measure = () => {
+      if (el && el.clientWidth > 0) {
+        setTimelineDims((prev) => (prev.width === el.clientWidth ? prev : { width: el.clientWidth, height: 260 }));
+      }
+    };
+
+    measure();
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setTimelineDims((prev) => (prev.width === entry.contentRect.width ? prev : { width: entry.contentRect.width, height: 260 }));
+        }
+      }
     });
     ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [isLoading, data]);
 
   useEffect(() => {
     const handleDismiss = () => setTimelineTooltip(null);
@@ -639,9 +655,17 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     return LOLDB_RARITY_ORDER.filter((tier) => allFlat.some((s) => s.tier === tier));
   }, [allFlat]);
 
+  const minCanvasWidth = useMemo(() => {
+    if (!hasTimelineData) return 800;
+    return Math.max(760, 72 + (maxYear - minYear + 3) * 52);
+  }, [hasTimelineData, minYear, maxYear]);
+
+  const effectiveTimelineWidth = useMemo(() => {
+    return Math.max(timelineDims.width || 0, minCanvasWidth);
+  }, [timelineDims.width, minCanvasWidth]);
+
   const timelineGeometry = useMemo(() => {
-    const { width, height } = timelineDims;
-    if (width === 0 || !hasTimelineData) {
+    if (!hasTimelineData) {
       return {
         singles: [] as Array<TimelineSkinData & { px: number; py: number }>,
         groups: [] as Array<{
@@ -664,6 +688,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       };
     }
 
+    const width = effectiveTimelineWidth;
+    const height = timelineDims.height || 260;
     const r = minYear - 0.8;
     const a = maxYear + 0.8;
     const l = maxRank + 0.6;
@@ -748,7 +774,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         yearTicks,
       },
     };
-  }, [timelineDims, hasTimelineData, singlesFlat, groupsFlat, allFlat, minYear, maxYear, maxRank, displayRankMap, activeLegendTiers]);
+  }, [effectiveTimelineWidth, timelineDims.height, hasTimelineData, singlesFlat, groupsFlat, allFlat, minYear, maxYear, maxRank, displayRankMap, activeLegendTiers]);
 
   const scrollThumbnailIntoView = (index: number) => {
     if (!thumbnailStripRef.current) return;
@@ -1396,8 +1422,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
     const { baseline, gridLines, stems, spotlightCols, yearTicks } = timelineGeometry.svgGeometry;
     const { singles, groups, yearLabels, rarityAxisItems } = timelineGeometry;
-    const { width, height } = timelineDims;
-    const minCanvasWidth = Math.max(320, 72 + (maxYear - minYear + 3) * 48);
+    const canvasWidth = effectiveTimelineWidth;
+    const height = timelineDims.height || 260;
 
     return (
       <section className="rounded-3xl border border-white/[0.08] bg-[#0c1017]/90 p-6 shadow-2xl backdrop-blur-md">
@@ -1446,70 +1472,68 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <div
             ref={timelineCanvasRef}
             className="relative rounded-xl border border-white/[0.07] bg-black/25 backdrop-blur-sm"
-            style={{ height: 260, overflow: 'visible', minWidth: minCanvasWidth }}
+            style={{ height: 260, width: canvasWidth, minWidth: minCanvasWidth, overflow: 'visible' }}
           >
-            {width > 0 && (
-              <>
-                <svg
-                  className="pointer-events-none absolute inset-0 overflow-visible"
-                  width={width}
-                  height={height}
-                >
-                  <defs>
-                    {stems.map((s) => (
-                      <linearGradient key={s.id} id={`stem-${s.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0.55" />
-                        <stop offset="100%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0" />
-                      </linearGradient>
-                    ))}
-                    <linearGradient id="baseline-grad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                      <stop offset="15%" stopColor="rgba(255,255,255,0.18)" />
-                      <stop offset="85%" stopColor="rgba(255,255,255,0.18)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                    </linearGradient>
-                  </defs>
+            <svg
+              className="pointer-events-none absolute inset-0 overflow-visible"
+              width={canvasWidth}
+              height={height}
+            >
+              <defs>
+                {stems.map((s) => (
+                  <linearGradient key={s.id} id={`stem-${s.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0.55" />
+                    <stop offset="100%" stopColor={LOLDB_RARITY_COLORS[s.tier] ?? '#fff'} stopOpacity="0" />
+                  </linearGradient>
+                ))}
+                <linearGradient id="baseline-grad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                  <stop offset="15%" stopColor="rgba(255,255,255,0.18)" />
+                  <stop offset="85%" stopColor="rgba(255,255,255,0.18)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+              </defs>
 
-                  {/* Spotlight Columns behind each active year */}
-                  {spotlightCols.map(({ x, y, h }, idx) => (
-                    <rect key={idx} x={x} y={y} width={48} height={h} fill="rgba(255,255,255,0.016)" rx={3} />
-                  ))}
+              {/* Spotlight Columns behind each active year */}
+              {spotlightCols.map(({ x, y, h }, idx) => (
+                <rect key={idx} x={x} y={y} width={48} height={h} fill="rgba(255,255,255,0.016)" rx={3} />
+              ))}
 
-                  {/* Dashed Horizontal Grid Lines */}
-                  {gridLines.map(({ y }, idx) => (
-                    <line
-                      key={idx}
-                      x1={48}
-                      x2={width - 24}
-                      y1={y}
-                      y2={y}
-                      stroke="rgba(255,255,255,0.045)"
-                      strokeWidth={1}
-                      strokeDasharray="3 6"
-                    />
-                  ))}
+              {/* Dashed Horizontal Grid Lines */}
+              {gridLines.map(({ y }, idx) => (
+                <line
+                  key={idx}
+                  x1={48}
+                  x2={canvasWidth - 24}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.045)"
+                  strokeWidth={1}
+                  strokeDasharray="3 6"
+                />
+              ))}
 
-                  {/* Stems */}
-                  {stems.filter((s) => !hiddenRarities.has(s.tier)).map((s) => (
-                    <rect key={s.id} x={s.x} y={s.y} width={1.5} height={s.height} fill={`url(#stem-${s.id})`} />
-                  ))}
+              {/* Stems */}
+              {stems.filter((s) => !hiddenRarities.has(s.tier)).map((s) => (
+                <rect key={s.id} x={s.x} y={s.y} width={1.5} height={s.height} fill={`url(#stem-${s.id})`} />
+              ))}
 
-                  {/* Baseline Line */}
-                  <line x1={48} x2={width - 24} y1={baseline} y2={baseline} stroke="url(#baseline-grad)" strokeWidth={1} />
+              {/* Baseline Line */}
+              <line x1={48} x2={canvasWidth - 24} y1={baseline} y2={baseline} stroke="url(#baseline-grad)" strokeWidth={1} />
 
-                  {/* Diamond Year Ticks */}
-                  {yearTicks.map(({ x, y }, idx) => (
-                    <rect
-                      key={idx}
-                      x={x - 3}
-                      y={y - 3}
-                      width={6}
-                      height={6}
-                      fill="rgba(255,255,255,0.22)"
-                      transform={`rotate(45, ${x}, ${y})`}
-                    />
-                  ))}
-                </svg>
+              {/* Diamond Year Ticks */}
+              {yearTicks.map(({ x, y }, idx) => (
+                <rect
+                  key={idx}
+                  x={x - 3}
+                  y={y - 3}
+                  width={6}
+                  height={6}
+                  fill="rgba(255,255,255,0.22)"
+                  transform={`rotate(45, ${x}, ${y})`}
+                />
+              ))}
+            </svg>
 
                 {/* HTML Layer on top of SVG */}
                 <div className="absolute inset-0 overflow-visible">
@@ -1624,8 +1648,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     </div>
                   ))}
                 </div>
-              </>
-            )}
           </div>
         </div>
 

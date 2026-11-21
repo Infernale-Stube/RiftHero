@@ -431,6 +431,40 @@ export default function LiveGameView({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Live Game Match Header Banner (Yellow Layout) */}
+      <div className="flex items-center justify-between rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[#0c1017]/90 to-[#0c1017]/90 px-5 py-3.5 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-black text-amber-400 uppercase tracking-wider text-sm">
+              Live Game
+            </span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-xs font-bold text-zinc-200">
+              {game.queueName || 'League of Legends'}
+            </span>
+            {game.gameMode && (
+              <>
+                <span className="text-zinc-600">•</span>
+                <span className="text-xs text-zinc-400 font-medium">
+                  {game.gameMode}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer shadow-sm active:scale-95"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span>{t('live.checkAgain')}</span>
+        </button>
+      </div>
+
       {/* Team Rosters Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {renderRoster(game.blueTeam, true)}

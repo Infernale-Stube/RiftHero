@@ -179,13 +179,13 @@ export default function SummonerHeader({
             {liveData?.inGame && liveData.game ? (
               <Link
                 href={`${basePath}/live`}
-                className="flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-950/25 px-3 py-1 text-xs text-zinc-300 hover:border-rose-500/50 hover:bg-rose-950/40 transition-all backdrop-blur-sm"
+                className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-zinc-200 hover:border-amber-400/60 hover:bg-amber-500/20 transition-all backdrop-blur-sm shadow-[0_0_16px_rgba(245,158,11,0.18)]"
               >
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
                 </span>
-                <span className="font-black text-rose-400 uppercase tracking-wider text-[11px]">
+                <span className="font-black text-amber-400 uppercase tracking-wider text-[11px]">
                   Live
                 </span>
                 <span className="text-zinc-600">•</span>
@@ -334,21 +334,26 @@ export default function SummonerHeader({
             onClick={() => onTabChange?.('live')}
             className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
               currentTab === 'live'
-                ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                ? 'text-amber-400 font-black after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : isLive
-                ? 'text-emerald-400 hover:text-emerald-300'
+                ? 'text-amber-400 hover:text-amber-300 font-bold'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {isLive ? (
               <span className="relative flex h-2 w-2 mr-0.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
               </span>
             ) : (
-              <Radio className="h-3.5 w-3.5 text-zinc-500" />
+              <Radio className={`h-3.5 w-3.5 ${currentTab === 'live' || isLive ? 'text-amber-400' : 'text-zinc-500'}`} />
             )}
             <span>{t('summoner.tabLive')}</span>
+            {isLive && (
+              <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
+                LIVE
+              </span>
+            )}
           </Link>
         </div>
       </div>
