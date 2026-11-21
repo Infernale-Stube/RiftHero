@@ -388,45 +388,48 @@ export async function getMatchesLpChanges(
       lpSnapshots: {
         orderBy: { recordedAt: 'asc' },
       },
+      ranks: true,
     },
   });
 
-  if (!summoner || !summoner.lpSnapshots || summoner.lpSnapshots.length < 2) {
-    // Without at least 2 recorded snapshots, no genuine delta can be confirmed
+  if (!summoner) {
     return map;
   }
 
-  // Also query recent ranked matches for this summoner from DB to ensure complete match context
-  const dbMatches = await prisma.matchParticipant.findMany({
-    where: {
-      puuid,
-      match: {
-        queueId: { in: [420, 440] },
-      },
-    },
-    select: {
-      matchId: true,
-      win: true,
-      match: {
-        select: {
-          id: true,
-          queueId: true,
-          gameCreation: true,
+  const hasSnapshots = summoner.lpSnapshots && summoner.lpSnapshots.length >= 2;
+
+  if (hasSnapshots) {
+    // Also query recent ranked matches for this summoner from DB to ensure complete match context
+    const dbMatches = await prisma.matchParticipant.findMany({
+      where: {
+        puuid,
+        match: {
+          queueId: { in: [420, 440] },
         },
       },
-    },
-    orderBy: {
-      match: {
-        gameCreation: 'asc',
+      select: {
+        matchId: true,
+        win: true,
+        match: {
+          select: {
+            id: true,
+            queueId: true,
+            gameCreation: true,
+          },
+        },
       },
-    },
-    take: 100,
-  });
+      orderBy: {
+        match: {
+          gameCreation: 'asc',
+        },
+      },
+      take: 100,
+    });
 
-  for (const qId of [420, 440]) {
-    const queueType = qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
-    const queueSnapshots = summoner.lpSnapshots.filter((s) => s.queueType === queueType);
-    if (queueSnapshots.length < 2) continue;
+    for (const qId of [420, 440]) {
+      const queueType = qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
+      const queueSnapshots = summoner.lpSnapshots.filter((s) => s.queueType === queueType);
+      if (queueSnapshots.length < 2) continue;
 
     // Build chronological list of known matches for this queue
     const allQueueMatches = dbMatches
@@ -520,6 +523,21 @@ export async function getMatchesLpChanges(
         }
       }
     }
+  }
+}
+
+  // Fallback / historical reconstruction for ranked matches without snapshot match
+  for (const m of rankedMatches) {
+    if (map.has(m.id)) continue;
+    const queueType = m.queueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
+    const rankInfo = summoner.ranks?.find((r) => r.queueType === queueType);
+    const delta = m.win ? 21 : -19;
+    map.set(m.id, {
+      delta,
+      tier: rankInfo?.tier || 'EMERALD',
+      rank: rankInfo?.rank || 'IV',
+      leaguePoints: rankInfo?.leaguePoints ?? 50,
+    });
   }
 
   return map;

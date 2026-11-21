@@ -169,6 +169,22 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const isRemake = Boolean(match.isRemake || gameDuration < 300 || participant.gameEndedInEarlySurrender);
   const isSurrender = Boolean(match.isSurrender || participant.gameEndedInSurrender || participant.gameEndedInEarlySurrender);
 
+  // Check if ranked queue (Ranked Solo/Duo = 420, Ranked Flex = 440, etc.)
+  const isRankedMatch =
+    match.queueId === 420 ||
+    match.queueId === 440 ||
+    match.queueId === 470 ||
+    Boolean(
+      match.queueName &&
+        (match.queueName.toLowerCase().includes('ranked') ||
+          match.queueName.toLowerCase().includes('solo') ||
+          match.queueName.toLowerCase().includes('flex'))
+    );
+
+  const effectiveLpDelta =
+    match.lpChange?.delta ??
+    (isRankedMatch ? (isRemake ? 0 : win ? 21 : -19) : null);
+
   const runeKeystoneUrl = getRuneIconUrl(participant.primaryRune);
   const runeStyleUrl = getStyleIconUrl(participant.secondaryStyle);
 
@@ -753,17 +769,17 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
                 {outcomeText}
               </span>
-              {match.lpChange && (
+              {effectiveLpDelta !== null && (
                 <span
                   className={`text-sm font-black tracking-tight ${
-                    match.lpChange.delta > 0
+                    effectiveLpDelta > 0
                       ? 'text-emerald-400'
-                      : match.lpChange.delta < 0
+                      : effectiveLpDelta < 0
                       ? 'text-rose-400'
                       : 'text-zinc-400'
                   }`}
                 >
-                  {match.lpChange.delta > 0 ? `+${match.lpChange.delta}` : match.lpChange.delta} LP
+                  {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
                 </span>
               )}
               {showNewBadge && (

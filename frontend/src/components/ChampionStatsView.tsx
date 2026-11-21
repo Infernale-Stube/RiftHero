@@ -30,8 +30,8 @@ export default function ChampionStatsView({
 
   const queueOptions = [
     { id: 'all', label: locale === 'de' ? 'Alle Queues' : 'All Queues' },
-    { id: '420', label: 'Ranked Solo' },
-    { id: '440', label: 'Ranked Flex' },
+    { id: '420', label: 'Solo/Duo' },
+    { id: '440', label: 'Flex' },
     { id: '450', label: 'ARAM' },
     { id: '400', label: 'Normal Draft' },
   ];

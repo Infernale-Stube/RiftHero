@@ -22,7 +22,7 @@ const QUEUE_TABS = [
   { id: 'all', label: 'All' },
   { id: 'ranked_solo', label: 'Solo/Duo' },
   { id: 'ranked_flex', label: 'Flex' },
-  { id: 'ranked_5s', label: 'Ranked 5s' },
+  { id: 'ranked_5s', label: '5s' },
   { id: 'aram', label: 'ARAM' },
   { id: 'arena', label: 'Arena' },
 ];
@@ -44,7 +44,7 @@ export default function MatchHistory({
     { id: 'all', label: locale === 'de' ? 'Alle' : 'All' },
     { id: 'ranked_solo', label: 'Solo/Duo' },
     { id: 'ranked_flex', label: 'Flex' },
-    { id: 'ranked_5s', label: 'Ranked 5s' },
+    { id: 'ranked_5s', label: '5s' },
     { id: 'aram', label: 'ARAM' },
     { id: 'arena', label: 'Arena' },
   ];

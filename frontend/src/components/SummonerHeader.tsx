@@ -99,7 +99,7 @@ export default function SummonerHeader({
     },
     {
       id: 'ranked5s',
-      title: 'Ranked 5s',
+      title: '5s',
       rank: ranked5s,
     },
   ];
@@ -329,32 +329,27 @@ export default function SummonerHeader({
             {t('summoner.tabChallenges')}
           </Link>
 
-          <Link
-            href={`${basePath}/live`}
-            onClick={() => onTabChange?.('live')}
-            className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
-              currentTab === 'live'
-                ? 'text-amber-400 font-black after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                : isLive
-                ? 'text-amber-400 hover:text-amber-300 font-bold'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {isLive ? (
+          {/* Live Game Tab: Only shown when in an active live game */}
+          {(isLive || currentTab === 'live') && (
+            <Link
+              href={`${basePath}/live`}
+              onClick={() => onTabChange?.('live')}
+              className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
+                currentTab === 'live'
+                  ? 'text-amber-400 font-black after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
+                  : 'text-amber-400 hover:text-amber-300 font-bold'
+              }`}
+            >
               <span className="relative flex h-2 w-2 mr-0.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
               </span>
-            ) : (
-              <Radio className={`h-3.5 w-3.5 ${currentTab === 'live' || isLive ? 'text-amber-400' : 'text-zinc-500'}`} />
-            )}
-            <span>{t('summoner.tabLive')}</span>
-            {isLive && (
+              <span>{t('summoner.tabLive')}</span>
               <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.2 text-[9px] font-black uppercase text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
                 LIVE
               </span>
-            )}
-          </Link>
+            </Link>
+          )}
         </div>
       </div>
     </div>

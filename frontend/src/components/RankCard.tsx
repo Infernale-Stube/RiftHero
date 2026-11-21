@@ -57,7 +57,7 @@ export default function RankCard({
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
-            {t('summoner.soloRank') || 'Ranked Solo/Duo'}
+            Solo/Duo
           </button>
           <button
             type="button"
@@ -68,7 +68,7 @@ export default function RankCard({
                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
             }`}
           >
-            {t('summoner.flexRank') || 'Ranked Flex'}
+            Flex
           </button>
           {ranked5s && (
             <button
@@ -80,7 +80,7 @@ export default function RankCard({
                   : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
               }`}
             >
-              {t('summoner.ranked5sRank') || 'Ranked 5s'}
+              5s
             </button>
           )}
         </div>
