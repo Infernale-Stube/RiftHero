@@ -40,7 +40,7 @@ export default function LiveGameView({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-black/40 p-12 text-center">
+      <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl bg-black/40 p-12 text-center">
         <RefreshCw className="h-8 w-8 animate-spin text-amber-500 mb-3" />
         <h3 className="text-sm font-bold text-slate-200">{t('live.analyzing')}</h3>
         <p className="text-xs text-slate-500 mt-1">{t('live.spectatorCheck')}</p>
@@ -50,8 +50,8 @@ export default function LiveGameView({
 
   if (!liveData || !liveData.inGame || !liveData.game) {
     return (
-      <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-black/40 p-12 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] text-slate-500 mb-4">
+      <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl bg-black/40 p-12 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] text-slate-500 mb-4">
           <Radio className="h-7 w-7" />
         </div>
         <h3 className="text-base font-bold text-white mb-1.5">
@@ -62,7 +62,7 @@ export default function LiveGameView({
         </p>
         <button
           onClick={onRefresh}
-          className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all shadow-md active:scale-95"
+          className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-5 py-2.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all shadow-md active:scale-95"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           <span>{t('live.checkAgain')}</span>
@@ -85,13 +85,13 @@ export default function LiveGameView({
     );
 
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 overflow-hidden shadow-xl backdrop-blur-md">
+      <div className="rounded-2xl bg-[#0c1017]/90 overflow-hidden shadow-xl backdrop-blur-md">
         {/* Team Header with Integrated Champion Bans & Average Rank */}
         <div
           className={`flex items-center justify-between px-4 sm:px-5 py-3 flex-wrap gap-2 ${
             isBlue
-              ? 'bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-transparent border-blue-500/20 text-blue-300'
-              : 'bg-gradient-to-r from-rose-950/80 via-rose-900/40 to-transparent border-rose-500/20 text-rose-300'
+              ? 'bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-transparent text-blue-300'
+              : 'bg-gradient-to-r from-rose-950/80 via-rose-900/40 to-transparent text-rose-300'
           }`}
         >
           {/* Team Label & Icon & Average Rank Badge */}
@@ -108,10 +108,10 @@ export default function LiveGameView({
             {/* Average Rank & Winrate Badge */}
             {teamAvg ? (
               <div
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1 border shadow-sm backdrop-blur-sm ${
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1 shadow-sm backdrop-blur-sm ${
                   isBlue
-                    ? 'bg-blue-950/80 border-blue-500/40 text-blue-200'
-                    : 'bg-rose-950/80 border-rose-500/40 text-rose-200'
+                    ? 'bg-blue-950/80 text-blue-200'
+                    : 'bg-rose-950/80 text-rose-200'
                 }`}
                 title={`Team Average: ${teamAvg.formatted} · Winrate: ${teamAvg.avgWinrate ?? '—'}% (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
               >
@@ -156,7 +156,7 @@ export default function LiveGameView({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 bg-zinc-900/60 border border-zinc-800 text-[10px] font-medium text-zinc-500">
+              <div className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 bg-zinc-900/60 text-[10px] font-medium text-zinc-500">
                 <span>{t('live.avgRank')}: {t('summoner.unranked')}</span>
               </div>
             )}
@@ -179,7 +179,7 @@ export default function LiveGameView({
               return (
                 <div
                   key={b?.pickTurn ?? slotIdx}
-                  className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden border border-white/10 bg-black/60 shadow-sm shrink-0 flex items-center justify-center"
+                  className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden bg-black/60 shadow-sm shrink-0 flex items-center justify-center"
                   title={isValid ? `Ban: ${b.championName}` : 'Kein Ban'}
                 >
                   {isValid ? (
@@ -197,7 +197,7 @@ export default function LiveGameView({
                         <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
                       </div>
                       {/* Ban Icon */}
-                      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 border border-rose-500 flex items-center justify-center">
+                      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 flex items-center justify-center">
                         <Ban className="h-2 w-2 text-rose-400" />
                       </div>
                     </>
@@ -218,7 +218,7 @@ export default function LiveGameView({
   const renderPlayerCard = (p: LiveGameParticipant | null, isBlue: boolean) => {
     if (!p) {
       return (
-        <div className="flex items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-xs text-zinc-500">
+        <div className="flex items-center justify-center rounded-xl bg-black/20 p-6 text-xs text-zinc-500">
           Kein Spieler
         </div>
       );
@@ -237,12 +237,12 @@ export default function LiveGameView({
     return (
       <div
         key={p.puuid || `${p.championId}_${p.teamId}`}
-        className={`relative overflow-hidden rounded-xl border transition-all ${
+        className={`relative overflow-hidden rounded-xl transition-all ${
           isTarget
-            ? 'border-amber-500/60 ring-1 ring-amber-500/30 bg-[#16120e]'
+            ? 'bg-[#16120e] shadow-[0_0_20px_rgba(245,158,11,0.2)]'
             : isBlue
-            ? 'border-blue-500/15 bg-[#0a111e]/90 hover:border-blue-500/30'
-            : 'border-rose-500/15 bg-[#170a11]/90 hover:border-rose-500/30'
+            ? 'bg-[#0a111e]/90'
+            : 'bg-[#170a11]/90'
         }`}
       >
         {/* Champion Splash Art Backdrop */}
@@ -270,11 +270,7 @@ export default function LiveGameView({
           {/* Left Section: Champ Icon, Spells/Runes, Name + Tag, Champion Name */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Champion Icon with Account Level Badge */}
-            <div
-              className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border-2 shadow-md ${
-                isBlue ? 'border-blue-500/40' : 'border-rose-500/40'
-              }`}
-            >
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl shadow-md">
               <Image
                 src={getChampionIconUrl(p.championName)}
                 alt={p.championName}
@@ -285,7 +281,7 @@ export default function LiveGameView({
               />
               {p.summonerLevel != null && p.summonerLevel > 0 && (
                 <div
-                  className="absolute bottom-0 right-0 rounded-tl-md bg-black/90 px-1 py-0.2 text-[8px] font-black text-amber-300 border-t border-l border-white/20 shadow-sm"
+                  className="absolute bottom-0 right-0 rounded-tl-md bg-black/90 px-1 py-0.2 text-[8px] font-black text-amber-300 shadow-sm"
                   title={`Account Level: ${p.summonerLevel}`}
                 >
                   {p.summonerLevel}
@@ -296,7 +292,7 @@ export default function LiveGameView({
             {/* Spells & Runes (2x2 Grid) */}
             <div className="flex flex-col gap-1 shrink-0">
               <div className="flex gap-1">
-                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shadow-sm">
+                <div className="h-5 w-5 rounded overflow-hidden shadow-sm">
                   <Image
                     src={getSpellIconUrl(p.spell1Id)}
                     alt="Spell 1"
@@ -305,7 +301,7 @@ export default function LiveGameView({
                     unoptimized
                   />
                 </div>
-                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shadow-sm">
+                <div className="h-5 w-5 rounded overflow-hidden shadow-sm">
                   <Image
                     src={getSpellIconUrl(p.spell2Id)}
                     alt="Spell 2"
@@ -316,7 +312,7 @@ export default function LiveGameView({
                 </div>
               </div>
               <div className="flex gap-1">
-                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 bg-black/60 flex items-center justify-center">
+                <div className="h-5 w-5 rounded overflow-hidden bg-black/60 flex items-center justify-center">
                   {runeKeystone ? (
                     <Image
                       src={runeKeystone}
@@ -329,7 +325,7 @@ export default function LiveGameView({
                     <div className="h-2.5 w-2.5 bg-zinc-700 rounded-full" />
                   )}
                 </div>
-                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 bg-black/60 flex items-center justify-center">
+                <div className="h-5 w-5 rounded overflow-hidden bg-black/60 flex items-center justify-center">
                   {runeStyle ? (
                     <Image
                       src={runeStyle}
@@ -361,7 +357,7 @@ export default function LiveGameView({
                   #{cleanTag}
                 </span>
                 {isTarget && (
-                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-400 border border-amber-500/40 shrink-0">
+                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-400 shrink-0">
                     {t('live.you')}
                   </span>
                 )}
@@ -374,33 +370,8 @@ export default function LiveGameView({
             </div>
           </div>
 
-          {/* Right Section: Champion Winrate & Ranked Winrate */}
-          <div className="flex items-center justify-between sm:justify-end gap-5 sm:gap-6 shrink-0 border-t sm:border-t-0 border-white/[0.04] pt-2 sm:pt-0">
-            {/* Champion Winrate */}
-            <div className="flex flex-col items-start sm:items-end min-w-[75px]">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                {t('live.championWinrate')}
-              </span>
-              {p.championStats && p.championStats.games > 0 ? (
-                <div className="flex flex-col items-start sm:items-end">
-                  <span
-                    className={`text-xs sm:text-sm font-black ${getWinrateColor(
-                      p.championStats.winrate
-                    )}`}
-                  >
-                    {p.championStats.winrate}%
-                  </span>
-                  <span className="text-[10px] text-zinc-400 font-medium">
-                    {p.championStats.games}G ({p.championStats.wins}W {p.championStats.losses}L)
-                  </span>
-                </div>
-              ) : (
-                <span className="text-[11px] text-zinc-500 font-semibold mt-0.5">
-                  {t('live.noData')}
-                </span>
-              )}
-            </div>
-
+          {/* Right Section: Ranked Winrate & Rank */}
+          <div className="flex items-center justify-end shrink-0 pt-1 sm:pt-0">
             {/* Ranked Winrate & Rank */}
             <div className="flex items-center gap-2.5 min-w-[130px] sm:min-w-[145px] justify-end">
               {p.rank ? (
@@ -481,7 +452,7 @@ export default function LiveGameView({
               {/* Center Role Icon Divider (Desktop) */}
               <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-10 my-auto">
                 <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/80 border border-white/10 shadow-lg backdrop-blur-md hover:border-amber-500/40 transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/80 shadow-lg backdrop-blur-md"
                   title={role}
                 >
                   <Image
@@ -498,7 +469,7 @@ export default function LiveGameView({
               {/* Mobile Role Divider */}
               <div className="flex lg:hidden items-center justify-center gap-2 py-1">
                 <div className="h-[1px] flex-1 bg-white/10" />
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/80 border border-white/10 text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/80 text-xs font-bold text-zinc-300 uppercase tracking-wider">
                   <Image
                     src={getPositionIconUrl(role)}
                     alt={role}
