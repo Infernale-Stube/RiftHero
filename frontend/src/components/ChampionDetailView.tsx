@@ -1432,10 +1432,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <div className="text-lg font-semibold text-white">
             {t('championWiki.skinTimeline') || 'Skin Timeline'}
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {activeLegendTiers.map((tier) => {
               const isHidden = hiddenRarities.has(tier);
               const color = LOLDB_RARITY_COLORS[tier] ?? '#fff';
+              const iconUrl = LOLDB_RARITY_ICONS[tier];
               return (
                 <button
                   key={tier}
@@ -1448,14 +1449,26 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                       return next;
                     });
                   }}
-                  className="flex cursor-pointer items-center gap-1.5 text-[10px] transition-opacity"
-                  style={{ opacity: isHidden ? 0.25 : 0.65 }}
+                  className="flex cursor-pointer items-center gap-1.5 text-xs transition-all hover:brightness-125"
+                  style={{ opacity: isHidden ? 0.35 : 1 }}
                 >
-                  <span
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ background: isHidden ? '#374151' : color }}
-                  />
-                  <span className={isHidden ? 'text-white/25 line-through' : 'text-white/55'}>
+                  {iconUrl ? (
+                    <img
+                      src={iconUrl}
+                      alt={tier}
+                      width={14}
+                      height={14}
+                      className={`h-3.5 w-3.5 object-contain transition-all ${
+                        isHidden ? 'grayscale opacity-40' : ''
+                      }`}
+                    />
+                  ) : (
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: isHidden ? '#374151' : color }}
+                    />
+                  )}
+                  <span className={`text-[11px] font-medium transition-colors ${isHidden ? 'text-zinc-500 line-through' : 'text-zinc-300'}`}>
                     {tier}
                   </span>
                 </button>
@@ -1464,10 +1477,10 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           </div>
         </div>
 
-        {/* Scrollable canvas container */}
+        {/* Scrollable canvas container without visible scrollbars */}
         <div
           ref={timelineContainerRef}
-          className="w-full overflow-x-auto rounded-xl scrollbar-thin"
+          className="w-full overflow-x-auto rounded-xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           style={{ WebkitOverflowScrolling: 'touch', overflowY: 'clip' }}
         >
           <div
