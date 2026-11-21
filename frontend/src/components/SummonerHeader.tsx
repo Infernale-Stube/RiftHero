@@ -306,11 +306,11 @@ export default function SummonerHeader({
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}
-        <div className="mt-6 flex items-center gap-6 border-t border-white/[0.06] pt-3 text-xs font-bold">
+        <div className="mt-6 -mx-6 flex items-center gap-6 border-t border-white/[0.08] px-6 pt-3 text-xs font-bold overflow-x-auto">
           <Link
             href={basePath}
             onClick={() => onTabChange?.('matches')}
-            className={`relative pb-2 transition-colors ${
+            className={`relative pb-2 shrink-0 transition-colors ${
               currentTab === 'matches'
                 ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
@@ -322,7 +322,7 @@ export default function SummonerHeader({
           <Link
             href={`${basePath}/champions`}
             onClick={() => onTabChange?.('champions')}
-            className={`relative pb-2 transition-colors ${
+            className={`relative pb-2 shrink-0 transition-colors ${
               currentTab === 'champions'
                 ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
@@ -334,7 +334,7 @@ export default function SummonerHeader({
           <Link
             href={`${basePath}/masteries`}
             onClick={() => onTabChange?.('masteries')}
-            className={`relative pb-2 transition-colors ${
+            className={`relative pb-2 shrink-0 transition-colors ${
               currentTab === 'masteries'
                 ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
@@ -346,7 +346,7 @@ export default function SummonerHeader({
           <Link
             href={`${basePath}/challenges`}
             onClick={() => onTabChange?.('challenges')}
-            className={`relative pb-2 transition-colors ${
+            className={`relative pb-2 shrink-0 transition-colors ${
               currentTab === 'challenges'
                 ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                 : 'text-zinc-400 hover:text-zinc-200'
@@ -360,7 +360,7 @@ export default function SummonerHeader({
             <Link
               href={`${basePath}/live`}
               onClick={() => onTabChange?.('live')}
-              className={`relative flex items-center gap-1.5 pb-2 transition-colors ${
+              className={`relative flex items-center gap-1.5 pb-2 shrink-0 transition-colors ${
                 currentTab === 'live'
                   ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
                   : 'text-zinc-400 hover:text-zinc-200'
