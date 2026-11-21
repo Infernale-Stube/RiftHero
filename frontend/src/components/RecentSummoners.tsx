@@ -78,7 +78,7 @@ export default function RecentSummoners({ summoners }: RecentSummonersProps) {
                     {s.lastFetchedAt && (
                       <span className="flex items-center gap-1 text-[11px] text-zinc-400">
                         <Clock className="h-3 w-3 text-zinc-500" />
-                        {formatTimeAgo(s.lastFetchedAt)}
+                        {formatTimeAgo(s.lastFetchedAt, locale)}
                       </span>
                     )}
                   </div>

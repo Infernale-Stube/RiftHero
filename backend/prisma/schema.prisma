@@ -172,18 +172,20 @@ model MatchParticipant {
   @@map("match_participants")
 }
 
-model MetaSnapshot {
+model ChampionSnapshot {
   id                  String   @id @default("active")
+  version             String
   patch               String
-  totalMatches        Int      @default(0)
-  metaPicksJson       Json
-  tierListJson        Json
-  championsJson       Json?
+  championsCount      Int      @default(0)
+  championsJson       Json
   championDetailsJson Json?
+  metaPicksJson       Json?
+  tierListJson        Json?
+  totalMatches        Int      @default(0)
   computedAt          DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@map("meta_snapshots")
+  @@map("champion_snapshots")
 }
 
 model ItemSnapshot {

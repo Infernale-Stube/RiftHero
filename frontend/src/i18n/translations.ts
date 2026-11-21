@@ -238,6 +238,21 @@ export interface TranslationDictionary {
     noData: string;
     draftBans: string;
     you: string;
+    winProbability: string;
+    winProbabilitySubtitle: string;
+    blueFavored: string;
+    redFavored: string;
+    evenMatch: string;
+    rankFactor: string;
+    winrateFactor: string;
+    champFactor: string;
+    mapFactor: string;
+    blueLead: string;
+    redLead: string;
+    balanced: string;
+    confidenceHigh: string;
+    confidenceMedium: string;
+    confidenceLow: string;
   };
   footer: {
     copyright: string;
@@ -461,7 +476,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
         'Dieses Profil ist noch nicht in PostgreSQL gespeichert. Der Worker ruft gerade alle Matches und Liga-Ränge über die Riot Production API ab.',
       highPrioritySync: 'High-Priority Ingestion läuft...',
       bgSync: 'Hintergrund-Sync läuft...',
-      cachedAgo: 'Gecached · vor {time}',
+      cachedAgo: 'Gecached · {time}',
       tabMatches: 'Übersicht',
       tabChampions: 'Champions',
       tabMasteries: 'Meisterschaften',
@@ -488,8 +503,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       syncCompletedToast: 'Profil erfolgreich aktualisiert!',
     },
     matches: {
-      victory: 'Victory',
-      defeat: 'Defeat',
+      victory: 'Sieg',
+      defeat: 'Niederlage',
       win: 'Sieg',
       loss: 'Niederlage',
       blueTeam: 'Blaues Team',
@@ -640,6 +655,21 @@ export const translations: Record<Locale, TranslationDictionary> = {
       noData: 'Keine Daten',
       draftBans: 'Gebannte Champions',
       you: 'DU',
+      winProbability: 'Siegwahrscheinlichkeit',
+      winProbabilitySubtitle: 'Berechnet aus MMR, Siegraten, Champion-Erfahrung & Karten-Vorteil',
+      blueFavored: 'Blaues Team favorisiert',
+      redFavored: 'Rotes Team favorisiert',
+      evenMatch: 'Ausgeglichenes Duell',
+      rankFactor: 'Rang & MMR',
+      winrateFactor: 'Ø Ranked Winrate',
+      champFactor: 'Champion-Erfahrung',
+      mapFactor: 'Karten-Vorteil',
+      blueLead: 'Blau führt',
+      redLead: 'Rot führt',
+      balanced: 'Ausgeglichen',
+      confidenceHigh: 'Hohe Datenbasis',
+      confidenceMedium: 'Mittlere Datenbasis',
+      confidenceLow: 'Geringe Datenbasis (viele Unranked)',
     },
     footer: {
       copyright: '© {year} RiftHero. Nicht affiliiert mit Riot Games. League of Legends und Riot Games sind Warenzeichen von Riot Games, Inc.',
@@ -861,7 +891,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
         'This profile is not stored in PostgreSQL yet. Background worker is fetching all season matches and league ranks via Riot Production API.',
       highPrioritySync: 'High-priority ingestion in progress...',
       bgSync: 'Background sync in progress...',
-      cachedAgo: 'Cached · {time} ago',
+      cachedAgo: 'Cached · {time}',
       tabMatches: 'Overview',
       tabChampions: 'Champions',
       tabMasteries: 'Masteries',
@@ -890,8 +920,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     matches: {
       victory: 'Victory',
       defeat: 'Defeat',
-      win: 'Win',
-      loss: 'Loss',
+      win: 'Victory',
+      loss: 'Defeat',
       blueTeam: 'Blue Team',
       redTeam: 'Red Team',
       loadMore: 'Load more matches',
@@ -1040,6 +1070,21 @@ export const translations: Record<Locale, TranslationDictionary> = {
       noData: 'No Data',
       draftBans: 'Champion Bans',
       you: 'YOU',
+      winProbability: 'Win Probability',
+      winProbabilitySubtitle: 'Calculated from MMR, win rates, champion experience & map advantage',
+      blueFavored: 'Blue Team Favored',
+      redFavored: 'Red Team Favored',
+      evenMatch: 'Even Matchup',
+      rankFactor: 'Rank & MMR',
+      winrateFactor: 'Avg. Ranked Winrate',
+      champFactor: 'Champion Experience',
+      mapFactor: 'Map Advantage',
+      blueLead: 'Blue leads',
+      redLead: 'Red leads',
+      balanced: 'Balanced',
+      confidenceHigh: 'High data confidence',
+      confidenceMedium: 'Medium data confidence',
+      confidenceLow: 'Low data confidence (unranked players)',
     },
     footer: {
       copyright: '© {year} RiftHero. Not affiliated with Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.',

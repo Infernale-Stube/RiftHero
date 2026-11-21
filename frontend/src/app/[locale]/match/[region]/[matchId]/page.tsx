@@ -612,7 +612,7 @@ export default function MatchDetailPage() {
               )}
             </div>
             <span className="text-xs text-slate-400 mt-0.5">
-              {t('matchDetail.duration', { dur: formatDuration(gameDuration) })} • {t('matchDetail.playedAgo', { time: formatTimeAgo(gameCreation) })} • {t('matchDetail.patch', { patch: gameVersion.slice(0, 5) })}
+              {t('matchDetail.duration', { dur: formatDuration(gameDuration) })} • {t('matchDetail.playedAgo', { time: formatTimeAgo(gameCreation, locale) })} • {t('matchDetail.patch', { patch: gameVersion.slice(0, 5) })}
             </span>
           </div>
         </div>

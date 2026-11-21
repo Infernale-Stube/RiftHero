@@ -334,6 +334,12 @@ export interface ChampionRosterItem {
   class: string;
   difficulty: number;
   recommendedPositions: string[];
+  releaseDate?: string;
+  storeData?: {
+    ip: number;
+    rp: number;
+    releaseDate: string;
+  };
   meta?: {
     tier: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
     winrate: string;

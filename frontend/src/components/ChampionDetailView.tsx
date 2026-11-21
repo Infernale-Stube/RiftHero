@@ -29,8 +29,6 @@ import {
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import {
-  fetchDDragonChampionDetail,
-  enrichChampionWithMeraki,
   DDragonChampionDetail,
   DDragonSkin,
   getChampionIconUrl,
@@ -44,9 +42,14 @@ import {
   PositionKey,
   mapSkinRarityClient,
 } from '@/lib/ddragon';
-import { fetchChampionDetailApi, fetchTierList, TierListChampionItem } from '@/lib/api';
+import {
+  fetchChampionDetailApi,
+  fetchChampionsRosterApi,
+  ChampionRosterItem,
+  fetchTierList,
+  TierListChampionItem,
+} from '@/lib/api';
 import championPositionsRaw from '@/lib/championPositions.json';
-import championMetadataRaw from '@/lib/championMetadata.json';
 
 interface ChampionPosInfo {
   id: string;
@@ -378,6 +381,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [data, setData] = useState<DDragonChampionDetail | null>(null);
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [tierInfo, setTierInfo] = useState<TierListChampionItem | null>(null);
+  const [rosterList, setRosterList] = useState<ChampionRosterItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Spells & Skins interaction
@@ -445,30 +449,31 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     sameYearCarouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
-  // Fetch Champion Details (Instant from PostgreSQL cache / bundled metadata with DDragon fallback)
+  // Fetch Champion Details directly from PostgreSQL database via Fastify API
   useEffect(() => {
     setIsLoading(true);
     fetchChampionDetailApi(slug, locale)
       .then((res) => {
         if (res && res.champion) {
-          setData(enrichChampionWithMeraki(res.champion));
+          setData(res.champion);
           if (res.version) setVersion(res.version);
-          return;
         }
-        return fetchDDragonChampionDetail(slug, locale).then((fallback) => {
-          setData(fallback.champion);
-          if (fallback.version) setVersion(fallback.version);
-        });
       })
-      .catch(() => {
-        return fetchDDragonChampionDetail(slug, locale).then((fallback) => {
-          setData(fallback.champion);
-          if (fallback.version) setVersion(fallback.version);
-        });
+      .catch((err) => {
+        console.error('Failed to load champion detail:', err);
       })
       .finally(() => {
         setIsLoading(false);
       });
+
+    // Load roster for "Same Year" carousel directly from PostgreSQL database
+    fetchChampionsRosterApi(locale)
+      .then((res) => {
+        if (res && res.champions) {
+          setRosterList(res.champions);
+        }
+      })
+      .catch(() => {});
 
     // Optional Tier List stats
     fetchTierList()
@@ -803,15 +808,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     scrollThumbnailIntoView(next);
   };
 
-  const cleanKey = (data?.id || data?.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const metaItem = (championMetadataRaw as Record<string, any>)[cleanKey];
-
-  const rawRelDate = data?.releaseDate || metaItem?.d || data?.storeData?.releaseDate || '2011-12-14';
+  const rawRelDate = data?.releaseDate || data?.storeData?.releaseDate || '2012-01-01';
   const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
-  const beCost = (metaItem?.be ?? data?.storeData?.ip ?? 4800).toLocaleString(
+  const beCost = (data?.storeData?.ip ?? 4800).toLocaleString(
     locale.startsWith('en') ? 'en-US' : 'de-DE'
   );
-  const rpCost = (metaItem?.rp ?? data?.storeData?.rp ?? 880).toLocaleString(
+  const rpCost = (data?.storeData?.rp ?? 880).toLocaleString(
     locale.startsWith('en') ? 'en-US' : 'de-DE'
   );
   const nonBaseSkinsCount = skins.filter((s) => s.num !== 0).length;
@@ -821,33 +823,29 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       const y = parseInt(rawRelDate.slice(0, 4), 10);
       if (!isNaN(y)) return y;
     }
-    return metaItem?.y || 2011;
-  }, [rawRelDate, metaItem]);
+    return 2011;
+  }, [rawRelDate]);
 
   const sameYearChampions = useMemo(() => {
-    if (!releaseYear) return [];
+    if (!releaseYear || rosterList.length === 0) return [];
     const currentKey = (data?.id || data?.key || slug).toLowerCase().replace(/[^a-z0-9]/g, '');
-    const metaRecords = championMetadataRaw as Record<string, any>;
-    return Object.values(metaRecords)
-      .filter(
-        (c) =>
-          c.y === releaseYear &&
-          c.key.toLowerCase().replace(/[^a-z0-9]/g, '') !== currentKey
-      )
-      .map((c) => {
-        const p =
-          (championPositionsMap as any)[c.key] ||
-          (championPositionsMap as any)[c.name] ||
-          {};
-        return {
-          id: c.key,
-          name: c.name,
-          title: p.title || '',
-          releaseDate: c.d,
-        };
+    return rosterList
+      .filter((c) => {
+        const cKey = (c.id || c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cKey === currentKey) return false;
+        const rel = c.releaseDate || c.storeData?.releaseDate;
+        if (!rel) return false;
+        const y = parseInt(rel.slice(0, 4), 10);
+        return y === releaseYear;
       })
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        title: c.title || '',
+        releaseDate: c.releaseDate || c.storeData?.releaseDate,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [releaseYear, data?.id, data?.key, slug]);
+  }, [releaseYear, rosterList, data?.id, data?.key, slug]);
 
   if (isLoading) {
     return (
@@ -1284,15 +1282,25 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <span>{locale === 'de' ? 'Klassischer Skin' : 'Base Skin'}</span>
             ) : (
               <>
-                <Image
-                  src={RP_ICON_URL}
-                  alt="RP"
-                  width={14}
-                  height={14}
-                  className="h-3.5 w-3.5 object-contain"
-                  unoptimized
-                />
-                <span>{activeSkin?.cost || 975} RP</span>
+                {typeof activeSkin?.cost === 'number' && (
+                  <Image
+                    src={RP_ICON_URL}
+                    alt="RP"
+                    width={14}
+                    height={14}
+                    className="h-3.5 w-3.5 object-contain"
+                    unoptimized
+                  />
+                )}
+                <span>
+                  {typeof activeSkin?.cost === 'number'
+                    ? `${activeSkin.cost} RP`
+                    : activeSkin?.cost === 'Special'
+                    ? (locale === 'de' ? 'Spezial' : 'Special')
+                    : activeSkin?.cost
+                    ? `${activeSkin.cost}`
+                    : '975 RP'}
+                </span>
               </>
             )}
           </div>
@@ -2015,11 +2023,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-normal max-w-4xl">
           {locale.startsWith('en') ? (
             <>
-              {data.name} costs <span className="font-bold text-[#0acbe6]">{typeof beCost === 'number' ? beCost.toLocaleString('en-US') : beCost} Blue Essence</span> or <span className="font-bold text-amber-400">{typeof rpCost === 'number' ? rpCost.toLocaleString('en-US') : rpCost} Riot Points</span>. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.
+              {data.name} costs <span className="font-bold text-[#0acbe6]">{beCost} Blue Essence</span> or <span className="font-bold text-amber-400">{rpCost} Riot Points</span>. You can purchase them from the in-game store using either currency. Blue Essence is earned through the battle pass and disenchanting champion shards, while Riot Points require real money to obtain.
             </>
           ) : (
             <>
-              {data.name} kostet <span className="font-bold text-[#0acbe6]">{typeof beCost === 'number' ? beCost.toLocaleString('de-DE') : beCost} Blaue Essenzen</span> oder <span className="font-bold text-amber-400">{typeof rpCost === 'number' ? rpCost.toLocaleString('de-DE') : rpCost} Riot Points</span>. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden. Blaue Essenzen werden durch Levelaufstiege und Entzaubern von Champion-Splittern verdient, während Riot Points mit Echtgeld erworben werden.
+              {data.name} kostet <span className="font-bold text-[#0acbe6]">{beCost} Blaue Essenzen</span> oder <span className="font-bold text-amber-400">{rpCost} Riot Points</span>. Der Champion kann im Ingame-Shop mit beiden Währungen freigeschaltet werden. Blaue Essenzen werden durch Levelaufstiege und Entzaubern von Champion-Splittern verdient, während Riot Points mit Echtgeld erworben werden.
             </>
           )}
         </p>

@@ -1,9 +1,6 @@
 import { prisma } from '../db/prisma';
 import { getChampionNameById, getDDragonPatches, getLatestDDragonVersion } from '../riot/ddragon';
 import championPositionsRaw from '../riot/championPositions.json';
-import championMetadataRaw from '../riot/championMetadata.json';
-
-const championMetadataMap = championMetadataRaw as Record<string, any>;
 
 const championPositionsMap = championPositionsRaw as Record<
   string,
@@ -58,16 +55,20 @@ const POSITION_MAP: Record<string, 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'>
   SUPPORT: 'SUPPORT',
 };
 
-// In-memory cache for ultra-fast <1ms responses
-let memoryCache: {
+export interface ChampionSnapshotMemory {
+  version: string;
   patch: string;
+  championsCount: number;
   totalMatches: number;
   metaPicks: Record<string, MetaChampion[]>;
   tierList: TierListChampion[];
   championsRoster?: Record<string, any>;
   championDetails?: Record<string, any>;
   timestamp: number;
-} | null = null;
+}
+
+// In-memory cache for ultra-fast <1ms responses
+let memoryCache: ChampionSnapshotMemory | null = null;
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes in-memory refresh
 export const MIN_NEW_PATCH_MATCHES = 30;
@@ -76,25 +77,41 @@ export const META_WORKER_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 let tableChecked = false;
 
 /**
- * Ensures the dedicated meta_snapshots table exists in PostgreSQL.
+ * Ensures the dedicated champion_snapshots table exists in PostgreSQL.
+ * Seamlessly renames legacy meta_snapshots table if present.
  */
 export async function ensureMetaTableExists(): Promise<void> {
   if (tableChecked) return;
   try {
     await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS meta_snapshots (
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'meta_snapshots')
+           AND NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'champion_snapshots') THEN
+          ALTER TABLE meta_snapshots RENAME TO champion_snapshots;
+        END IF;
+      END $$;
+
+      CREATE TABLE IF NOT EXISTS champion_snapshots (
         id TEXT PRIMARY KEY DEFAULT 'active',
+        version TEXT NOT NULL DEFAULT '16.23.1',
         patch TEXT NOT NULL,
-        "totalMatches" INTEGER NOT NULL DEFAULT 0,
-        "metaPicksJson" JSONB NOT NULL,
-        "tierListJson" JSONB NOT NULL,
-        "championsJson" JSONB,
+        "championsCount" INTEGER NOT NULL DEFAULT 0,
+        "championsJson" JSONB NOT NULL,
         "championDetailsJson" JSONB,
+        "metaPicksJson" JSONB,
+        "tierListJson" JSONB,
+        "totalMatches" INTEGER NOT NULL DEFAULT 0,
         "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championsJson" JSONB;
-      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championDetailsJson" JSONB;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "version" TEXT NOT NULL DEFAULT '16.23.1';
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "championsCount" INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "championsJson" JSONB;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "championDetailsJson" JSONB;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "metaPicksJson" JSONB;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "tierListJson" JSONB;
+      ALTER TABLE champion_snapshots ADD COLUMN IF NOT EXISTS "totalMatches" INTEGER NOT NULL DEFAULT 0;
     `);
     tableChecked = true;
   } catch (err) {
@@ -126,6 +143,102 @@ function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor: strin
   return { rarity: 'Regular', rarityColor: '#22c55e' };
 }
 
+interface LoldbSkinInfo {
+  id: string;
+  num?: number;
+  name: string;
+  rarity: string;
+  officialRarity?: string;
+  releaseYear: number;
+  releaseDate: string;
+  cost: number | string;
+}
+
+// In-memory cache for dynamic LoLDB skin metadata
+const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
+
+async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbSkinInfo> | null> {
+  const cacheKey = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (loldbSkinsCache.has(cacheKey)) {
+    return loldbSkinsCache.get(cacheKey)!;
+  }
+
+  try {
+    const res = await fetch(`https://loldb.info/champions/${slug}`, {
+      headers: {
+        RSC: '1',
+        'Next-Router-State-Tree':
+          '%5B%22%22%2C%7B%22children%22%3A%5B%22champions%22%2C%7B%22children%22%3A%5B%22' +
+          slug +
+          '%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D',
+      },
+    });
+    if (!res.ok) return null;
+    const txt = await res.text();
+    const idx = txt.lastIndexOf('"skins":');
+    if (idx === -1) return null;
+    const arrStart = txt.indexOf('[', idx);
+    if (arrStart === -1) return null;
+
+    let depth = 0;
+    let endIdx = -1;
+    for (let j = arrStart; j < txt.length; j++) {
+      if (txt[j] === '[') depth++;
+      else if (txt[j] === ']') {
+        depth--;
+        if (depth === 0) {
+          endIdx = j + 1;
+          break;
+        }
+      }
+    }
+    if (endIdx === -1) return null;
+    const skins = JSON.parse(txt.slice(arrStart, endIdx));
+    const skinMap = new Map<string, LoldbSkinInfo>();
+    const currentYear = new Date().getFullYear();
+
+    for (const s of skins) {
+      const skinId = String(s.communityDragonId || s.id || (s.skinNum !== undefined ? s.skinNum : ''));
+      let cost: number | string = 975;
+      if (typeof s.price === 'string') {
+        if (s.price.toLowerCase().includes('free')) cost = 0;
+        else if (s.price.toLowerCase().includes('special')) cost = 'Special';
+        else {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          if (!isNaN(num)) cost = num;
+        }
+      } else if (typeof s.costRP === 'number') {
+        cost = s.costRP;
+      }
+
+      const releaseYear =
+        s.releaseYear || (s.releaseDate ? parseInt(s.releaseDate.slice(0, 4), 10) : currentYear);
+      const releaseDate = s.releaseDate || `${releaseYear}-01-01`;
+
+      const info: LoldbSkinInfo = {
+        id: skinId,
+        num: s.skinNum,
+        name: s.name,
+        rarity: s.rarity || 'Regular',
+        officialRarity: s.rarityTier ? `k${s.rarityTier}` : 'kNoRarity',
+        releaseYear,
+        releaseDate,
+        cost,
+      };
+
+      skinMap.set(skinId, info);
+      if (s.skinNum !== undefined) {
+        skinMap.set(String(s.skinNum), info);
+      }
+    }
+    loldbSkinsCache.set(cacheKey, skinMap);
+    return skinMap;
+  } catch (err) {
+    console.warn(`[Loldb] Failed to fetch skins for ${slug}:`, (err as Error).message);
+    return null;
+  }
+}
+
 function normalizeSkinName(name: string, champName: string): string {
   return (name || '')
     .toLowerCase()
@@ -153,24 +266,55 @@ async function buildChampionRostersAndDetails(
     tierMap.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
   }
 
-  // 1. Fetch Meraki champions catalog for store pricing (BE/RP), release dates, and skin rarities
-  const merakiMap = new Map<string, any>();
+  // 1. Fetch live LoLDB champions catalog for store pricing (BE/RP), release dates, and positions
+  const loldbMap = new Map<string, any>();
   try {
-    const merakiRes = await fetch(
-      'https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json'
-    );
-    if (merakiRes.ok) {
-      const merakiJson = (await merakiRes.json()) as Record<string, any>;
-      for (const [k, v] of Object.entries(merakiJson)) {
-        merakiMap.set(k.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
-        if (v.id) merakiMap.set(String(v.id), v);
-        if (v.key) merakiMap.set(String(v.key), v);
-        if (v.name) merakiMap.set(v.name.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+    const loldbRes = await fetch('https://loldb.info/api/champions');
+    if (loldbRes.ok) {
+      const loldbJson = (await loldbRes.json()) as any;
+      const list = loldbJson?.data || [];
+      for (const v of list) {
+        if (v.id) loldbMap.set(v.id.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+        if (v.slug) loldbMap.set(v.slug.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+        if (v.name) loldbMap.set(v.name.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+        if (v.championId) loldbMap.set(String(v.championId), v);
       }
     }
   } catch (err) {
-    console.warn('[MetaService] Meraki fetch warning (will use defaults):', (err as Error).message);
+    console.warn('[MetaService] LoLDB catalog fetch warning:', (err as Error).message);
   }
+
+  // Seed in-memory skins cache from existing PostgreSQL snapshot if available
+  try {
+    const existing = await prisma.championSnapshot.findUnique({
+      where: { id: 'active' },
+      select: { championDetailsJson: true },
+    });
+    if (existing && existing.championDetailsJson) {
+      const detailsMap = existing.championDetailsJson as Record<string, Record<string, any>>;
+      const source = detailsMap['en'] || detailsMap['de'] || {};
+      for (const [champKey, champ] of Object.entries(source)) {
+        if (Array.isArray(champ.skins) && !loldbSkinsCache.has(champKey)) {
+          const skinMap = new Map<string, LoldbSkinInfo>();
+          for (const s of champ.skins) {
+            skinMap.set(String(s.id), {
+              id: String(s.id),
+              num: s.num,
+              name: s.name,
+              rarity: s.rarity || 'Regular',
+              releaseYear: s.releaseYear || 2026,
+              releaseDate: s.releaseDate || '2026-01-01',
+              cost: s.cost ?? 975,
+            });
+            if (s.num !== undefined) {
+              skinMap.set(String(s.num), skinMap.get(String(s.id))!);
+            }
+          }
+          loldbSkinsCache.set(champKey, skinMap);
+        }
+      }
+    }
+  } catch {}
 
   const langs = ['de_DE', 'en_US'] as const;
   const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
@@ -188,22 +332,24 @@ async function buildChampionRostersAndDetails(
           const champEntries = Object.values(json.data) as any[];
 
           for (const champ of champEntries) {
-            const posMeta = championPositionsMap[champ.id];
             const cleanName = champ.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             const cleanId = champ.id.toLowerCase().replace(/[^a-z0-9]/g, '');
             const cleanKey = String(champ.key);
+            const posMeta = championPositionsMap[champ.id];
             const metaTier = tierMap.get(cleanName) || tierMap.get(cleanId) || null;
 
-            // Meraki and local bundle match for store pricing and release dates
-            const metaChamp =
-              championMetadataMap[cleanId] || championMetadataMap[cleanName] || championMetadataMap[cleanKey] || null;
-            const merakiChamp =
-              merakiMap.get(cleanId) || merakiMap.get(cleanName) || merakiMap.get(cleanKey) || null;
+            // Live LoLDB match for store pricing, release dates, and positions
+            const loldbChamp =
+              loldbMap.get(cleanId) || loldbMap.get(cleanName) || loldbMap.get(cleanKey) || null;
+
+            const loldbIsoDate = loldbChamp?.storeData?.releaseDate
+              ? loldbChamp.storeData.releaseDate.split('T')[0]
+              : null;
 
             const storePrice = {
-              ip: metaChamp?.be ?? merakiChamp?.price?.blueEssence ?? 4800,
-              rp: metaChamp?.rp ?? merakiChamp?.price?.rp ?? 880,
-              releaseDate: metaChamp?.d ?? merakiChamp?.releaseDate ?? '2012-01-01',
+              ip: loldbChamp?.storeData?.ip ?? 4800,
+              rp: loldbChamp?.storeData?.rp ?? 880,
+              releaseDate: loldbIsoDate || '2012-01-01',
             };
 
             const metaBlock = metaTier
@@ -221,15 +367,21 @@ async function buildChampionRostersAndDetails(
                 }
               : null;
 
-            // Process skins: filter out chromas, match with Meraki for timeline, rarities, and release years
+            // Process skins: filter out chromas, match with LoLDB for timeline, rarities, and release years
             const rawSkins = Array.isArray(champ.skins) ? champ.skins : [];
+            let skinsLookup = loldbSkinsCache.get(cleanId) || loldbSkinsCache.get(cleanName);
+            if (!skinsLookup && loldbChamp?.slug) {
+              skinsLookup = (await fetchLoldbChampionSkins(loldbChamp.slug)) || undefined;
+            }
+
+            const baseYear = storePrice.releaseDate
+              ? new Date(storePrice.releaseDate).getFullYear()
+              : 2011;
+            const currentYear = new Date().getFullYear();
+
             const processedSkins = rawSkins
               .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
               .map((s: any) => {
-                const baseYear = storePrice.releaseDate
-                  ? new Date(storePrice.releaseDate).getFullYear()
-                  : 2011;
-
                 if (s.num === 0) {
                   return {
                     id: String(s.id),
@@ -243,51 +395,12 @@ async function buildChampionRostersAndDetails(
                   };
                 }
 
-                // 1. Primary match: Bundled verified championMetadata or Meraki numeric Skin ID
-                const skinMeta = metaChamp?.s?.[String(s.id)];
-                let matchedMerakiSkin = merakiChamp?.skins?.find(
-                  (m: any) => String(m.id) === String(s.id)
-                );
-
-                // 2. Fallback: normalized name matching
-                if (!skinMeta && !matchedMerakiSkin) {
-                  const ddNorm = normalizeSkinName(s.name, champ.name);
-                  matchedMerakiSkin = merakiChamp?.skins?.find(
-                    (m: any) => normalizeSkinName(m.name, champ.name) === ddNorm
-                  );
-                }
-
-                // 3. Known special cases (Hall of Legends / Ultimate variants)
-                let relDate = skinMeta?.d || matchedMerakiSkin?.release;
-                let rarityRaw = skinMeta?.r || matchedMerakiSkin?.rarity;
-                let skinYear = skinMeta?.y;
-
-                if (!skinMeta && !matchedMerakiSkin) {
-                  if (String(s.id) === '103086') {
-                    // Immortalized Legend Ahri (2024 Hall of Legends)
-                    relDate = '2024-06-12';
-                    skinYear = 2024;
-                    rarityRaw = 'Transcendent';
-                  } else if (String(s.id) === '147002' || String(s.id) === '147003') {
-                    // Seraphine K/DA ALL OUT variants
-                    relDate = '2020-10-29';
-                    skinYear = 2020;
-                    rarityRaw = 'Transcendent';
-                  } else {
-                    relDate = storePrice.releaseDate;
-                  }
-                }
-
+                const skinInfo = skinsLookup?.get(String(s.id)) || skinsLookup?.get(String(s.num));
+                const rarityRaw = skinInfo?.rarity || 'Regular';
                 const rarityInfo = mapSkinRarity(rarityRaw);
-                const dObj = relDate ? new Date(relDate) : null;
-                const relYear = skinYear || (dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : (baseYear || 2012));
-
-                const finalCost =
-                  typeof skinMeta?.c === 'number'
-                    ? skinMeta.c
-                    : matchedMerakiSkin?.cost
-                    ? parseInt(String(matchedMerakiSkin.cost), 10) || 975
-                    : 975;
+                const relYear = skinInfo?.releaseYear || currentYear;
+                const relDate = skinInfo?.releaseDate || `${relYear}-01-01`;
+                const cost = skinInfo?.cost ?? 975;
 
                 return {
                   id: String(s.id),
@@ -295,9 +408,9 @@ async function buildChampionRostersAndDetails(
                   name: s.name,
                   rarity: rarityInfo.rarity,
                   rarityColor: rarityInfo.rarityColor,
-                  releaseDate: relDate || storePrice.releaseDate,
+                  releaseDate: relDate,
                   releaseYear: relYear,
-                  cost: finalCost,
+                  cost,
                 };
               });
 
@@ -313,10 +426,10 @@ async function buildChampionRostersAndDetails(
               tags: champ.tags,
               partype: champ.partype,
               stats: champ.stats,
-              role: posMeta?.role || 'Top',
-              class: posMeta?.class || champ.tags?.[0] || 'Fighter',
-              difficulty: posMeta?.difficulty ?? champ.info?.difficulty ?? 5,
-              recommendedPositions: posMeta?.recommendedPositions || ['Top'],
+              role: loldbChamp?.role || posMeta?.role || 'Top',
+              class: loldbChamp?.class || posMeta?.class || champ.tags?.[0] || 'Fighter',
+              difficulty: loldbChamp?.difficulty ?? posMeta?.difficulty ?? champ.info?.difficulty ?? 5,
+              recommendedPositions: loldbChamp?.recommendedPositions || posMeta?.recommendedPositions || ['Top'],
               storeData: storePrice,
               releaseDate: storePrice.releaseDate,
               meta: metaBlock,
@@ -446,14 +559,9 @@ let isAnalysisRunning = false;
 
 /**
  * Worker task: Runs every 6h to compute Meta Picks & Tier List from match data
- * and stores the pre-aggregated results into the dedicated 'meta_snapshots' table.
+ * and stores the pre-aggregated results into the dedicated 'champion_snapshots' table.
  */
-export async function computeAndSaveMetaAnalysis(): Promise<{
-  patch: string;
-  totalMatches: number;
-  metaPicks: Record<string, MetaChampion[]>;
-  tierList: TierListChampion[];
-}> {
+export async function computeAndSaveMetaAnalysis(): Promise<ChampionSnapshotMemory> {
   if (isAnalysisRunning) {
     if (memoryCache) return memoryCache;
   }
@@ -646,38 +754,45 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
     // 3. Fetch & build localized champion rosters (de & en) enriched with meta stats and full champion details
     const ddragonVersion = await getLatestDDragonVersion();
     const { rosters, details } = await buildChampionRostersAndDetails(ddragonVersion, tierList);
+    const championsCount = rosters.de?.length || rosters.en?.length || 0;
 
-    // 4. Save precomputed results into dedicated 'meta_snapshots' database table
-    await prisma.metaSnapshot.upsert({
+    // 4. Save precomputed results into dedicated 'champion_snapshots' database table
+    await prisma.championSnapshot.upsert({
       where: { id: 'active' },
       update: {
+        version: ddragonVersion,
         patch,
-        totalMatches: totalMatchesAnalyzed,
-        metaPicksJson: metaPicks as any,
-        tierListJson: tierList as any,
+        championsCount,
         championsJson: rosters as any,
         championDetailsJson: details as any,
+        metaPicksJson: metaPicks as any,
+        tierListJson: tierList as any,
+        totalMatches: totalMatchesAnalyzed,
         computedAt: new Date(),
       },
       create: {
         id: 'active',
+        version: ddragonVersion,
         patch,
-        totalMatches: totalMatchesAnalyzed,
-        metaPicksJson: metaPicks as any,
-        tierListJson: tierList as any,
+        championsCount,
         championsJson: rosters as any,
         championDetailsJson: details as any,
+        metaPicksJson: metaPicks as any,
+        tierListJson: tierList as any,
+        totalMatches: totalMatchesAnalyzed,
         computedAt: new Date(),
       },
     });
 
     console.log(
-      `✅ [MetaWorker] Analysis completed for Patch ${patch}. Analyzed ${totalMatchesAnalyzed} matches. Saved to 'meta_snapshots'.`
+      `✅ [MetaWorker] Analysis completed for Patch ${patch} (Version ${ddragonVersion}). Saved ${championsCount} champions and ${totalMatchesAnalyzed} match analytics to 'champion_snapshots'.`
     );
 
     // Update in-memory cache
     memoryCache = {
+      version: ddragonVersion,
       patch,
+      championsCount,
       totalMatches: totalMatchesAnalyzed,
       metaPicks,
       tierList,
@@ -694,17 +809,22 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
     // Ensure champion rosters and details are ALWAYS built and cached even if match analytics fail!
     let fallbackRosters: any = null;
     let fallbackDetails: any = null;
+    let fallbackVersion = '16.23.1';
     try {
-      const ddragonVersion = await getLatestDDragonVersion();
-      const res = await buildChampionRostersAndDetails(ddragonVersion, []);
+      fallbackVersion = await getLatestDDragonVersion();
+      const res = await buildChampionRostersAndDetails(fallbackVersion, []);
       fallbackRosters = res.rosters;
       fallbackDetails = res.details;
     } catch (e) {
       console.warn('[MetaWorker] Fallback rosters build error:', (e as Error).message);
     }
 
+    const fallbackCount = fallbackRosters?.de?.length || fallbackRosters?.en?.length || 0;
+
     memoryCache = {
+      version: fallbackVersion,
       patch,
+      championsCount: fallbackCount,
       totalMatches: 0,
       metaPicks: { TOP: [], JUNGLE: [], MID: [], ADC: [], SUPPORT: [] },
       tierList: [],
@@ -720,17 +840,10 @@ export async function computeAndSaveMetaAnalysis(): Promise<{
 }
 
 /**
- * Loads the active precomputed snapshot from memory or 'meta_snapshots' table.
+ * Loads the active precomputed snapshot from memory or 'champion_snapshots' table.
  * Instant lookup (<1ms), zero query lag for the user!
  */
-async function loadActiveSnapshot(): Promise<{
-  patch: string;
-  totalMatches: number;
-  metaPicks: Record<string, MetaChampion[]>;
-  tierList: TierListChampion[];
-  championsRoster?: Record<string, any>;
-  championDetails?: Record<string, any>;
-}> {
+async function loadActiveSnapshot(): Promise<ChampionSnapshotMemory> {
   const now = Date.now();
   if (memoryCache && now - memoryCache.timestamp < CACHE_TTL_MS) {
     return memoryCache;
@@ -739,16 +852,18 @@ async function loadActiveSnapshot(): Promise<{
   await ensureMetaTableExists();
 
   try {
-    const row = await prisma.metaSnapshot.findUnique({
+    const row = await prisma.championSnapshot.findUnique({
       where: { id: 'active' },
     });
 
-    if (row && row.metaPicksJson && row.tierListJson) {
+    if (row && row.championsJson) {
       memoryCache = {
+        version: row.version,
         patch: row.patch,
+        championsCount: row.championsCount,
         totalMatches: row.totalMatches,
-        metaPicks: row.metaPicksJson as any,
-        tierList: row.tierListJson as any,
+        metaPicks: (row.metaPicksJson as any) || { TOP: [], JUNGLE: [], MID: [], ADC: [], SUPPORT: [] },
+        tierList: (row.tierListJson as any) || [],
         championsRoster: row.championsJson as any,
         championDetails: row.championDetailsJson as any,
         timestamp: now,
@@ -775,12 +890,13 @@ export function toLangKey(locale = 'de'): 'de' | 'en' {
 
 /**
  * Returns the localized champion catalog enriched with live meta stats.
- * Instant response time (<2ms) directly from PostgreSQL table 'meta_snapshots'.
+ * Instant response time (<2ms) directly from PostgreSQL table 'champion_snapshots'.
  */
 export async function getChampionsRoster(locale = 'de'): Promise<{
   version: string;
   patch: string;
   totalMatches: number;
+  championsCount: number;
   champions: any[];
 }> {
   const snapshot = await loadActiveSnapshot();
@@ -789,9 +905,10 @@ export async function getChampionsRoster(locale = 'de'): Promise<{
   const list = rosterData?.[langKey] || rosterData?.de || rosterData?.en || [];
 
   return {
-    version: rosterData?.version || snapshot.patch,
+    version: snapshot.version || rosterData?.version || snapshot.patch,
     patch: snapshot.patch,
     totalMatches: snapshot.totalMatches,
+    championsCount: snapshot.championsCount || list.length,
     champions: list,
   };
 }
@@ -816,7 +933,7 @@ export async function getChampionDetail(
   const cached = snapshot.championDetails?.[langKey]?.[cleanTarget];
   if (cached) {
     return {
-      version: snapshot.championsRoster?.version || snapshot.patch,
+      version: snapshot.version || snapshot.championsRoster?.version || snapshot.patch,
       patch: snapshot.patch,
       champion: cached,
     };
@@ -827,7 +944,7 @@ export async function getChampionDetail(
   const altCached = snapshot.championDetails?.[altLangKey]?.[cleanTarget];
   if (altCached) {
     return {
-      version: snapshot.championsRoster?.version || snapshot.patch,
+      version: snapshot.version || snapshot.championsRoster?.version || snapshot.patch,
       patch: snapshot.patch,
       champion: altCached,
     };
@@ -843,7 +960,7 @@ export async function getChampionDetail(
   });
 
   const champId = found?.id || slug;
-  const ddragonVersion = snapshot.championsRoster?.version || (await getLatestDDragonVersion());
+  const ddragonVersion = snapshot.version || snapshot.championsRoster?.version || (await getLatestDDragonVersion());
 
   try {
     const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/champion/${champId}.json`);
@@ -857,30 +974,19 @@ export async function getChampionDetail(
             (s: any) => s.parentSkin === undefined || s.parentSkin === null
           );
 
-          // Enrich with bundled championMetadata or Meraki skin release dates, rarities, and store costs
-          const metaChamp =
-            championMetadataMap[cleanTarget] ||
-            championMetadataMap[champId.toLowerCase().replace(/[^a-z0-9]/g, '')] ||
-            null;
-
-          let merakiChamp: any = null;
-          try {
-            const merakiRes = await fetch(
-              `https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/${champId}.json`
-            );
-            if (merakiRes.ok) {
-              merakiChamp = (await merakiRes.json()) as any;
-            }
-          } catch (mErr) {
-            console.warn('[MetaService] Meraki detail fallback error:', (mErr as Error).message);
+          // Enrich with dynamic LoLDB skin release dates, rarities, and store costs
+          let skinsLookup = loldbSkinsCache.get(cleanTarget);
+          if (!skinsLookup) {
+            skinsLookup = (await fetchLoldbChampionSkins(champId)) || undefined;
           }
 
-          const relDateFinal = metaChamp?.d || merakiChamp?.releaseDate || '2012-01-01';
-          const relYearFinal = metaChamp?.y || (relDateFinal ? new Date(relDateFinal).getFullYear() : 2011);
+          const relDateFinal = champData.releaseDate || '2012-01-01';
+          const relYearFinal = new Date(relDateFinal).getFullYear();
+          const currentYear = new Date().getFullYear();
 
-          champData.storeData = {
-            ip: metaChamp?.be ?? merakiChamp?.price?.blueEssence ?? 4800,
-            rp: metaChamp?.rp ?? merakiChamp?.price?.rp ?? 880,
+          champData.storeData = champData.storeData || {
+            ip: 4800,
+            rp: 880,
             releaseDate: relDateFinal,
           };
           champData.releaseDate = relDateFinal;
@@ -896,20 +1002,12 @@ export async function getChampionDetail(
                 cost: 0,
               };
             }
-            const skinMeta = metaChamp?.s?.[String(s.id)];
-            const matched = merakiChamp?.skins?.find((m: any) => String(m.id) === String(s.id));
-            const skinRarity = skinMeta?.r || matched?.rarity || 'Regular';
+            const skinInfo = skinsLookup?.get(String(s.id)) || skinsLookup?.get(String(s.num));
+            const skinRarity = skinInfo?.rarity || 'Regular';
             const rarityInfo = mapSkinRarity(skinRarity);
-            const relDate = skinMeta?.d || matched?.release || relDateFinal;
-            const skinYear = skinMeta?.y;
-            const dObj = relDate ? new Date(relDate) : null;
-            const finalYear = skinYear || (dObj && !isNaN(dObj.getFullYear()) ? dObj.getFullYear() : relYearFinal);
-            const finalCost =
-              typeof skinMeta?.c === 'number'
-                ? skinMeta.c
-                : matched?.cost
-                ? parseInt(String(matched.cost), 10) || 975
-                : 975;
+            const relDate = skinInfo?.releaseDate || `${skinInfo?.releaseYear || currentYear}-01-01`;
+            const finalYear = skinInfo?.releaseYear || currentYear;
+            const finalCost = skinInfo?.cost ?? 975;
 
             return {
               ...s,
@@ -1003,7 +1101,7 @@ export function initMetaAnalysisWorker(intervalMs = META_WORKER_INTERVAL_MS): vo
   (async () => {
     try {
       await ensureMetaTableExists();
-      const existing = await prisma.metaSnapshot.findUnique({
+      const existing = await prisma.championSnapshot.findUnique({
         where: { id: 'active' },
         select: { updatedAt: true, totalMatches: true },
       });

@@ -26,7 +26,7 @@ export default function MasteriesView({
   masteriesData,
   isLoading,
 }: MasteriesViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'points' | 'level' | 'recent' | 'name'>('points');
   const [minLevelFilter, setMinLevelFilter] = useState<number>(0);
@@ -221,7 +221,7 @@ export default function MasteriesView({
                     #1 Main Champion
                   </span>
                   <span className="text-xs text-zinc-400">
-                    Zuletzt gespielt: {formatTimeAgo(topChampion.lastPlayTime)}
+                    {locale === 'de' ? 'Zuletzt gespielt:' : 'Last played:'} {formatTimeAgo(topChampion.lastPlayTime, locale)}
                   </span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
@@ -394,7 +394,7 @@ export default function MasteriesView({
                     {m.lastPlayTime > 0 && (
                       <span className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {formatTimeAgo(m.lastPlayTime)}
+                        {formatTimeAgo(m.lastPlayTime, locale)}
                       </span>
                     )}
                   </div>

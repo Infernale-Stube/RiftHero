@@ -18,7 +18,6 @@ import {
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import {
-  fetchDDragonChampionsList,
   getChampionIconUrl,
   getChampionLoadingUrl,
   getPositionIconUrl,
@@ -91,21 +90,13 @@ export default function ChampionsListView() {
     setIsLoading(true);
     fetchChampionsRosterApi(locale)
       .then((res) => {
-        if (res && res.champions && res.champions.length > 0) {
+        if (res && res.champions) {
           setChampions(res.champions);
           if (res.version) setVersion(res.version);
-          return;
         }
-        return fetchDDragonChampionsList(locale).then((fallbackRes) => {
-          setChampions(fallbackRes.champions as any);
-          if (fallbackRes.version) setVersion(fallbackRes.version);
-        });
       })
-      .catch(() => {
-        return fetchDDragonChampionsList(locale).then((fallbackRes) => {
-          setChampions(fallbackRes.champions as any);
-          if (fallbackRes.version) setVersion(fallbackRes.version);
-        });
+      .catch((err) => {
+        console.error('Failed to load champions roster:', err);
       })
       .finally(() => {
         setIsLoading(false);

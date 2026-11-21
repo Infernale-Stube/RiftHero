@@ -1,19 +1,3 @@
-import championMetadataRaw from './championMetadata.json';
-
-const championMetadataMap = championMetadataRaw as unknown as Record<
-  string,
-  {
-    id: number | string;
-    key?: string;
-    name?: string;
-    d: string;
-    y: number;
-    be: number;
-    rp: number;
-    s: Record<string, { y: number; d: string; c: number | string; r: string; name?: string }>;
-  }
->;
-
 let currentDDragonVersion = '16.23.1';
 let cachedVersionsList: string[] = [];
 let lastVersionFetchTime = 0;
@@ -338,81 +322,6 @@ export function mapSkinRarityClient(rawRarity?: string): { rarity: string; rarit
 }
 
 export function enrichChampionWithMeraki(champ: DDragonChampionDetail): DDragonChampionDetail {
-  if (!champ) return champ;
-
-  const champKey = (champ.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const champName = (champ.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const meta = championMetadataMap[champKey] || championMetadataMap[champName] || null;
-
-  const relDate = meta?.d || champ.releaseDate || '2012-01-01';
-  const relYear = meta?.y || (relDate ? new Date(relDate).getFullYear() : 2011);
-  const beCost = meta?.be ?? (champ.storeData?.ip ?? 4800);
-  const rpCost = meta?.rp ?? (champ.storeData?.rp ?? 880);
-
-  champ.releaseDate = relDate;
-  champ.storeData = {
-    ip: beCost,
-    rp: rpCost,
-    releaseDate: relDate,
-  };
-
-  if (Array.isArray(champ.skins)) {
-    champ.skins = champ.skins.map((s) => {
-      if (s.num === 0) {
-        return {
-          ...s,
-          rarity: 'Regular',
-          rarityColor: '#2E8D4C',
-          releaseDate: relDate,
-          releaseYear: isNaN(relYear) ? 2011 : relYear,
-          cost: 0,
-        };
-      }
-
-      // 1. Primary match: Universal numeric Skin ID
-      const skinMeta = meta?.s?.[String(s.id)];
-
-      let skinRelDate = skinMeta?.d;
-      let skinYear = skinMeta?.y;
-      let skinRarity = skinMeta?.r;
-      let skinRawCost: number | string | undefined = skinMeta?.c;
-
-      // Special cases
-      if (!skinMeta) {
-        if (String(s.id) === '103086') {
-          skinRelDate = '2024-06-12';
-          skinYear = 2024;
-          skinRarity = 'Transcendent';
-          skinRawCost = 50000;
-        } else if (String(s.id) === '147002' || String(s.id) === '147003') {
-          skinRelDate = '2020-10-29';
-          skinYear = 2020;
-          skinRarity = 'Transcendent';
-          skinRawCost = 3250;
-        }
-      }
-
-      const finalRelDate = skinRelDate || relDate;
-      const finalYear = skinYear || (finalRelDate ? new Date(finalRelDate).getFullYear() : relYear);
-      const rarityInfo = mapSkinRarityClient(skinRarity || 'Regular');
-      const finalCost =
-        typeof skinRawCost === 'number'
-          ? skinRawCost
-          : skinRawCost
-          ? parseInt(String(skinRawCost), 10) || 975
-          : 975;
-
-      return {
-        ...s,
-        rarity: rarityInfo.rarity,
-        rarityColor: rarityInfo.rarityColor,
-        releaseDate: finalRelDate,
-        releaseYear: isNaN(finalYear) ? 2012 : finalYear,
-        cost: finalCost,
-      };
-    });
-  }
-
   return champ;
 }
 

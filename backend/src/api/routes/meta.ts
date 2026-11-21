@@ -30,7 +30,7 @@ export async function metaRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Full Champions Roster from 'meta_snapshots' table (0 client calls to Riot API!)
+  // Full Champions Roster from 'champion_snapshots' table (0 client calls to Riot API!)
   fastify.get('/champions', async (request, reply) => {
     try {
       const { locale } = request.query as { locale?: string };

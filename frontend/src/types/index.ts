@@ -332,6 +332,23 @@ export interface BannedChampion {
   pickTurn: number;
 }
 
+export interface LiveGameWinProbability {
+  blueWinrate: number;
+  redWinrate: number;
+  favoredTeam: 'blue' | 'red' | 'even';
+  confidence: 'high' | 'medium' | 'low';
+  factors: {
+    rankDiffLp: number;
+    blueAvgMmr: number;
+    redAvgMmr: number;
+    blueAvgWinrate: number | null;
+    redAvgWinrate: number | null;
+    blueChampWinrate: number | null;
+    redChampWinrate: number | null;
+    sideAdvantage: number;
+  };
+}
+
 export interface LiveGameData {
   gameId: number;
   gameStartTime: number;
@@ -343,6 +360,7 @@ export interface LiveGameData {
   blueTeam: LiveGameParticipant[];
   redTeam: LiveGameParticipant[];
   bans: BannedChampion[];
+  winProbability?: LiveGameWinProbability;
 }
 
 export interface LiveGameResponse {

@@ -11,10 +11,25 @@ export function formatDuration(seconds: number): string {
   return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
 }
 
-export function formatTimeAgo(timestamp: number | string): string {
+export function formatTimeAgo(timestamp: number | string, locale: string = 'de'): string {
   const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
   const now = Date.now();
-  const diffSec = Math.floor((now - time) / 1000);
+  const diffSec = Math.max(0, Math.floor((now - time) / 1000));
+  const isEn = (locale || '').toLowerCase().startsWith('en');
+
+  if (isEn) {
+    if (diffSec < 60) return 'a few seconds ago';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+    const diffYears = Math.floor(diffDays / 365);
+    return `${diffYears} year${diffYears === 1 ? '' : 's'} ago`;
+  }
 
   if (diffSec < 60) return 'vor wenigen Sekunden';
   const diffMin = Math.floor(diffSec / 60);
@@ -22,7 +37,11 @@ export function formatTimeAgo(timestamp: number | string): string {
   const diffHours = Math.floor(diffMin / 60);
   if (diffHours < 24) return `vor ${diffHours} Std.`;
   const diffDays = Math.floor(diffHours / 24);
-  return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+  if (diffDays < 30) return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `vor ${diffMonths} Monat${diffMonths > 1 ? 'en' : ''}`;
+  const diffYears = Math.floor(diffDays / 365);
+  return `vor ${diffYears} Jahr${diffYears > 1 ? 'en' : ''}`;
 }
 
 export function getKdaColor(kda: number): string {

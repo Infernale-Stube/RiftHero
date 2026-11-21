@@ -232,7 +232,7 @@ export default function SummonerHeader({
                   </span>
                 ) : (
                   <span className="text-zinc-500">
-                    {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt) })}
+                    {t('summoner.cachedAgo', { time: formatTimeAgo(summoner.lastFetchedAt, locale) })}
                   </span>
                 )}
               </div>

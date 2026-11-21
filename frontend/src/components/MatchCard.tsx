@@ -134,7 +134,7 @@ function BanSlot({ champId }: { champId?: number | null }) {
 }
 
 export default function MatchCard({ match, region, isNew }: MatchCardProps) {
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
   const [copiedMatchId, setCopiedMatchId] = useState(false);
@@ -279,7 +279,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                     : 'text-rose-400'
                 }`}
               >
-                {isRemake ? 'REMAKE' : teamWon ? 'VICTORY' : 'DEFEAT'}
+                {isRemake ? 'REMAKE' : teamWon ? t('matches.victory') : t('matches.defeat')}
               </span>
               <span className="text-xs text-zinc-400 font-semibold">
                 {isBlue ? 'Blue Side' : 'Red Side'}
@@ -653,7 +653,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   };
 
   // Saturated, rich outcome colors (Victory = emerald green, Defeat = crimson red, not pale!)
-  const outcomeText = isRemake ? 'REMAKE' : win ? 'VICTORY' : 'DEFEAT';
+  const outcomeText = isRemake ? 'REMAKE' : win ? t('matches.victory') : t('matches.defeat');
   const cardBgClass = isRemake
     ? 'bg-[#12151c]/95 border-slate-700/40 hover:border-slate-600/50'
     : win
@@ -796,7 +796,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               {queueName}
             </span>
             <span className="text-xs text-zinc-400 mt-0.5 font-medium">
-              {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime)}
+              {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime, locale)}
             </span>
             {isSurrender && !isRemake && (
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">

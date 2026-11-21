@@ -18,6 +18,8 @@ import {
 import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
 import { getWinrateColor, calculateTeamAverageRank } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import LiveGameWinProbability from './LiveGameWinProbability';
+import { calculateLiveGameWinProbability } from '@/lib/winProbability';
 
 interface LiveGameViewProps {
   region: string;
@@ -140,6 +142,12 @@ export default function LiveGameView({
   const blueAvg = calculateTeamAverageRank(game.blueTeam);
   const redAvg = calculateTeamAverageRank(game.redTeam);
 
+  const winProbability = useMemo(() => {
+    if (!game) return null;
+    if (game.winProbability) return game.winProbability;
+    return calculateLiveGameWinProbability(game.blueTeam, game.redTeam, game.mapId, game.queueId);
+  }, [game]);
+
   const renderTeamHeader = (isBlue: boolean) => {
     const teamAvg = isBlue ? blueAvg : redAvg;
 
@@ -160,8 +168,22 @@ export default function LiveGameView({
         >
           {/* Team Label & Average Rank Badge */}
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-            <div className="font-black uppercase tracking-wider text-xs sm:text-sm">
-              <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-black uppercase tracking-wider text-xs sm:text-sm">
+                {isBlue ? t('live.blueTeam') : t('live.redTeam')}
+              </span>
+              {winProbability && (
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-black font-mono tracking-tight border ${
+                    isBlue
+                      ? 'bg-blue-500/20 text-cyan-300 border-blue-500/30'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  }`}
+                  title={`${isBlue ? winProbability.blueWinrate : winProbability.redWinrate}% Siegwahrscheinlichkeit`}
+                >
+                  {isBlue ? winProbability.blueWinrate : winProbability.redWinrate}%
+                </span>
+              )}
             </div>
 
             {/* Average Rank & Winrate */}
@@ -527,6 +549,15 @@ export default function LiveGameView({
           </div>
         ) : null}
       </div>
+
+      {/* Team Win Probability Prediction */}
+      {winProbability && (
+        <LiveGameWinProbability
+          winProbability={winProbability}
+          blueTeam={game.blueTeam}
+          redTeam={game.redTeam}
+        />
+      )}
 
       {/* Team Headers */}
       <div className="flex flex-col lg:flex-row gap-3 w-full">
