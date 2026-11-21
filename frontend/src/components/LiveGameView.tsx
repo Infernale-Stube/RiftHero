@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Radio, RefreshCw, Shield, Swords, Ban } from 'lucide-react';
+import { Radio, RefreshCw, Ban } from 'lucide-react';
 import { LiveGameResponse, LiveGameParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -94,14 +94,9 @@ export default function LiveGameView({
               : 'bg-gradient-to-r from-rose-950/80 via-rose-900/40 to-transparent text-rose-300'
           }`}
         >
-          {/* Team Label & Icon & Average Rank Badge */}
+          {/* Team Label & Average Rank Badge */}
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-            <div className="flex items-center gap-2 font-black uppercase tracking-wider text-xs sm:text-sm">
-              {isBlue ? (
-                <Shield className="h-4 w-4 text-blue-400 shrink-0" />
-              ) : (
-                <Swords className="h-4 w-4 text-rose-400 shrink-0" />
-              )}
+            <div className="font-black uppercase tracking-wider text-xs sm:text-sm">
               <span>{isBlue ? t('live.blueTeam') : t('live.redTeam')}</span>
             </div>
 
@@ -452,15 +447,15 @@ export default function LiveGameView({
               {/* Center Role Icon Divider (Desktop) */}
               <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-10 my-auto">
                 <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/80 shadow-lg backdrop-blur-md"
+                  className="flex h-10 w-10 items-center justify-center"
                   title={role}
                 >
                   <Image
                     src={getPositionIconUrl(role)}
                     alt={role}
-                    width={22}
-                    height={22}
-                    className="h-5 w-5 object-contain filter brightness-110 drop-shadow"
+                    width={24}
+                    height={24}
+                    className="h-6 w-6 object-contain filter brightness-110 drop-shadow"
                     unoptimized
                   />
                 </div>
@@ -469,7 +464,7 @@ export default function LiveGameView({
               {/* Mobile Role Divider */}
               <div className="flex lg:hidden items-center justify-center gap-2 py-1">
                 <div className="h-[1px] flex-1 bg-white/10" />
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/80 text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold text-zinc-300 uppercase tracking-wider">
                   <Image
                     src={getPositionIconUrl(role)}
                     alt={role}
