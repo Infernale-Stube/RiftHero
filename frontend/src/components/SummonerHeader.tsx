@@ -114,6 +114,32 @@ export default function SummonerHeader({
         return 'North America';
       case 'kr':
         return 'Korea';
+      case 'br':
+        return 'Brazil';
+      case 'lan':
+        return 'Latin America North';
+      case 'las':
+        return 'Latin America South';
+      case 'oce':
+        return 'Oceania';
+      case 'tr':
+        return 'Turkey';
+      case 'ru':
+        return 'Russia';
+      case 'jp':
+        return 'Japan';
+      case 'sg':
+        return 'Singapore';
+      case 'ph':
+        return 'Philippines';
+      case 'tw':
+        return 'Taiwan';
+      case 'vn':
+        return 'Vietnam';
+      case 'th':
+        return 'Thailand';
+      case 'me':
+        return 'Middle East';
       default:
         return reg.toUpperCase();
     }

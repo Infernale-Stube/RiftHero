@@ -1,6 +1,23 @@
 import { PlatformId } from '@fightmegg/riot-rate-limiter';
 
-export type SupportedRegion = 'euw' | 'eune' | 'na' | 'kr';
+export type SupportedRegion =
+  | 'euw'
+  | 'eune'
+  | 'na'
+  | 'kr'
+  | 'br'
+  | 'lan'
+  | 'las'
+  | 'oce'
+  | 'tr'
+  | 'ru'
+  | 'jp'
+  | 'sg'
+  | 'ph'
+  | 'tw'
+  | 'vn'
+  | 'th'
+  | 'me';
 
 export type RegionalCluster = 'europe' | 'americas' | 'asia' | 'sea';
 
@@ -36,6 +53,84 @@ export const REGIONS: Record<SupportedRegion, RegionConfig> = {
     platform: PlatformId.KR,
     cluster: 'asia',
   },
+  br: {
+    code: 'br',
+    label: 'Brazil',
+    platform: PlatformId.BR1,
+    cluster: 'americas',
+  },
+  lan: {
+    code: 'lan',
+    label: 'Latin America North',
+    platform: PlatformId.LA1,
+    cluster: 'americas',
+  },
+  las: {
+    code: 'las',
+    label: 'Latin America South',
+    platform: PlatformId.LA2,
+    cluster: 'americas',
+  },
+  oce: {
+    code: 'oce',
+    label: 'Oceania',
+    platform: PlatformId.OC1,
+    cluster: 'sea',
+  },
+  tr: {
+    code: 'tr',
+    label: 'Turkey',
+    platform: PlatformId.TR1,
+    cluster: 'europe',
+  },
+  ru: {
+    code: 'ru',
+    label: 'Russia',
+    platform: PlatformId.RU,
+    cluster: 'europe',
+  },
+  jp: {
+    code: 'jp',
+    label: 'Japan',
+    platform: PlatformId.JP1,
+    cluster: 'asia',
+  },
+  sg: {
+    code: 'sg',
+    label: 'Singapore',
+    platform: PlatformId.SG2,
+    cluster: 'sea',
+  },
+  ph: {
+    code: 'ph',
+    label: 'Philippines',
+    platform: PlatformId.PH2,
+    cluster: 'sea',
+  },
+  tw: {
+    code: 'tw',
+    label: 'Taiwan',
+    platform: PlatformId.TW2,
+    cluster: 'sea',
+  },
+  vn: {
+    code: 'vn',
+    label: 'Vietnam',
+    platform: PlatformId.VN2,
+    cluster: 'sea',
+  },
+  th: {
+    code: 'th',
+    label: 'Thailand',
+    platform: PlatformId.TH2,
+    cluster: 'sea',
+  },
+  me: {
+    code: 'me',
+    label: 'Middle East',
+    platform: PlatformId.ME1,
+    cluster: 'europe',
+  },
 };
 
 export function normalizeRegion(regionStr: string): SupportedRegion {
@@ -48,6 +143,19 @@ export function normalizeRegion(regionStr: string): SupportedRegion {
   if (clean === 'eun1' || clean === 'eune1') return 'eune';
   if (clean === 'na1') return 'na';
   if (clean === 'korea') return 'kr';
+  if (clean === 'br1') return 'br';
+  if (clean === 'la1') return 'lan';
+  if (clean === 'la2') return 'las';
+  if (clean === 'oc1') return 'oce';
+  if (clean === 'tr1') return 'tr';
+  if (clean === 'ru1') return 'ru';
+  if (clean === 'jp1') return 'jp';
+  if (clean === 'sg2') return 'sg';
+  if (clean === 'ph2') return 'ph';
+  if (clean === 'tw2') return 'tw';
+  if (clean === 'vn2') return 'vn';
+  if (clean === 'th2') return 'th';
+  if (clean === 'me1') return 'me';
   return 'euw'; // fallback default
 }
 
@@ -63,7 +171,7 @@ export function getClusterForRegion(region: string): RegionalCluster {
 
 export function getClusterForPlatform(platform: string): RegionalCluster {
   const p = platform.toUpperCase();
-  if (['EUW1', 'EUN1', 'TR1', 'RU'].includes(p)) return 'europe';
+  if (['EUW1', 'EUN1', 'TR1', 'RU', 'ME1'].includes(p)) return 'europe';
   if (['NA1', 'BR1', 'LA1', 'LA2'].includes(p)) return 'americas';
   if (['KR', 'JP1'].includes(p)) return 'asia';
   if (['OC1', 'PH2', 'SG2', 'TH2', 'TW2', 'VN2'].includes(p)) return 'sea';

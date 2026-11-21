@@ -80,11 +80,26 @@ export default function LiveGameView({
 
   const getPlatformPrefix = (reg: string) => {
     const r = (reg || '').toLowerCase();
-    if (r === 'euw') return 'EUW1';
-    if (r === 'eune') return 'EUN1';
-    if (r === 'na') return 'NA1';
-    if (r === 'kr') return 'KR';
-    return `${r.toUpperCase()}1`;
+    const platMap: Record<string, string> = {
+      euw: 'EUW1',
+      eune: 'EUN1',
+      na: 'NA1',
+      kr: 'KR',
+      br: 'BR1',
+      lan: 'LA1',
+      las: 'LA2',
+      oce: 'OC1',
+      tr: 'TR1',
+      ru: 'RU',
+      jp: 'JP1',
+      sg: 'SG2',
+      ph: 'PH2',
+      tw: 'TW2',
+      vn: 'VN2',
+      th: 'TH2',
+      me: 'ME1',
+    };
+    return platMap[r] || `${r.toUpperCase()}1`;
   };
 
   const fullMatchId = game?.gameId ? `${getPlatformPrefix(region)}_${game.gameId}` : '';

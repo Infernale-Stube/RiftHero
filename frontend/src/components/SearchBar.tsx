@@ -23,6 +23,63 @@ import championPositionsRaw from '@/lib/championPositions.json';
 import { fetchItemsRosterApi, searchSummonersApi } from '@/lib/api';
 import { fetchDDragonItemsList } from '@/lib/ddragon';
 
+const PLATFORM_TO_REGION: Record<string, { plat: string; reg: string }> = {
+  EUW: { plat: 'EUW1', reg: 'euw' },
+  EUW1: { plat: 'EUW1', reg: 'euw' },
+  EUN: { plat: 'EUN1', reg: 'eune' },
+  EUN1: { plat: 'EUN1', reg: 'eune' },
+  EUNE: { plat: 'EUN1', reg: 'eune' },
+  EUNE1: { plat: 'EUN1', reg: 'eune' },
+  NA: { plat: 'NA1', reg: 'na' },
+  NA1: { plat: 'NA1', reg: 'na' },
+  KR: { plat: 'KR', reg: 'kr' },
+  BR: { plat: 'BR1', reg: 'br' },
+  BR1: { plat: 'BR1', reg: 'br' },
+  LAN: { plat: 'LA1', reg: 'lan' },
+  LA1: { plat: 'LA1', reg: 'lan' },
+  LAS: { plat: 'LA2', reg: 'las' },
+  LA2: { plat: 'LA2', reg: 'las' },
+  OCE: { plat: 'OC1', reg: 'oce' },
+  OC1: { plat: 'OC1', reg: 'oce' },
+  TR: { plat: 'TR1', reg: 'tr' },
+  TR1: { plat: 'TR1', reg: 'tr' },
+  RU: { plat: 'RU', reg: 'ru' },
+  JP: { plat: 'JP1', reg: 'jp' },
+  JP1: { plat: 'JP1', reg: 'jp' },
+  SG: { plat: 'SG2', reg: 'sg' },
+  SG2: { plat: 'SG2', reg: 'sg' },
+  PH: { plat: 'PH2', reg: 'ph' },
+  PH2: { plat: 'PH2', reg: 'ph' },
+  TW: { plat: 'TW2', reg: 'tw' },
+  TW2: { plat: 'TW2', reg: 'tw' },
+  VN: { plat: 'VN2', reg: 'vn' },
+  VN2: { plat: 'VN2', reg: 'vn' },
+  TH: { plat: 'TH2', reg: 'th' },
+  TH2: { plat: 'TH2', reg: 'th' },
+  ME: { plat: 'ME1', reg: 'me' },
+  ME1: { plat: 'ME1', reg: 'me' },
+};
+
+const REGION_TO_PLATFORM: Record<string, string> = {
+  euw: 'EUW1',
+  eune: 'EUN1',
+  na: 'NA1',
+  kr: 'KR',
+  br: 'BR1',
+  lan: 'LA1',
+  las: 'LA2',
+  oce: 'OC1',
+  tr: 'TR1',
+  ru: 'RU',
+  jp: 'JP1',
+  sg: 'SG2',
+  ph: 'PH2',
+  tw: 'TW2',
+  vn: 'VN2',
+  th: 'TH2',
+  me: 'ME1',
+};
+
 export function parseMatchIdQuery(query: string, defaultRegion: string): { isMatchId: boolean; region: string; matchId: string } | null {
   const clean = query.trim();
   if (!clean) return null;
@@ -34,18 +91,10 @@ export function parseMatchIdQuery(query: string, defaultRegion: string): { isMat
     const num = platformMatch[2];
     let reg = defaultRegion.toLowerCase();
 
-    if (plat === 'EUW' || plat === 'EUW1') {
-      plat = 'EUW1';
-      reg = 'euw';
-    } else if (plat === 'EUN' || plat === 'EUN1' || plat === 'EUNE' || plat === 'EUNE1') {
-      plat = 'EUN1';
-      reg = 'eune';
-    } else if (plat === 'NA' || plat === 'NA1') {
-      plat = 'NA1';
-      reg = 'na';
-    } else if (plat === 'KR') {
-      plat = 'KR';
-      reg = 'kr';
+    const mapped = PLATFORM_TO_REGION[plat];
+    if (mapped) {
+      plat = mapped.plat;
+      reg = mapped.reg;
     }
 
     return {
@@ -58,11 +107,8 @@ export function parseMatchIdQuery(query: string, defaultRegion: string): { isMat
   // Format 2: Pure numeric ID with 8 to 14 digits (e.g. 7182938194 or #7182938194)
   const pureNumber = clean.startsWith('#') ? clean.slice(1).trim() : clean;
   if (/^[0-9]{8,14}$/.test(pureNumber)) {
-    let plat = 'EUW1';
     const reg = defaultRegion.toLowerCase();
-    if (reg === 'eune') plat = 'EUN1';
-    else if (reg === 'na') plat = 'NA1';
-    else if (reg === 'kr') plat = 'KR';
+    const plat = REGION_TO_PLATFORM[reg] || 'EUW1';
 
     return {
       isMatchId: true,
@@ -79,6 +125,19 @@ const REGIONS = [
   { code: 'eune', label: 'EUNE' },
   { code: 'na', label: 'NA' },
   { code: 'kr', label: 'KR' },
+  { code: 'br', label: 'BR' },
+  { code: 'lan', label: 'LAN' },
+  { code: 'las', label: 'LAS' },
+  { code: 'oce', label: 'OCE' },
+  { code: 'tr', label: 'TR' },
+  { code: 'ru', label: 'RU' },
+  { code: 'jp', label: 'JP' },
+  { code: 'sg', label: 'SG' },
+  { code: 'ph', label: 'PH' },
+  { code: 'tw', label: 'TW' },
+  { code: 'vn', label: 'VN' },
+  { code: 'th', label: 'TH' },
+  { code: 'me', label: 'ME' },
 ];
 
 interface ItemSearchItem {
