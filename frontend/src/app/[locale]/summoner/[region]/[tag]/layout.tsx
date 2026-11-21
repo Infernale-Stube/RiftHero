@@ -166,29 +166,30 @@ export default function SummonerLayout({
               : decodeURIComponent(tag).replace('-', '#');
             const basePath = `/${locale}/summoner/${region}/${encodeURIComponent(tag)}`;
             const serverItem = { label: region.toUpperCase() };
+            const currentPath = pathname || '';
 
-            if (pathname.includes('/live')) {
+            if (currentPath.includes('/live')) {
               return [
                 serverItem,
                 { label: summonerName, href: basePath },
                 { label: t('summoner.tabLive') || 'Live Game' },
               ];
             }
-            if (pathname.includes('/champions')) {
+            if (currentPath.includes('/champions')) {
               return [
                 serverItem,
                 { label: summonerName, href: basePath },
                 { label: t('summoner.tabChampions') || 'Champions' },
               ];
             }
-            if (pathname.includes('/masteries')) {
+            if (currentPath.includes('/masteries')) {
               return [
                 serverItem,
                 { label: summonerName, href: basePath },
                 { label: t('summoner.tabMasteries') || 'Meisterschaften' },
               ];
             }
-            if (pathname.includes('/challenges')) {
+            if (currentPath.includes('/challenges')) {
               return [
                 serverItem,
                 { label: summonerName, href: basePath },

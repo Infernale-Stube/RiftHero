@@ -38,6 +38,56 @@ export default function LiveGameView({
 }: LiveGameViewProps) {
   const { t, locale } = useTranslation();
   const [copiedId, setCopiedId] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const game = liveData?.inGame ? liveData.game : undefined;
+  const gameStartTime = game?.gameStartTime;
+
+  useEffect(() => {
+    if (!gameStartTime || gameStartTime <= 0) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const initial = Math.max(0, Math.floor((Date.now() - gameStartTime) / 1000));
+    setElapsedSeconds(initial);
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameStartTime]);
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const startTimeFormatted = useMemo(() => {
+    if (!gameStartTime || gameStartTime <= 0) return null;
+    try {
+      const date = new Date(gameStartTime);
+      return date.toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return null;
+    }
+  }, [gameStartTime, locale]);
+
+  const getPlatformPrefix = (reg: string) => {
+    const r = (reg || '').toLowerCase();
+    if (r === 'euw') return 'EUW1';
+    if (r === 'eune') return 'EUN1';
+    if (r === 'na') return 'NA1';
+    if (r === 'kr') return 'KR';
+    return `${r.toUpperCase()}1`;
+  };
+
+  const fullMatchId = game?.gameId ? `${getPlatformPrefix(region)}_${game.gameId}` : '';
 
   if (isLoading) {
     return (
@@ -49,7 +99,7 @@ export default function LiveGameView({
     );
   }
 
-  if (!liveData || !liveData.inGame || !liveData.game) {
+  if (!liveData || !liveData.inGame || !liveData.game || !game) {
     return (
       <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl bg-black/40 p-12 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] text-slate-500 mb-4">
@@ -71,54 +121,6 @@ export default function LiveGameView({
       </div>
     );
   }
-
-  const { game } = liveData;
-
-  // Live Timer for active match
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!game?.gameStartTime || game.gameStartTime <= 0) return;
-
-    const initial = Math.max(0, Math.floor((Date.now() - game.gameStartTime) / 1000));
-    setElapsedSeconds(initial);
-
-    const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [game?.gameStartTime]);
-
-  const formatTimer = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const startTimeFormatted = useMemo(() => {
-    if (!game?.gameStartTime || game.gameStartTime <= 0) return null;
-    try {
-      const date = new Date(game.gameStartTime);
-      return date.toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return null;
-    }
-  }, [game?.gameStartTime, locale]);
-
-  const getPlatformPrefix = (reg: string) => {
-    const r = (reg || '').toLowerCase();
-    if (r === 'euw') return 'EUW1';
-    if (r === 'eune') return 'EUN1';
-    if (r === 'na') return 'NA1';
-    if (r === 'kr') return 'KR';
-    return `${r.toUpperCase()}1`;
-  };
-
-  const fullMatchId = game.gameId ? `${getPlatformPrefix(region)}_${game.gameId}` : '';
 
   const blueAvg = calculateTeamAverageRank(game.blueTeam);
   const redAvg = calculateTeamAverageRank(game.redTeam);
