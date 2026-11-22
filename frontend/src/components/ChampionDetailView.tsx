@@ -2061,7 +2061,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         >
           <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
             <Image
-              src={getChampionPassiveIconUrl(data.passive.image.full, version)}
+              src={getChampionPassiveIconUrl(data.passive?.image, version)}
               alt={data.passive.name}
               fill
               className="object-cover"
@@ -2094,7 +2094,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             >
               <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
                 <Image
-                  src={getChampionSpellIconUrl(spell.image.full, version)}
+                  src={getChampionSpellIconUrl(spell.image, version)}
                   alt={spell.name}
                   fill
                   className="object-cover"

@@ -181,16 +181,40 @@ export function getChampionLoadingUrl(championName?: string | null, skinNum: num
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${clean}_${skinNum}.jpg`;
 }
 
-export function getChampionPassiveIconUrl(imageFull: string, version?: string): string {
-  if (!imageFull) return '';
+export function getChampionPassiveIconUrl(imageInput?: any, version?: string): string {
+  if (!imageInput) return '';
+  if (typeof imageInput === 'string') {
+    if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
+      return imageInput;
+    }
+    const v = version || getDDragonVersion();
+    return `https://ddragon.leagueoflegends.com/cdn/${v}/img/passive/${imageInput}`;
+  }
+  const full = imageInput.full || '';
+  if (!full) return '';
+  if (full.startsWith('http://') || full.startsWith('https://')) {
+    return full;
+  }
   const v = version || getDDragonVersion();
-  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/passive/${imageFull}`;
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/passive/${full}`;
 }
 
-export function getChampionSpellIconUrl(imageFull: string, version?: string): string {
-  if (!imageFull) return '';
+export function getChampionSpellIconUrl(imageInput?: any, version?: string): string {
+  if (!imageInput) return '';
+  if (typeof imageInput === 'string') {
+    if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
+      return imageInput;
+    }
+    const v = version || getDDragonVersion();
+    return `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${imageInput}`;
+  }
+  const full = imageInput.full || '';
+  if (!full) return '';
+  if (full.startsWith('http://') || full.startsWith('https://')) {
+    return full;
+  }
   const v = version || getDDragonVersion();
-  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${imageFull}`;
+  return `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${full}`;
 }
 
 export function getChampionSkinSplashUrl(championId: string, skinNum: number): string {

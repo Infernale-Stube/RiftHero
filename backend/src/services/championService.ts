@@ -521,15 +521,17 @@ export async function buildChampionRostersAndDetails(
                 costType: sp.costType,
                 range: sp.range,
                 rangeBurn: sp.rangeBurn,
-                image: sp.image ? `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/spell/${sp.image.full}` : '',
+                image: {
+                  full: sp.image?.full || (typeof sp.image === 'string' ? sp.image.split('/').pop() || '' : `${sp.id}.png`),
+                },
               })),
               passive: champ.passive
                 ? {
                     name: champ.passive.name,
                     description: champ.passive.description,
-                    image: champ.passive.image
-                      ? `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/passive/${champ.passive.image.full}`
-                      : '',
+                    image: {
+                      full: champ.passive.image?.full || (typeof champ.passive.image === 'string' ? champ.passive.image.split('/').pop() || '' : ''),
+                    },
                   }
                 : null,
               skins: processedSkins,
