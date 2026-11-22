@@ -1350,10 +1350,9 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <span>
                 {activeSkin?.num === 0
                   ? formattedReleaseDate
-                  : activeSkin?.releaseYear ||
-                    (activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
-                      ? formatReleaseDate(activeSkin.releaseDate, locale)
-                      : activeSkin?.releaseYear || releaseYear)}
+                  : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                    ? formatReleaseDate(activeSkin.releaseDate, locale)
+                    : activeSkin?.releaseYear || releaseYear}
               </span>
             </div>
           </div>

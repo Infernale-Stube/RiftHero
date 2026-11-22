@@ -157,6 +157,93 @@ interface LoldbSkinInfo {
 // Global in-memory maps for LoLDB data
 const loldbCatalogMap = new Map<string, any>();
 const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
+const globalSkinMap = new Map<string, LoldbSkinInfo>();
+
+async function syncLoldbSkins(): Promise<void> {
+  if (globalSkinMap.size > 0) return;
+  try {
+    const res = await fetch('https://loldb.info/skins', {
+      headers: { RSC: '1' },
+    });
+    if (!res.ok) return;
+    const text = await res.text();
+    const marker = '"allSkins":[';
+    const startIdx = text.indexOf(marker);
+    if (startIdx === -1) return;
+
+    const arrStart = startIdx + marker.length - 1;
+    let depth = 0;
+    let endIdx = -1;
+    for (let j = arrStart; j < text.length; j++) {
+      if (text[j] === '[') depth++;
+      else if (text[j] === ']') {
+        depth--;
+        if (depth === 0) {
+          endIdx = j + 1;
+          break;
+        }
+      }
+    }
+    if (endIdx === -1) return;
+
+    const raw = text.slice(arrStart, endIdx).replace(/"\$undefined"/g, 'null');
+    const skins = JSON.parse(raw);
+
+    for (const s of skins) {
+      let releaseDate: string | undefined;
+      let releaseYear: number = new Date().getFullYear();
+      if (s.releaseDate) {
+        const dt = new Date(s.releaseDate);
+        if (!isNaN(dt.getTime())) {
+          releaseYear = dt.getFullYear();
+          const mm = String(dt.getMonth() + 1).padStart(2, '0');
+          const dd = String(dt.getDate()).padStart(2, '0');
+          releaseDate = `${releaseYear}-${mm}-${dd}`;
+        }
+      }
+
+      let cost: number | string = 975;
+      if (typeof s.price === 'string') {
+        if (s.price.toLowerCase().includes('free')) cost = 0;
+        else if (s.price.toLowerCase().includes('n/a')) cost = 'N/A';
+        else {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          if (!isNaN(num)) cost = num;
+          else cost = s.price;
+        }
+      }
+
+      const info: LoldbSkinInfo = {
+        id: String(s.id),
+        name: s.name,
+        rarity: s.tier || 'Regular',
+        officialRarity: s.tier ? `k${s.tier}` : 'kNoRarity',
+        releaseYear,
+        releaseDate: releaseDate || `${releaseYear}-01-01`,
+        cost,
+      };
+
+      // Store in global ID map
+      globalSkinMap.set(String(s.id), info);
+
+      // Also categorize by champion key
+      const champKey = (s.champion || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (champKey) {
+        if (!loldbSkinsCache.has(champKey)) {
+          loldbSkinsCache.set(champKey, new Map<string, LoldbSkinInfo>());
+        }
+        const map = loldbSkinsCache.get(champKey)!;
+        map.set(String(s.id), info);
+        if (s.name) {
+          map.set(s.name.toLowerCase().replace(/[^a-z0-9]/g, ''), info);
+        }
+      }
+    }
+    console.log(`[MetaService] Synced ${globalSkinMap.size} skins directly from LoLDB /skins catalog.`);
+  } catch (err) {
+    console.warn('[MetaService] LoLDB /skins catalog fetch warning:', (err as Error).message);
+  }
+}
 
 async function syncLoldbCatalog(): Promise<void> {
   if (loldbCatalogMap.size > 0) return;
@@ -305,21 +392,8 @@ async function buildChampionRostersAndDetails(
   // 1. Ensure live LoLDB champions catalog is synced (with TFT/Jade filtered out)
   await syncLoldbCatalog();
 
-  // 1b. Pre-fetch all champion skins from LoLDB in parallel batches (concurrency 15)
-  const standardChamps = Array.from(new Set(Array.from(loldbCatalogMap.values())));
-  const concurrency = 15;
-  for (let i = 0; i < standardChamps.length; i += concurrency) {
-    const chunk = standardChamps.slice(i, i + concurrency);
-    await Promise.all(
-      chunk.map(async (c: any) => {
-        const slug = c.slug || c.id;
-        const key = (c.id || c.slug).toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!loldbSkinsCache.has(key)) {
-          await fetchLoldbChampionSkins(slug);
-        }
-      })
-    );
-  }
+  // 1b. Fast sync of all 2000+ skins directly from LoLDB /skins catalog
+  await syncLoldbSkins();
 
   const langs = ['de_DE', 'en_US'] as const;
   const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
@@ -406,6 +480,7 @@ async function buildChampionRostersAndDetails(
                 const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
                 const skinInfo =
+                  globalSkinMap.get(String(s.id)) ||
                   skinsLookup?.get(String(s.id)) ||
                   skinsLookup?.get(String(s.num)) ||
                   skinsLookup?.get(normName);
@@ -861,9 +936,9 @@ function isSnapshotFresh(row: any): boolean {
     const details = row.championDetailsJson as any;
     const aatrox = details?.de?.aatrox || details?.en?.aatrox;
     if (!aatrox || !Array.isArray(aatrox.skins)) return false;
-    // Check if Mecha Aatrox (num: 2 or id: '266002') has correct releaseYear 2014 from LoLDB
+    // Check if Mecha Aatrox (num: 2 or id: '266002') has correct releaseYear 2014 and full releaseDate from LoLDB /skins
     const mecha = aatrox.skins.find((s: any) => s.num === 2 || s.id === '266002');
-    if (!mecha || mecha.releaseYear !== 2014) {
+    if (!mecha || mecha.releaseYear !== 2014 || mecha.releaseDate !== '2014-07-23') {
       return false;
     }
     return true;
