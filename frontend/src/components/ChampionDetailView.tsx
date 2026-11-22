@@ -7,7 +7,6 @@ import Link from 'next/link';
 import {
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Shield,
   Swords,
   Heart,
@@ -28,7 +27,6 @@ import {
   Calendar,
   Maximize2,
   X,
-  History,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -49,6 +47,7 @@ import {
 import {
   fetchChampionDetailApi,
   fetchChampionsRosterApi,
+  fetchChampionSkinsApi,
   ChampionRosterItem,
   fetchTierList,
   TierListChampionItem,
@@ -130,6 +129,10 @@ const BE_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-be-150.png';
 const RP_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-rp-72.png';
+const ANCIENT_SPARK_ICON_URL =
+  'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/currency/icons/ancient_spark.svg';
+const LEGACY_ICON_URL =
+  'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/summoner-icon/icon-legacy.png';
 
 interface TimelineSkinData {
   id: string;
@@ -338,7 +341,11 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
                 <>
                   <span className="text-zinc-500">•</span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded shadow-sm">
-                    <History className="h-2.5 w-2.5 text-amber-400" />
+                    <img
+                      src={LEGACY_ICON_URL}
+                      alt="Legacy"
+                      className="h-3 w-3 object-contain shrink-0"
+                    />
                     Legacy
                   </span>
                 </>
@@ -347,7 +354,11 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
             {info.price && (
               <div className="flex items-center gap-1.5 mt-0.5">
                 {String(info.price).includes('AS') ? (
-                  <Sparkles className="h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+                  <img
+                    src={ANCIENT_SPARK_ICON_URL}
+                    alt="AS"
+                    className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+                  />
                 ) : String(info.price).includes('BE') ? (
                   <img
                     src={BE_ICON_URL}
@@ -506,6 +517,46 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         setIsLoading(false);
       });
 
+    // Fetch official LoLDB skin metadata (isLegacy, AS/RP prices) directly
+    fetchChampionSkinsApi(slug)
+      .then((skinsRes) => {
+        if (skinsRes && Array.isArray(skinsRes.skins) && skinsRes.skins.length > 0) {
+          const loldbMap = new Map<string, any>();
+          skinsRes.skins.forEach((ls: any) => {
+            if (ls.id) loldbMap.set(String(ls.id), ls);
+            if (ls.num !== undefined) loldbMap.set(String(ls.num), ls);
+            if (ls.name) loldbMap.set(ls.name.toLowerCase().replace(/[^a-z0-9]/g, ''), ls);
+          });
+
+          setData((prev) => {
+            if (!prev || !prev.skins) return prev;
+            return {
+              ...prev,
+              skins: prev.skins.map((s) => {
+                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const match =
+                  loldbMap.get(String(s.id)) ||
+                  loldbMap.get(String(s.num)) ||
+                  loldbMap.get(normName);
+                if (match) {
+                  return {
+                    ...s,
+                    isLegacy: Boolean(match.isLegacy),
+                    cost: match.cost ?? s.cost,
+                    currency: match.currency || s.currency,
+                    ...(match.rarity ? { rarity: match.rarity } : {}),
+                    ...(match.releaseDate ? { releaseDate: match.releaseDate } : {}),
+                    ...(match.releaseYear ? { releaseYear: match.releaseYear } : {}),
+                  };
+                }
+                return s;
+              }),
+            };
+          });
+        }
+      })
+      .catch((err) => console.warn('[LoLDB] Skin enrichment error:', err));
+
     // Load roster for "Same Year" carousel directly from PostgreSQL database
     fetchChampionsRosterApi(locale)
       .then((res) => {
@@ -550,7 +601,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     return {
                       ...s,
                       ...(mapped ? { rarity: mapped.rarity, rarityColor: mapped.rarityColor } : {}),
-                      isLegacy: s.isLegacy !== undefined ? s.isLegacy : Boolean(cd.isLegacy),
+                      isLegacy: typeof s.isLegacy === 'boolean' ? s.isLegacy : Boolean(cd.isLegacy),
                     };
                   }
                   return s;
@@ -1373,7 +1424,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           className={`flex items-center gap-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/40 px-2.5 py-1 text-xs font-black text-cyan-200 backdrop-blur-md shadow-[0_0_12px_rgba(34,211,238,0.25)] ${extraClass}`}
           title={locale === 'de' ? 'Uralte Funken (Ancient Sparks)' : 'Ancient Sparks (AS)'}
         >
-          <Sparkles className="h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+          <img
+            src={ANCIENT_SPARK_ICON_URL}
+            alt="AS"
+            className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+          />
           <span>{amount} AS</span>
         </div>
       );
@@ -1430,10 +1485,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     if (!skin?.isLegacy) return null;
     return (
       <div
-        className={`flex items-center gap-1 rounded-lg bg-amber-950/80 border border-amber-500/40 px-2 py-1 text-xs font-bold text-amber-300 backdrop-blur-md shadow-[0_0_10px_rgba(245,158,11,0.25)] ${extraClass}`}
-        title={locale === 'de' ? 'Legacy Skin (Nur zeitweise im Tresor verfügbar)' : 'Legacy Skin (Vault)'}
+        className={`flex items-center gap-1.5 rounded-lg bg-amber-950/80 border border-amber-500/40 px-2 py-1 text-xs font-bold text-amber-300 backdrop-blur-md shadow-[0_0_10px_rgba(245,158,11,0.25)] ${extraClass}`}
+        title={locale === 'de' ? 'Legacy Skin (Aus dem LoL-Tresor)' : 'Legacy Skin (Vault)'}
       >
-        <History className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+        <img
+          src={LEGACY_ICON_URL}
+          alt="Legacy"
+          className="h-3.5 w-3.5 object-contain shrink-0"
+        />
         <span>Legacy</span>
       </div>
     );

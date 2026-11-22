@@ -392,6 +392,24 @@ export async function fetchChampionDetailApi(
   }
 }
 
+export async function fetchChampionSkinsApi(
+  champion: string
+): Promise<{
+  totalSkins: number;
+  skins: any[];
+} | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/skins/${encodeURIComponent(champion)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchItemsRosterApi(locale = 'de'): Promise<ItemsRosterResponse | null> {
   const baseUrl = getApiBaseUrl();
   try {

@@ -208,6 +208,10 @@ export async function syncLoldbSkins(): Promise<void> {
         }
         const map = loldbSkinsCache.get(champKey)!;
         map.set(String(s.id), info);
+        const skinNum = Number(s.id) % 1000;
+        if (!isNaN(skinNum)) {
+          map.set(String(skinNum), info);
+        }
         if (s.name) {
           map.set(s.name.toLowerCase().replace(/[^a-z0-9]/g, ''), info);
         }
@@ -920,7 +924,14 @@ export async function getAllSkins(championSlug?: string): Promise<{
 
   if (championSlug) {
     const cleanKey = championSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const champMap = loldbSkinsCache.get(cleanKey);
+    let champMap = loldbSkinsCache.get(cleanKey);
+    if (!champMap) {
+      await syncLoldbCatalog();
+      const catalogInfo = loldbCatalogMap.get(cleanKey);
+      if (catalogInfo?.name) {
+        champMap = loldbSkinsCache.get(catalogInfo.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      }
+    }
     const list = champMap ? Array.from(new Set(Array.from(champMap.values()))) : [];
     return {
       totalSkins: list.length,
