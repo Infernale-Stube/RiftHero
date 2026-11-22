@@ -1593,12 +1593,27 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
 
                 {/* Rarity */}
                 <div
-                  className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold text-white"
+                  className="flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-bold text-white"
                   style={{
                     backgroundColor: `${activeSkin.rarityColor || '#22c55e'}33`,
                     borderColor: activeSkin.rarityColor || '#22c55e',
                   }}
                 >
+                  {getRarityGemIconUrl((activeSkin.rarity || 'Regular') as RarityTier) ? (
+                    <Image
+                      src={getRarityGemIconUrl((activeSkin.rarity || 'Regular') as RarityTier)!}
+                      alt={activeSkin.rarity || 'Regular'}
+                      width={14}
+                      height={14}
+                      className="h-3.5 w-3.5 object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: activeSkin.rarityColor || '#22c55e' }}
+                    />
+                  )}
                   <span>
                     {(activeSkin.rarity || 'Regular').endsWith('Skin')
                       ? activeSkin.rarity || 'Regular'
