@@ -415,7 +415,7 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
   );
 }
 
-// Formats YYYY-MM-DD into "December 14, 2011" (en) or "14. Dezember 2011" (de)
+// Formats YYYY-MM-DD or textual date strings into "December 14, 2011" (en) or "14. Dezember 2011" (de)
 function formatReleaseDate(dateStr?: string, locale = 'de'): string {
   if (!dateStr) return locale.startsWith('en') ? 'Unknown' : 'Unbekannt';
   const parts = dateStr.split('-');
@@ -432,6 +432,14 @@ function formatReleaseDate(dateStr?: string, locale = 'de'): string {
         timeZone: 'UTC',
       }).format(date);
     }
+  }
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return new Intl.DateTimeFormat(locale.startsWith('en') ? 'en-US' : 'de-DE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(parsed);
   }
   return dateStr;
 }
@@ -1587,7 +1595,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                   <span>
                     {activeSkin.num === 0
                       ? formattedReleaseDate
-                      : activeSkin.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                      : activeSkin.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.length > 4
                         ? formatReleaseDate(activeSkin.releaseDate, locale)
                         : activeSkin.releaseYear || releaseYear}
                   </span>
@@ -1752,7 +1760,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <span>
               {activeSkin?.num === 0
                 ? formattedReleaseDate
-                : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.length > 4
                   ? formatReleaseDate(activeSkin.releaseDate, locale)
                   : activeSkin?.releaseYear || releaseYear}
             </span>

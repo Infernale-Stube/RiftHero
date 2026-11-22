@@ -187,7 +187,17 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<LoldbSkinD
 
     let releaseDate: string | null = null;
     const rMatch = text.match(/"releaseDate":"([^"]+)"/);
-    if (rMatch) releaseDate = rMatch[1];
+    if (rMatch) {
+      const dt = new Date(rMatch[1]);
+      if (!isNaN(dt.getTime())) {
+        const y = dt.getFullYear();
+        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+        const dd = String(dt.getDate()).padStart(2, '0');
+        releaseDate = `${y}-${mm}-${dd}`;
+      } else {
+        releaseDate = rMatch[1];
+      }
+    }
 
     let cost: number | string = 975;
     let price: number | string = 975;
