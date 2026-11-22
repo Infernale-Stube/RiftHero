@@ -7,11 +7,12 @@ import { summonerRoutes } from './routes/summoners';
 import { matchRoutes } from './routes/matches';
 import { searchRoutes } from './routes/search';
 import { metaRoutes } from './routes/meta';
+import { championsRoutes } from './routes/champions';
 import { itemRoutes } from './routes/items';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
-import { initMetaAnalysisWorker } from '../services/metaService';
-import { initItemSyncWorker } from '../services/itemService';
+import { initChampionItemWorker } from '../worker/championItemWorker';
+import { initMetaWorker } from '../worker/metaWorker';
 
 // Polyfill BigInt JSON serialization for Fastify / Prisma responses
 (BigInt.prototype as any).toJSON = function () {
@@ -44,6 +45,7 @@ export async function buildServer() {
       await apiScope.register(summonerRoutes);
       await apiScope.register(matchRoutes);
       await apiScope.register(searchRoutes);
+      await apiScope.register(championsRoutes);
       await apiScope.register(metaRoutes);
       await apiScope.register(itemRoutes);
     },
@@ -68,11 +70,11 @@ async function start() {
     // Start periodic League of Legends DDragon version checker (every 30m)
     initDDragonScheduler();
 
-    // Start 6-hour Meta & Tier List background analysis worker
-    initMetaAnalysisWorker();
+    // 1. Champion & Items Worker: keeps champion and item catalogs (DDragon + LoLDB) fresh
+    initChampionItemWorker();
 
-    // Start background Item Sync Worker (checks versions.json & syncs items table)
-    initItemSyncWorker();
+    // 2. Meta Worker: calculates winrates, pickrates, banrates and tier lists from matches
+    initMetaWorker();
 
     const shutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Shutting down API server gracefully...`);

@@ -1,0 +1,124 @@
+import {
+  syncChampionSnapshot,
+  ensureMetaTableExists,
+  isSnapshotFresh,
+} from '../services/championService';
+import {
+  computeAndSaveItemSnapshot,
+  ensureItemTableExists,
+} from '../services/itemService';
+import { getLatestDDragonVersion } from '../riot/ddragon';
+import { prisma } from '../db/prisma';
+
+export const CHAMPION_ITEM_WORKER_INTERVAL_MS = 60 * 60 * 1000; // Check hourly for new game patch
+let workerTimer: NodeJS.Timeout | null = null;
+let isSyncRunning = false;
+
+/**
+ * Champion & Items Worker Task:
+ * Synchronizes Champion catalog (DDragon + LoLDB /skins & store pricing)
+ * and Item catalog (DDragon items, recipes, gold stats).
+ */
+export async function syncChampionAndItemData(force = false): Promise<{
+  championsCount: number;
+  itemsCount: number;
+  version: string;
+}> {
+  if (isSyncRunning) {
+    console.log('[ChampionItemWorker] Sync already in progress, skipping duplicate invocation.');
+    const latestVersion = await getLatestDDragonVersion();
+    return { championsCount: 0, itemsCount: 0, version: latestVersion };
+  }
+
+  isSyncRunning = true;
+  try {
+    console.log('🔄 [ChampionItemWorker] Synchronizing Champion and Item catalogs...');
+    const [champResult, itemResult] = await Promise.all([
+      syncChampionSnapshot(force),
+      computeAndSaveItemSnapshot(force),
+    ]);
+
+    console.log(
+      `⚡ [ChampionItemWorker] Sync complete! Version: ${champResult.version} | ${champResult.championsCount} champions | ${itemResult.totalItems} items.`
+    );
+
+    return {
+      championsCount: champResult.championsCount,
+      itemsCount: itemResult.totalItems,
+      version: champResult.version,
+    };
+  } finally {
+    isSyncRunning = false;
+  }
+}
+
+/**
+ * Initializes the dedicated Champion & Items Worker:
+ * 1. Startup check: verifies that both champion_snapshots and item_snapshots exist,
+ *    match the latest DDragon version, and contain valid LoLDB skin release dates.
+ * 2. Hourly periodic check: polls Riot's versions.json and automatically synchronizes
+ *    both catalogs whenever a new patch drops.
+ */
+export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVAL_MS): void {
+  // 1. Startup check
+  (async () => {
+    try {
+      await Promise.all([ensureMetaTableExists(), ensureItemTableExists()]);
+      const latestVersion = await getLatestDDragonVersion();
+
+      const champRow =
+        (await prisma.championSnapshot.findUnique({ where: { id: 'current' } })) ||
+        (await prisma.championSnapshot.findUnique({ where: { id: 'active' } }));
+      const itemRow = await prisma.itemSnapshot.findUnique({ where: { id: 'active' } });
+
+      const champNeedsUpdate =
+        !champRow ||
+        champRow.version !== latestVersion ||
+        champRow.championsCount === 0 ||
+        !isSnapshotFresh(champRow);
+
+      const itemNeedsUpdate =
+        !itemRow ||
+        itemRow.version !== latestVersion ||
+        itemRow.itemsCount === 0;
+
+      if (champNeedsUpdate || itemNeedsUpdate) {
+        console.log(
+          `🔄 [ChampionItemWorker] Catalog missing or outdated (Champs: ${champRow?.version || 'none'}, Items: ${itemRow?.version || 'none'} vs Latest: ${latestVersion}). Triggering initial synchronization...`
+        );
+        syncChampionAndItemData().catch((err) => {
+          console.error('[ChampionItemWorker] Initial catalog sync failed:', err);
+        });
+      } else {
+        console.log(
+          `⚡ [ChampionItemWorker] Catalogs up-to-date (Version: ${latestVersion}, ${champRow.championsCount} champions, ${itemRow.itemsCount} items).`
+        );
+      }
+    } catch (err) {
+      console.warn('[ChampionItemWorker] Startup check error:', (err as Error).message);
+    }
+  })();
+
+  // 2. Periodic hourly check for new patches
+  if (!workerTimer) {
+    workerTimer = setInterval(async () => {
+      try {
+        const latestVersion = await getLatestDDragonVersion(true);
+        const champRow = await prisma.championSnapshot.findUnique({
+          where: { id: 'active' },
+          select: { version: true },
+        });
+
+        if (champRow && champRow.version !== latestVersion) {
+          console.log(
+            `⏰ [ChampionItemWorker] New game version detected (${champRow.version} -> ${latestVersion}). Updating champion and item catalogs...`
+          );
+          await syncChampionAndItemData(true);
+        }
+      } catch (err) {
+        console.error('[ChampionItemWorker] Periodic patch check error:', err);
+      }
+    }, intervalMs);
+    workerTimer.unref();
+  }
+}

@@ -8,8 +8,8 @@ import {
 import { processSummonerJob } from './processor';
 import { config } from '../config';
 import { disconnectPrisma } from '../db/prisma';
-import { initMetaAnalysisWorker } from '../services/metaService';
-import { initItemSyncWorker } from '../services/itemService';
+import { initChampionItemWorker } from './championItemWorker';
+import { initMetaWorker } from './metaWorker';
 
 // Polyfill BigInt JSON serialization
 (BigInt.prototype as any).toJSON = function () {
@@ -76,11 +76,11 @@ async function main() {
 
   console.log('🚀 [Worker] Workers listening to queues [summoner-high, summoner-low]');
 
-  // Initialize 6h Meta & Tier List background worker
-  initMetaAnalysisWorker();
+  // 1. Initialize Champion & Items Worker (keeps champions, skins, and items fresh)
+  initChampionItemWorker();
 
-  // Initialize Item Sync background worker
-  initItemSyncWorker();
+  // 2. Initialize Meta & Tier List Worker (computes match winrates, pickrates, banrates, tier lists)
+  initMetaWorker();
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
