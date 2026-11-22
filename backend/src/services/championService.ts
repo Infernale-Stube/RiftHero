@@ -715,6 +715,21 @@ export async function loadActiveChampionSnapshot(
   };
 }
 
+/**
+ * Empties the champion_snapshots table and flushes all champion/skin in-memory caches.
+ */
+export async function clearChampionSnapshots(): Promise<{ count: number }> {
+  championMemoryCache.clear();
+  loldbSkinsCache.clear();
+  loldbCatalogMap.clear();
+  globalSkinMap.clear();
+
+  await ensureChampionTableExists();
+  const result = await prisma.championSnapshot.deleteMany({});
+  console.log(`🧹 [ChampionService] Emptied champion_snapshots table (${result.count} records removed).`);
+  return { count: result.count };
+}
+
 export function toDDragonLocale(locale = 'de'): 'de_DE' | 'en_US' {
   const l = (locale || '').toLowerCase().replace(/[^a-z]/g, '');
   return l.startsWith('en') ? 'en_US' : 'de_DE';

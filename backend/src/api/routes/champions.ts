@@ -4,9 +4,25 @@ import {
   getChampionDetail,
   getAllSkins,
   syncChampionSnapshot,
+  clearChampionSnapshots,
 } from '../../services/championService';
 
 export async function championsRoutes(fastify: FastifyInstance) {
+  // Completely empty the champion_snapshots table and clear in-memory cache
+  fastify.all('/champions/clear', async (request, reply) => {
+    try {
+      const result = await clearChampionSnapshots();
+      return {
+        success: true,
+        message: `Champion table completely emptied (${result.count} entries removed)`,
+        deletedCount: result.count,
+      };
+    } catch (err) {
+      request.log.error(err, 'Failed to clear champion table');
+      return reply.status(500).send({ error: (err as Error).message });
+    }
+  });
+
   // Force refresh champion catalog snapshot from DDragon + LoLDB
   fastify.all('/champions/refresh', async (request, reply) => {
     try {

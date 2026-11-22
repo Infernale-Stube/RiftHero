@@ -14,7 +14,8 @@
     "build:backend": "npm --prefix backend run build",
     "build:frontend": "npm --prefix frontend run build",
     "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=./prisma/schema.prisma"
+    "prisma:push": "prisma db push --schema=./prisma/schema.prisma",
+    "db:clear:champions": "npm --prefix backend run db:clear:champions"
   },
   "devDependencies": {
     "prisma": "^5.22.0"

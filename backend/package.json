@@ -10,7 +10,8 @@
     "start:api": "node dist/api/server.js",
     "start:worker": "node dist/worker/index.js",
     "dev:api": "tsx watch src/api/server.ts",
-    "dev:worker": "tsx watch src/worker/index.ts"
+    "dev:worker": "tsx watch src/worker/index.ts",
+    "db:clear:champions": "tsx scripts/clear-champions.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
