@@ -263,7 +263,8 @@ export interface DDragonSkin {
   releaseDate?: string;
   releaseYear?: number;
   cost?: number | string;
-  currency?: 'RP' | 'AS' | 'BE' | string;
+  price?: number | string;
+  currency?: 'RP' | 'AS' | 'BE' | 'ME' | string;
   isLegacy?: boolean;
 }
 

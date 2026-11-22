@@ -131,6 +131,8 @@ const RP_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-rp-72.png';
 const ANCIENT_SPARK_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/currency/icons/ancient_spark.svg';
+const MYTHIC_ESSENCE_ICON_URL =
+  'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/currency/icons/mythic.svg';
 const LEGACY_ICON_URL =
   'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/summoner-icon/icon-legacy.png';
 
@@ -359,6 +361,12 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
                     alt="AS"
                     className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
                   />
+                ) : String(info.price).includes('ME') ? (
+                  <img
+                    src={MYTHIC_ESSENCE_ICON_URL}
+                    alt="ME"
+                    className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(168,85,247,0.9)]"
+                  />
                 ) : String(info.price).includes('BE') ? (
                   <img
                     src={BE_ICON_URL}
@@ -376,6 +384,8 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
                   className={`text-xs font-bold ${
                     String(info.price).includes('AS')
                       ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]'
+                      : String(info.price).includes('ME')
+                      ? 'text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
                       : String(info.price).includes('BE')
                       ? 'text-sky-300'
                       : 'text-amber-400'
@@ -543,6 +553,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     ...s,
                     isLegacy: Boolean(match.isLegacy),
                     cost: match.cost ?? s.cost,
+                    price: match.price ?? match.cost ?? s.price ?? s.cost,
                     currency: match.currency || s.currency,
                     ...(match.rarity ? { rarity: match.rarity } : {}),
                     ...(match.releaseDate ? { releaseDate: match.releaseDate } : {}),
@@ -706,18 +717,22 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           tier,
           image: getChampionLoadingUrl(data.id, s.num),
           price:
-            s.currency === 'AS' || (typeof s.cost === 'string' && s.cost.includes('AS'))
-              ? `${typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : '40'} AS`
-              : s.currency === 'BE' || (typeof s.cost === 'string' && s.cost.includes('BE'))
-              ? `${typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : ''} BE`
+            s.currency === 'AS' || (typeof s.cost === 'string' && s.cost.includes('AS')) || (typeof s.price === 'string' && s.price.includes('AS'))
+              ? `${typeof s.price === 'number' ? s.price : typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : '40'} AS`
+              : s.currency === 'ME' || (typeof s.cost === 'string' && s.cost.includes('ME')) || (typeof s.price === 'string' && s.price.includes('ME'))
+              ? `${typeof s.price === 'number' ? s.price : typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : '150'} ME`
+              : s.currency === 'BE' || (typeof s.cost === 'string' && s.cost.includes('BE')) || (typeof s.price === 'string' && s.price.includes('BE'))
+              ? `${typeof s.price === 'number' ? s.price : typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : ''} BE`
+              : typeof s.price === 'number'
+              ? `${s.price} RP`
               : typeof s.cost === 'number'
               ? `${s.cost} RP`
-              : s.cost === 'Special'
+              : (s.price ?? s.cost) === 'Special'
               ? (locale === 'de' ? 'Spezial' : 'Special')
-              : s.cost === 'N/A'
+              : (s.price ?? s.cost) === 'N/A'
               ? (locale === 'de' ? 'Nicht im Shop' : 'Not in Shop')
-              : s.cost
-              ? `${s.cost}`
+              : (s.price ?? s.cost)
+              ? `${s.price ?? s.cost}`
               : undefined,
           currency: s.currency,
           isLegacy: s.isLegacy,
@@ -1414,11 +1429,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       );
     }
 
-    const isAS = skin.currency === 'AS' || (typeof skin.cost === 'string' && skin.cost.includes('AS'));
-    const isBE = skin.currency === 'BE' || (typeof skin.cost === 'string' && skin.cost.includes('BE'));
+    const isAS = skin.currency === 'AS' || (typeof skin.cost === 'string' && skin.cost.includes('AS')) || (typeof skin.price === 'string' && skin.price.includes('AS'));
+    const isME = skin.currency === 'ME' || (typeof skin.cost === 'string' && skin.cost.includes('ME')) || (typeof skin.price === 'string' && skin.price.includes('ME'));
+    const isBE = skin.currency === 'BE' || (typeof skin.cost === 'string' && skin.cost.includes('BE')) || (typeof skin.price === 'string' && skin.price.includes('BE'));
 
     if (isAS) {
-      const amount = typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '40';
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '40';
       return (
         <div
           className={`flex items-center gap-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/40 px-2.5 py-1 text-xs font-black text-cyan-200 backdrop-blur-md shadow-[0_0_12px_rgba(34,211,238,0.25)] ${extraClass}`}
@@ -1434,8 +1450,25 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       );
     }
 
+    if (isME) {
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '150';
+      return (
+        <div
+          className={`flex items-center gap-1.5 rounded-lg bg-purple-950/80 border border-purple-400/40 px-2.5 py-1 text-xs font-black text-purple-200 backdrop-blur-md shadow-[0_0_12px_rgba(168,85,247,0.3)] ${extraClass}`}
+          title={locale === 'de' ? 'Mythische Essenzen (Mythic Essence)' : 'Mythic Essence (ME)'}
+        >
+          <img
+            src={MYTHIC_ESSENCE_ICON_URL}
+            alt="ME"
+            className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(168,85,247,0.9)]"
+          />
+          <span>{amount} ME</span>
+        </div>
+      );
+    }
+
     if (isBE) {
-      const amount = typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '';
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '';
       return (
         <div
           className={`flex items-center gap-1.5 rounded-lg bg-sky-950/80 border border-sky-400/40 px-2.5 py-1 text-xs font-black text-sky-200 backdrop-blur-md shadow-md ${extraClass}`}
@@ -1454,9 +1487,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       );
     }
 
+    const displayCost = skin.price ?? skin.cost;
+    const isNumCost = typeof displayCost === 'number';
+
     return (
       <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
-        {typeof skin.cost === 'number' && (
+        {isNumCost && (
           <Image
             src={RP_ICON_URL}
             alt="RP"
@@ -1467,14 +1503,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           />
         )}
         <span>
-          {typeof skin.cost === 'number'
-            ? `${skin.cost} RP`
-            : skin.cost === 'Special'
+          {isNumCost
+            ? `${displayCost} RP`
+            : displayCost === 'Special'
             ? (locale === 'de' ? 'Spezial' : 'Special')
-            : skin.cost === 'N/A'
+            : displayCost === 'N/A'
             ? (locale === 'de' ? 'Nicht im Shop' : 'Not in Shop')
-            : skin.cost
-            ? `${skin.cost}`
+            : displayCost
+            ? `${displayCost}`
             : '975 RP'}
         </span>
       </div>

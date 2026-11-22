@@ -47,9 +47,11 @@ export interface LoldbSkinInfo {
   releaseYear: number;
   releaseDate?: string;
   cost: number | string;
-  currency?: 'RP' | 'AS' | 'BE' | string;
+  price?: number | string;
+  currency?: 'RP' | 'AS' | 'BE' | 'ME' | string;
   isLegacy?: boolean;
   skinLines?: string[];
+  mythicCost?: any;
 }
 
 let tableChecked = false;
@@ -108,6 +110,141 @@ export function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor
 const loldbCatalogMap = new Map<string, any>();
 const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
 const globalSkinMap = new Map<string, LoldbSkinInfo>();
+const mythicShopMap = new Map<string, { cost: number; currency: string }>();
+const skinDetailCache = new Map<string, { price?: number | string; cost?: number | string; currency?: string; mythicCost?: any }>();
+
+/**
+ * Synchronizes the live Mythic Shop rotation from LoLDB /mythic-shop.
+ */
+export async function syncLoldbMythicShop(): Promise<void> {
+  if (mythicShopMap.size > 0) return;
+  try {
+    const res = await fetch('https://loldb.info/mythic-shop', {
+      headers: { RSC: '1', 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return;
+    const rsc = await res.text();
+    const idx = rsc.indexOf('{"storefront":');
+    if (idx === -1) return;
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = idx; i < rsc.length; i++) {
+      if (rsc[i] === '{') depth++;
+      else if (rsc[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+    const data = JSON.parse(rsc.slice(idx, endIdx));
+    const items = data.storefront?.mythicshop?.items || [];
+    for (const item of items) {
+      if (item.collectionItemId && item.cost) {
+        mythicShopMap.set(String(item.collectionItemId), {
+          cost: item.cost,
+          currency: 'ME',
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[ChampionService] Mythic shop sync warning:', (err as Error).message);
+  }
+}
+
+/**
+ * Fetches single skin detail page (/skins/[slug]) from LoLDB for exact Mythic / Prestige pricing.
+ */
+export async function fetchLoldbSkinDetail(skinName: string): Promise<{
+  price?: number | string;
+  cost?: number | string;
+  currency?: string;
+  mythicCost?: any;
+} | null> {
+  const clean = skinName
+    .toLowerCase()
+    .replace(/k\/da/gi, 'kda')
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (skinDetailCache.has(clean)) {
+    return skinDetailCache.get(clean)!;
+  }
+
+  try {
+    const res = await fetch(`https://loldb.info/skins/${clean}`, {
+      headers: { RSC: '1', 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+
+    let mythicCost: any = null;
+    const mIdx = text.indexOf('"mythicCost":');
+    if (mIdx !== -1 && !text.slice(mIdx, mIdx + 20).includes('"mythicCost":null')) {
+      const start = mIdx + '"mythicCost":'.length;
+      let depth = 0;
+      let end = -1;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === '{') depth++;
+        else if (text[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            end = i + 1;
+            break;
+          }
+        }
+      }
+      if (end !== -1) {
+        try {
+          mythicCost = JSON.parse(text.slice(start, end));
+        } catch {}
+      }
+    }
+
+    let lastMythicCost = mythicCost?.cost;
+    if (!lastMythicCost) {
+      const hIdx = text.indexOf('"mythicHistory":[');
+      if (hIdx !== -1 && !text.slice(hIdx, hIdx + 25).includes('"mythicHistory":[]')) {
+        const start = hIdx + '"mythicHistory":'.length;
+        let depth = 0;
+        let end = -1;
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === '[') depth++;
+          else if (text[i] === ']') {
+            depth--;
+            if (depth === 0) {
+              end = i + 1;
+              break;
+            }
+          }
+        }
+        if (end !== -1) {
+          try {
+            const history = JSON.parse(text.slice(start, end));
+            if (history.length > 0) {
+              lastMythicCost = history[0].cost;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    const detail: any = {};
+    if (lastMythicCost) {
+      detail.cost = lastMythicCost;
+      detail.price = lastMythicCost;
+      detail.currency = 'ME';
+      detail.mythicCost = mythicCost;
+    }
+
+    skinDetailCache.set(clean, detail);
+    return detail;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Synchronizes the complete skin database (2,000+ skins) directly from LoLDB /skins catalog.
@@ -115,6 +252,7 @@ const globalSkinMap = new Map<string, LoldbSkinInfo>();
  */
 export async function syncLoldbSkins(): Promise<void> {
   if (globalSkinMap.size > 0) return;
+  await syncLoldbMythicShop();
   try {
     const res = await fetch('https://loldb.info/skins', {
       headers: { RSC: '1' },
@@ -182,6 +320,13 @@ export async function syncLoldbSkins(): Promise<void> {
         }
       }
 
+      // Check active Mythic Shop items
+      const mythicShopItem = mythicShopMap.get(String(s.id));
+      if (mythicShopItem) {
+        cost = mythicShopItem.cost;
+        currency = 'ME';
+      }
+
       const isLegacy = Boolean(s.isLegacy);
 
       const info: LoldbSkinInfo = {
@@ -192,6 +337,7 @@ export async function syncLoldbSkins(): Promise<void> {
         releaseYear,
         releaseDate: releaseDate || `${releaseYear}-01-01`,
         cost,
+        price: cost,
         currency,
         isLegacy,
         skinLines: s.skinLineNames || [],
@@ -445,6 +591,7 @@ export async function buildChampionRostersAndDetails(
                     releaseDate: storePrice.releaseDate,
                     releaseYear: isNaN(baseYear) ? 2011 : baseYear,
                     cost: 0,
+                    price: 0,
                     currency: 'RP',
                     isLegacy: false,
                   };
@@ -465,7 +612,8 @@ export async function buildChampionRostersAndDetails(
                   skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
                 const relDate = skinInfo?.releaseDate || `${relYear}`;
                 const cost = skinInfo?.cost ?? 975;
-                const currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : 'RP');
+                const price = skinInfo?.price ?? cost;
+                const currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : typeof cost === 'string' && cost.includes('ME') ? 'ME' : 'RP');
                 const isLegacy = Boolean(skinInfo?.isLegacy);
 
                 return {
@@ -477,6 +625,7 @@ export async function buildChampionRostersAndDetails(
                   releaseDate: relDate,
                   releaseYear: relYear,
                   cost,
+                  price,
                   currency,
                   isLegacy,
                   skinLines: skinInfo?.skinLines || [],
@@ -933,6 +1082,24 @@ export async function getAllSkins(championSlug?: string): Promise<{
       }
     }
     const list = champMap ? Array.from(new Set(Array.from(champMap.values()))) : [];
+    // Enrich any Mythic / Prestige skins with exact ME pricing from /skins/[slug] if available
+    await Promise.all(
+      list.map(async (skin) => {
+        if (
+          (skin.rarity === 'Mythic' || skin.name.toLowerCase().includes('prestige')) &&
+          skin.currency !== 'ME' &&
+          skin.currency !== 'AS'
+        ) {
+          const detail = await fetchLoldbSkinDetail(skin.name);
+          if (detail && detail.currency === 'ME') {
+            skin.cost = detail.cost!;
+            skin.price = detail.price!;
+            skin.currency = 'ME';
+            skin.mythicCost = detail.mythicCost;
+          }
+        }
+      })
+    );
     return {
       totalSkins: list.length,
       skins: list,
