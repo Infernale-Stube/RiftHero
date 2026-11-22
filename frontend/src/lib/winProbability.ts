@@ -1,10 +1,10 @@
 import { LiveGameParticipant, LiveGameWinProbability } from '@/types';
 import { TIER_BASE_LP, DIVISION_OFFSET_LP } from './utils';
 
-export function getPlayerMmr(p: LiveGameParticipant): number | null {
-  if (!p.rank || !p.rank.tier) return null;
-  const tier = p.rank.tier.toUpperCase();
-  if (tier === 'UNRANKED') return null;
+export function getPlayerMmr(p: LiveGameParticipant | null | undefined): number | null {
+  if (!p || !p.rank || !p.rank.tier) return null;
+  const tier = (p.rank.tier || '').toUpperCase();
+  if (tier === 'UNRANKED' || !tier) return null;
   const base = TIER_BASE_LP[tier];
   if (base === undefined) return null;
   if (tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER') {
@@ -16,13 +16,16 @@ export function getPlayerMmr(p: LiveGameParticipant): number | null {
 }
 
 export function calculateLiveGameWinProbability(
-  blueTeam: LiveGameParticipant[],
-  redTeam: LiveGameParticipant[],
+  blueTeam: LiveGameParticipant[] = [],
+  redTeam: LiveGameParticipant[] = [],
   mapId?: number,
   queueId?: number
 ): LiveGameWinProbability {
+  const safeBlueTeam = Array.isArray(blueTeam) ? blueTeam.filter(Boolean) : [];
+  const safeRedTeam = Array.isArray(redTeam) ? redTeam.filter(Boolean) : [];
+
   // 1. Calculate MMR per team, imputing unranked players with match average
-  const allKnownMmrs = [...blueTeam, ...redTeam]
+  const allKnownMmrs = [...safeBlueTeam, ...safeRedTeam]
     .map(getPlayerMmr)
     .filter((m): m is number => m !== null);
   const matchAvgMmr =
@@ -30,13 +33,13 @@ export function calculateLiveGameWinProbability(
       ? Math.round(allKnownMmrs.reduce((a, b) => a + b, 0) / allKnownMmrs.length)
       : 1200; // Gold IV fallback
 
-  const blueMmrs = blueTeam.map((p) => getPlayerMmr(p) ?? matchAvgMmr);
+  const blueMmrs = safeBlueTeam.map((p) => getPlayerMmr(p) ?? matchAvgMmr);
   const blueAvgMmr =
     blueMmrs.length > 0
       ? Math.round(blueMmrs.reduce((a, b) => a + b, 0) / blueMmrs.length)
       : matchAvgMmr;
 
-  const redMmrs = redTeam.map((p) => getPlayerMmr(p) ?? matchAvgMmr);
+  const redMmrs = safeRedTeam.map((p) => getPlayerMmr(p) ?? matchAvgMmr);
   const redAvgMmr =
     redMmrs.length > 0
       ? Math.round(redMmrs.reduce((a, b) => a + b, 0) / redMmrs.length)
@@ -47,11 +50,11 @@ export function calculateLiveGameWinProbability(
   const mmrAdvantage = Math.max(-18, Math.min(18, rankDiffLp / 40));
 
   // 2. Ranked Winrates
-  const blueWrs = blueTeam
-    .filter((p) => p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0))
+  const blueWrs = safeBlueTeam
+    .filter((p) => p && p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0))
     .map((p) => p.rank!.winrate);
-  const redWrs = redTeam
-    .filter((p) => p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0))
+  const redWrs = safeRedTeam
+    .filter((p) => p && p.rank && typeof p.rank.winrate === 'number' && ((p.rank.wins || 0) + (p.rank.losses || 0) > 0))
     .map((p) => p.rank!.winrate);
 
   const blueAvgWinrate =
@@ -66,11 +69,11 @@ export function calculateLiveGameWinProbability(
   }
 
   // 3. Champion Winrates
-  const blueChampWrs = blueTeam
-    .filter((p) => p.championStats && typeof p.championStats.winrate === 'number' && (p.championStats.games || 0) >= 2)
+  const blueChampWrs = safeBlueTeam
+    .filter((p) => p && p.championStats && typeof p.championStats.winrate === 'number' && (p.championStats.games || 0) >= 2)
     .map((p) => p.championStats!.winrate);
-  const redChampWrs = redTeam
-    .filter((p) => p.championStats && typeof p.championStats.winrate === 'number' && (p.championStats.games || 0) >= 2)
+  const redChampWrs = safeRedTeam
+    .filter((p) => p && p.championStats && typeof p.championStats.winrate === 'number' && (p.championStats.games || 0) >= 2)
     .map((p) => p.championStats!.winrate);
 
   const blueChampWinrate =

@@ -14,7 +14,7 @@ export async function metaRoutes(fastify: FastifyInstance) {
       const result = await computeAndSaveMetaAnalysis();
       return {
         success: true,
-        message: 'Champion snapshot recomputed successfully with exact Meraki & LoLDB metadata',
+        message: 'Champion snapshot recomputed successfully from DDragon & LoLDB',
         patch: result.patch,
         championsCount: result.championsCount,
       };

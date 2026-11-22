@@ -326,9 +326,7 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
                 {info.tier}
               </span>
               <span className="text-zinc-500">•</span>
-              <span className="text-zinc-300 font-medium text-[11px]">
-                {info.date ? formatReleaseDate(info.date, locale) : info.year}
-              </span>
+              <span className="text-zinc-400 font-mono text-[11px]">{info.year}</span>
             </div>
             {info.price && (
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -1346,13 +1344,16 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <span>{activeSkin?.rarity || 'Regular'}</span>
             </div>
 
-            {/* Release Date Badge */}
+            {/* Release Date / Year Badge */}
             <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-bold text-zinc-200 backdrop-blur-md shadow-md">
               <Calendar className="h-3.5 w-3.5 text-amber-400" />
               <span>
-                {activeSkin?.releaseDate
-                  ? formatReleaseDate(activeSkin.releaseDate, locale)
-                  : activeSkin?.releaseYear || releaseYear}
+                {activeSkin?.num === 0
+                  ? formattedReleaseDate
+                  : activeSkin?.releaseYear ||
+                    (activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                      ? formatReleaseDate(activeSkin.releaseDate, locale)
+                      : activeSkin?.releaseYear || releaseYear)}
               </span>
             </div>
           </div>

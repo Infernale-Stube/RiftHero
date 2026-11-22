@@ -106,6 +106,19 @@ export default function LiveGameView({
 
   const fullMatchId = game?.gameId ? `${getPlatformPrefix(region)}_${game.gameId}` : '';
 
+  const winProbability = useMemo(() => {
+    if (!game || !Array.isArray(game.blueTeam) || !Array.isArray(game.redTeam)) return null;
+    if (game.winProbability && typeof game.winProbability.blueWinrate === 'number') {
+      return game.winProbability;
+    }
+    try {
+      return calculateLiveGameWinProbability(game.blueTeam, game.redTeam, game.mapId, game.queueId);
+    } catch (err) {
+      console.error('Failed to calculate win probability:', err);
+      return null;
+    }
+  }, [game]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-[350px] flex-col items-center justify-center rounded-2xl bg-black/40 p-12 text-center">
@@ -142,12 +155,6 @@ export default function LiveGameView({
   const blueAvg = calculateTeamAverageRank(game.blueTeam);
   const redAvg = calculateTeamAverageRank(game.redTeam);
 
-  const winProbability = useMemo(() => {
-    if (!game) return null;
-    if (game.winProbability) return game.winProbability;
-    return calculateLiveGameWinProbability(game.blueTeam, game.redTeam, game.mapId, game.queueId);
-  }, [game]);
-
   const renderTeamHeader = (isBlue: boolean) => {
     const teamAvg = isBlue ? blueAvg : redAvg;
 
@@ -172,7 +179,7 @@ export default function LiveGameView({
               <span className="font-black uppercase tracking-wider text-xs sm:text-sm">
                 {isBlue ? t('live.blueTeam') : t('live.redTeam')}
               </span>
-              {winProbability && (
+              {winProbability && typeof winProbability.blueWinrate === 'number' && typeof winProbability.redWinrate === 'number' && (
                 <span
                   className={`px-2 py-0.5 rounded-full text-[11px] font-black font-mono tracking-tight border ${
                     isBlue

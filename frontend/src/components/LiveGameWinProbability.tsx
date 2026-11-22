@@ -27,21 +27,36 @@ export default function LiveGameWinProbability({
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
 
-  const {
-    blueWinrate,
-    redWinrate,
-    favoredTeam,
-    confidence,
-    factors,
-  } = winProbability;
+  if (!winProbability) return null;
+
+  const blueWinrate =
+    typeof winProbability.blueWinrate === 'number' ? winProbability.blueWinrate : 50;
+  const redWinrate =
+    typeof winProbability.redWinrate === 'number' ? winProbability.redWinrate : 50;
+  const favoredTeam =
+    winProbability.favoredTeam || (blueWinrate >= 51 ? 'blue' : redWinrate >= 51 ? 'red' : 'even');
+  const confidence = winProbability.confidence || 'medium';
+
+  const factors = winProbability.factors || {
+    rankDiffLp: 0,
+    blueAvgMmr: 1200,
+    redAvgMmr: 1200,
+    blueAvgWinrate: null,
+    redAvgWinrate: null,
+    blueChampWinrate: null,
+    redChampWinrate: null,
+    sideAdvantage: 0,
+  };
 
   const {
-    rankDiffLp,
-    blueAvgWinrate,
-    redAvgWinrate,
-    blueChampWinrate,
-    redChampWinrate,
-    sideAdvantage,
+    rankDiffLp = 0,
+    blueAvgMmr = 1200,
+    redAvgMmr = 1200,
+    blueAvgWinrate = null,
+    redAvgWinrate = null,
+    blueChampWinrate = null,
+    redChampWinrate = null,
+    sideAdvantage = 0,
   } = factors;
 
   // Determine leaders for each factor
@@ -64,21 +79,25 @@ export default function LiveGameWinProbability({
 
   const confidenceBadge = {
     high: {
-      text: t('live.confidenceHigh'),
+      text: t('live.confidenceHigh') || 'Hohe Datenbasis',
       color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       dot: 'bg-emerald-400',
     },
     medium: {
-      text: t('live.confidenceMedium'),
+      text: t('live.confidenceMedium') || 'Mittlere Datenbasis',
       color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
       dot: 'bg-amber-400',
     },
     low: {
-      text: t('live.confidenceLow'),
+      text: t('live.confidenceLow') || 'Geringe Datenbasis',
       color: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
       dot: 'bg-zinc-400',
     },
-  }[confidence];
+  }[confidence] || {
+    text: 'Mittlere Datenbasis',
+    color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    dot: 'bg-amber-400',
+  };
 
   const diffPercent = Math.abs(Math.round((blueWinrate - redWinrate) * 10) / 10);
 
@@ -275,7 +294,7 @@ export default function LiveGameWinProbability({
                   )}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
-                  Blau: {factors.blueAvgMmr} MMR · Rot: {factors.redAvgMmr} MMR
+                  Blau: {blueAvgMmr} MMR · Rot: {redAvgMmr} MMR
                 </div>
               </div>
 

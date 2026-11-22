@@ -321,9 +321,6 @@ export function mapSkinRarityClient(rawRarity?: string): { rarity: string; rarit
   return { rarity: 'Regular', rarityColor: '#22c55e' };
 }
 
-export function enrichChampionWithMeraki(champ: DDragonChampionDetail): DDragonChampionDetail {
-  return champ;
-}
 
 export async function fetchDDragonChampionDetail(
   slugOrName: string,
@@ -351,7 +348,6 @@ export async function fetchDDragonChampionDetail(
             (s: DDragonSkin) => s.parentSkin === undefined || s.parentSkin === null
           );
         }
-        champ = await enrichChampionWithMeraki(champ);
         return { version: data.version || v, champion: champ };
       }
     }
@@ -380,7 +376,6 @@ export async function fetchDDragonChampionDetail(
               (s: DDragonSkin) => s.parentSkin === undefined || s.parentSkin === null
             );
           }
-          champ = await enrichChampionWithMeraki(champ);
           return { version: data.version || v, champion: champ };
         }
       }
