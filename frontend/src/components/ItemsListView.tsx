@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Shield,
@@ -11,17 +11,12 @@ import {
   Crosshair,
   HeartHandshake,
   Skull,
-  Layers,
   RotateCcw,
   X,
   Footprints,
-  Package,
   Coins,
   MapPin,
   SlidersHorizontal,
-  ArrowUpRight,
-  GitFork,
-  Info,
   Sparkles,
   Zap,
   Clock,
@@ -33,14 +28,10 @@ import {
   Anchor,
   Waves,
   LayoutGrid,
-  ChevronRight,
-  ArrowRight,
-  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import {
-  getMajorMinorPatch,
   getDDragonVersion,
   getItemIconUrl,
   fetchDDragonItemsList,
@@ -265,7 +256,7 @@ const STAT_GROUPS: StatGroup[] = [
   },
 ];
 
-// Gold value map per stat for Gold Efficiency calculation
+// Gold values per stat for Gold Efficiency calculation
 const STAT_GOLD_VALUE: Record<string, number> = {
   FlatPhysicalDamageMod: 35, // 35g / 1 AD
   FlatMagicDamageMod: 20, // 20g / 1 AP
@@ -281,9 +272,6 @@ const STAT_GOLD_VALUE: Record<string, number> = {
   FlatAbilityHaste: 50, // Glowing Mote: 250g / 5 AH
 };
 
-/**
- * Calculates Gold Efficiency in percent
- */
 function calculateGoldEfficiency(item: ItemRosterItem): number | null {
   if (!item.gold.purchasable || item.gold.total <= 0) return null;
   if (item.tags.includes('Consumable') || item.tags.includes('Trinket')) return null;
@@ -301,7 +289,6 @@ function calculateGoldEfficiency(item: ItemRosterItem): number | null {
     }
   }
 
-  // Also check parsed formatted stats
   if (!hasValidStat && item.formattedStats) {
     for (const st of item.formattedStats) {
       const numMatch = st.value.match(/([0-9]+)/);
@@ -335,15 +322,12 @@ function calculateGoldEfficiency(item: ItemRosterItem): number | null {
   return Math.round((totalStatWorth / item.gold.total) * 100);
 }
 
-/**
- * Transforms DDragon XML-style tags into styled HTML
- */
 function renderItemDescription(rawDesc: string): string {
   if (!rawDesc) return '';
   return rawDesc
     .replace(/<mainText>/gi, '<div class="space-y-2">')
     .replace(/<\/mainText>/gi, '</div>')
-    .replace(/<stats>/gi, '<div class="py-2.5 my-2 border-y border-white/[0.08] text-xs text-zinc-200 font-medium space-y-1">')
+    .replace(/<stats>/gi, '<div class="py-2 my-1.5 border-y border-white/[0.08] text-xs text-zinc-200 font-medium space-y-1">')
     .replace(/<\/stats>/gi, '</div>')
     .replace(/<attention>/gi, '<span class="text-amber-300 font-bold">')
     .replace(/<\/attention>/gi, '</span>')
@@ -380,9 +364,6 @@ function renderItemDescription(rawDesc: string): string {
     .replace(/&nbsp;/g, ' ');
 }
 
-/**
- * Extracts raw stats into formatted name/value pairs if formattedStats is empty
- */
 function parseStatsFromItem(item: ItemRosterItem, isDe = true): { name: string; value: string; color: string }[] {
   if (item.formattedStats && item.formattedStats.length > 0) {
     return item.formattedStats.map((st) => ({
@@ -439,11 +420,299 @@ const TIER_ORDER: ('legendary' | 'epic' | 'basic' | 'starter' | 'boots' | 'consu
   'consumable',
 ];
 
+// Coordinate segment for SVG lines
+interface LineCoord {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * Visual Build Path Tree matching League of Legends in-game shop and LoLDB.
+ * Orthogonal SVG connection lines branch from root item to Level 1 components and Level 2 sub-components.
+ */
+function ItemBuildTree({
+  item,
+  itemMap,
+  version,
+  onItemClick,
+}: {
+  item: ItemRosterItem;
+  itemMap: Map<string, ItemRosterItem>;
+  version: string;
+  onItemClick: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const level1Refs = useRef<Map<string, HTMLElement>>(new Map());
+  const level2Refs = useRef<Map<string, HTMLElement>>(new Map());
+  const [lines, setLines] = useState<LineCoord[]>([]);
+
+  // Structure components
+  const { level1, level2 } = useMemo(() => {
+    const rawFrom = item.from || [];
+    const l1 = rawFrom.map((id) => itemMap.get(id)).filter(Boolean) as ItemRosterItem[];
+    const l2 = new Map<string, ItemRosterItem[]>();
+
+    for (const comp of l1) {
+      const subFrom = comp.from || [];
+      const subItems = subFrom.map((id) => itemMap.get(id)).filter(Boolean) as ItemRosterItem[];
+      if (subItems.length > 0) {
+        l2.set(comp.id, subItems);
+      }
+    }
+
+    return { level1: l1, level2: l2 };
+  }, [item, itemMap]);
+
+  const updateLines = useCallback(() => {
+    const container = containerRef.current;
+    const rootEl = rootRef.current;
+    if (!container || !rootEl || level1.length === 0) {
+      setLines([]);
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const getPt = (element: HTMLElement) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        cx: rect.left - containerRect.left + rect.width / 2,
+        top: rect.top - containerRect.top,
+        bottom: rect.bottom - containerRect.top,
+      };
+    };
+
+    const newLines: LineCoord[] = [];
+    const rootPt = getPt(rootEl);
+    const l1Pts: { key: string; pt: ReturnType<typeof getPt> }[] = [];
+
+    level1Refs.current.forEach((el, key) => {
+      if (el) {
+        l1Pts.push({ key, pt: getPt(el) });
+      }
+    });
+    l1Pts.sort((a, b) => a.pt.cx - b.pt.cx);
+
+    if (l1Pts.length > 0) {
+      const midY = (rootPt.bottom + l1Pts[0].pt.top) / 2;
+      // Vertical line down from root to midY
+      newLines.push({ x1: rootPt.cx, y1: rootPt.bottom, x2: rootPt.cx, y2: midY });
+
+      // Horizontal bar between leftmost and rightmost level 1 children
+      const minX = l1Pts[0].pt.cx;
+      const maxX = l1Pts[l1Pts.length - 1].pt.cx;
+      if (minX < maxX) {
+        newLines.push({ x1: minX, y1: midY, x2: maxX, y2: midY });
+      }
+
+      // Vertical line down to each level 1 child
+      for (const { pt } of l1Pts) {
+        newLines.push({ x1: pt.cx, y1: midY, x2: pt.cx, y2: pt.top });
+      }
+
+      // Level 2 sub-components connections
+      for (const { key: parentKey, pt: parentPt } of l1Pts) {
+        const l2Pts: ReturnType<typeof getPt>[] = [];
+        level2Refs.current.forEach((subEl, subKey) => {
+          if (subEl && subKey.startsWith(`${parentKey}:`)) {
+            l2Pts.push(getPt(subEl));
+          }
+        });
+        l2Pts.sort((a, b) => a.cx - b.cx);
+
+        if (l2Pts.length > 0) {
+          const subMidY = (parentPt.bottom + l2Pts[0].top) / 2;
+          // Line from parent down to subMidY
+          newLines.push({ x1: parentPt.cx, y1: parentPt.bottom, x2: parentPt.cx, y2: subMidY });
+
+          const subMinX = l2Pts[0].cx;
+          const subMaxX = l2Pts[l2Pts.length - 1].cx;
+          if (subMinX < subMaxX) {
+            newLines.push({ x1: subMinX, y1: subMidY, x2: subMaxX, y2: subMidY });
+          }
+          for (const subPt of l2Pts) {
+            newLines.push({ x1: subPt.cx, y1: subMidY, x2: subPt.cx, y2: subPt.top });
+          }
+        }
+      }
+    }
+
+    setLines(newLines);
+  }, [level1]);
+
+  useEffect(() => {
+    level1Refs.current.clear();
+    level2Refs.current.clear();
+
+    const t = setTimeout(() => {
+      updateLines();
+    }, 40);
+
+    const ro = new ResizeObserver(() => {
+      updateLines();
+    });
+
+    if (containerRef.current) {
+      ro.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateLines);
+
+    return () => {
+      clearTimeout(t);
+      ro.disconnect();
+      window.removeEventListener('resize', updateLines);
+    };
+  }, [item.id, level1, updateLines]);
+
+  if (level1.length === 0) {
+    return (
+      <div className="flex flex-col items-center py-4 text-center">
+        <div className="relative h-12 w-12 rounded-xl overflow-hidden border-2 border-amber-400 bg-black/80 shadow-md">
+          <Image
+            src={getItemIconUrl(item.id, version)}
+            alt={item.name}
+            fill
+            sizes="48px"
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+        <span className="text-[11px] font-black text-amber-300 mt-1.5">{item.gold.total}g</span>
+        <p className="text-[11px] text-zinc-500 italic mt-2">Basis-Gegenstand (keine Vorstufen)</p>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative py-2 w-full overflow-hidden">
+      {/* SVG Recipe Lines (LoL in-game shop / LoLDB style) */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        style={{ overflow: 'visible' }}
+        aria-hidden="true"
+      >
+        {lines.map((l, idx) => (
+          <line
+            key={idx}
+            x1={l.x1}
+            y1={l.y1}
+            x2={l.x2}
+            y2={l.y2}
+            stroke="rgba(255, 255, 255, 0.22)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        ))}
+      </svg>
+
+      {/* Root Item Node */}
+      <div className="flex justify-center pb-8">
+        <div ref={rootRef} className="flex flex-col items-center">
+          <div className="relative h-12 w-12 rounded-xl overflow-hidden border-2 border-amber-400 bg-black/80 shadow-lg">
+            <Image
+              src={getItemIconUrl(item.id, version)}
+              alt={item.name}
+              fill
+              sizes="48px"
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+          <span className="text-[11px] font-black text-amber-300 mt-1 flex items-center gap-0.5">
+            <Coins className="h-2.5 w-2.5 text-amber-400" />
+            {item.gold.total}
+          </span>
+        </div>
+      </div>
+
+      {/* Level 1 Component Nodes */}
+      <div className="flex items-start justify-center gap-3 w-full">
+        {level1.map((comp, idx) => {
+          const compKey = `${comp.id}-${idx}`;
+          const subItems = level2.get(comp.id) || [];
+
+          return (
+            <div key={compKey} className="flex flex-col items-center">
+              <button
+                type="button"
+                onClick={() => onItemClick(comp.id)}
+                className="group flex flex-col items-center cursor-pointer transition-transform hover:scale-105"
+                title={`Zu ${comp.name} wechseln`}
+              >
+                <div
+                  ref={(el) => {
+                    if (el) level1Refs.current.set(compKey, el);
+                    else level1Refs.current.delete(compKey);
+                  }}
+                  className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/20 bg-black/70 group-hover:border-amber-400 transition-colors shadow"
+                >
+                  <Image
+                    src={getItemIconUrl(comp.id, version)}
+                    alt={comp.name}
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                <span className="text-[10px] font-bold text-zinc-300 group-hover:text-amber-300 mt-0.5 flex items-center gap-0.5">
+                  <Coins className="h-2.5 w-2.5 text-amber-400" />
+                  {comp.gold.total}
+                </span>
+              </button>
+
+              {/* Level 2 Sub-components */}
+              {subItems.length > 0 && (
+                <div className="flex gap-1.5 pt-8">
+                  {subItems.map((sub, sIdx) => {
+                    const subKey = `${compKey}:${sub.id}-${sIdx}`;
+                    return (
+                      <button
+                        key={subKey}
+                        type="button"
+                        onClick={() => onItemClick(sub.id)}
+                        className="group flex flex-col items-center cursor-pointer transition-transform hover:scale-110"
+                        title={`Zu ${sub.name} wechseln`}
+                      >
+                        <div
+                          ref={(el) => {
+                            if (el) level2Refs.current.set(subKey, el);
+                            else level2Refs.current.delete(subKey);
+                          }}
+                          className="relative h-8 w-8 rounded-md overflow-hidden border border-white/10 group-hover:border-amber-400 transition-all shadow-sm"
+                        >
+                          <Image
+                            src={getItemIconUrl(sub.id, version)}
+                            alt={sub.name}
+                            fill
+                            sizes="32px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <span className="text-[9px] font-semibold text-zinc-400 group-hover:text-amber-300 mt-0.5 flex items-center gap-0.5">
+                          <Coins className="h-2 w-2 text-amber-400" />
+                          {sub.gold.total}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ItemsListView() {
   const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
 
   const [items, setItems] = useState<ItemRosterItem[]>([]);
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
@@ -471,7 +740,6 @@ export default function ItemsListView() {
   } | null>(null);
 
   const isDe = locale !== 'en';
-  const patchString = getMajorMinorPatch(version);
 
   // Quick lookup map
   const itemMap = useMemo(() => {
@@ -561,15 +829,12 @@ export default function ItemsListView() {
 
   // Check if an item provides a specific stat definition
   const itemMatchesStat = useCallback((item: ItemRosterItem, statDef: StatDefinition): boolean => {
-    // Check tags
     if (statDef.tagMatches && statDef.tagMatches.some((t) => item.tags.some((it) => it.toLowerCase() === t.toLowerCase()))) {
       return true;
     }
-    // Check rawStats
     if (statDef.rawStatKeys && statDef.rawStatKeys.some((k) => item.stats && item.stats[k])) {
       return true;
     }
-    // Check description or plaintext
     const fullText = (item.description + ' ' + (item.plaintext || '')).toLowerCase();
     if (fullText.includes(statDef.id.toLowerCase())) {
       return true;
@@ -763,8 +1028,8 @@ export default function ItemsListView() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[1680px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-      {/* Breadcrumb Navigation - Analog to /champions */}
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+      {/* Breadcrumb Navigation - Exactly Analog to /champions */}
       <Breadcrumbs items={[{ label: t('nav.items') || 'Items' }]} />
 
       {/* Filter Bar - Exactly Analog to /champions Glassmorphic Header */}
@@ -785,7 +1050,7 @@ export default function ItemsListView() {
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 title="Suche leeren"
               >
                 <X className="h-4 w-4" />
@@ -852,7 +1117,7 @@ export default function ItemsListView() {
           )}
         </div>
 
-        {/* Role Filter Tabs - Exactly Matching /champions & LoLDB */}
+        {/* Role Filter Tabs - Analog to /champions & LoLDB */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
           <div className="flex flex-wrap items-center gap-1.5">
             {ROLE_OPTIONS.map((role) => {
@@ -888,16 +1153,14 @@ export default function ItemsListView() {
           </label>
         </div>
 
-        {/* Filter Summary & Active Badges */}
+        {/* Filter Summary & Active Badges (without patch notice) */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span>
               {t('itemsWiki.showingCount', {
                 count: filteredItems.length,
               }) || `${filteredItems.length} Gegenstände`}
             </span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-zinc-500">Patch {patchString}</span>
           </div>
 
           {/* Active Filter Badges */}
@@ -909,7 +1172,7 @@ export default function ItemsListView() {
                   <button
                     type="button"
                     onClick={() => setSelectedRole('All')}
-                    className="hover:text-white ml-0.5"
+                    className="hover:text-white ml-0.5 cursor-pointer"
                   >
                     ×
                   </button>
@@ -925,7 +1188,7 @@ export default function ItemsListView() {
                   <button
                     type="button"
                     onClick={() => handleToggleStat(st)}
-                    className="hover:text-white ml-0.5"
+                    className="hover:text-white ml-0.5 cursor-pointer"
                   >
                     ×
                   </button>
@@ -938,7 +1201,7 @@ export default function ItemsListView() {
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="hover:text-white ml-0.5"
+                    className="hover:text-white ml-0.5 cursor-pointer"
                   >
                     ×
                   </button>
@@ -953,7 +1216,7 @@ export default function ItemsListView() {
       <div className="flex items-start gap-5 w-full">
         {/* Left Stat Sidebar - Desktop */}
         <aside
-          className="sticky top-20 hidden lg:flex w-52 shrink-0 flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 shadow-xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto"
+          className="sticky top-20 hidden lg:flex w-48 xl:w-52 shrink-0 flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 shadow-xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto"
           style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
         >
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
@@ -1013,7 +1276,7 @@ export default function ItemsListView() {
                 <button
                   type="button"
                   onClick={() => setIsMobileStatsOpen(false)}
-                  className="rounded-full bg-white/10 p-1 text-zinc-400 hover:text-white"
+                  className="rounded-full bg-white/10 p-1 text-zinc-400 hover:text-white cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1033,7 +1296,7 @@ export default function ItemsListView() {
                           key={stat.id}
                           type="button"
                           onClick={() => handleToggleStat(stat.id)}
-                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition-all ${
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition-all cursor-pointer ${
                             isSelected
                               ? 'border border-amber-400/50 bg-amber-400/15 text-amber-300 font-semibold'
                               : 'border border-white/[0.06] bg-white/[0.02] text-zinc-400'
@@ -1053,7 +1316,7 @@ export default function ItemsListView() {
                   <button
                     type="button"
                     onClick={() => setSelectedStats([])}
-                    className="flex-1 py-2.5 rounded-xl border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/10"
+                    className="flex-1 py-2.5 rounded-xl border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/10 cursor-pointer"
                   >
                     {t('itemsWiki.clearStats') || 'Zurücksetzen'}
                   </button>
@@ -1061,7 +1324,7 @@ export default function ItemsListView() {
                 <button
                   type="button"
                   onClick={() => setIsMobileStatsOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-xs font-bold text-black hover:bg-amber-400"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-xs font-bold text-black hover:bg-amber-400 cursor-pointer"
                 >
                   {t('common.done') || 'Fertig'}
                 </button>
@@ -1197,10 +1460,10 @@ export default function ItemsListView() {
           )}
         </main>
 
-        {/* Right Detail Inspector Panel - Desktop (LoLDB Style) */}
+        {/* Right Detail Inspector Panel - Desktop (LoLDB / In-game Shop Style) */}
         {activeItem && (
           <aside
-            className="hidden lg:flex w-[340px] xl:w-[380px] shrink-0 sticky top-20 flex-col rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-5 shadow-2xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto space-y-5 animate-in fade-in slide-in-from-right-4 duration-200"
+            className="hidden lg:flex w-[320px] xl:w-[360px] shrink-0 sticky top-20 flex-col rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-5 shadow-2xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto space-y-5 animate-in fade-in slide-in-from-right-4 duration-200"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
           >
             {/* Inspector Header */}
@@ -1262,112 +1525,18 @@ export default function ItemsListView() {
               </button>
             </div>
 
-            {/* Visual Build Path / Recipe Tree (Interactive LoLDB Tree Graph) */}
+            {/* Visual Build Path / Recipe Tree (Exact In-game / LoLDB Tree Graph) */}
             <div className="space-y-3 border-b border-white/[0.06] pb-4">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                 {t('itemsWiki.buildPathTitle') || 'Rezeptbaum & Baupfad'}
               </span>
 
-              {/* Tree Container */}
-              <div className="flex flex-col items-center py-2 space-y-4">
-                {/* Root Item Node */}
-                <div className="flex flex-col items-center">
-                  <div className="relative h-12 w-12 rounded-xl overflow-hidden border-2 border-amber-400 bg-black/80 shadow-md">
-                    <Image
-                      src={getItemIconUrl(activeItem.id, version)}
-                      alt={activeItem.name}
-                      fill
-                      sizes="48px"
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <span className="text-[11px] font-black text-amber-300 mt-1">
-                    {activeItem.gold.total}g
-                  </span>
-                </div>
-
-                {/* Direct Components (Level 1) */}
-                {activeItem.from && activeItem.from.length > 0 ? (
-                  <div className="w-full flex flex-col items-center">
-                    {/* SVG Branching Lines */}
-                    <div className="relative w-full h-4 flex justify-center">
-                      <div className="w-0.5 h-full bg-amber-500/40" />
-                    </div>
-
-                    <div className="flex flex-wrap items-start justify-center gap-4 w-full">
-                      {activeItem.from.map((compChildId, idx) => {
-                        const compItem = itemMap.get(compChildId);
-                        const compIconUrl = getItemIconUrl(compChildId, version);
-                        const compName = compItem?.name || `Item ${compChildId}`;
-                        const compGold = compItem?.gold?.total ?? 0;
-                        const subComponents = compItem?.from || [];
-
-                        return (
-                          <div key={`${compChildId}-${idx}`} className="flex flex-col items-center">
-                            {/* Component Button */}
-                            <button
-                              type="button"
-                              onClick={() => setActiveItemId(compChildId)}
-                              className="group flex flex-col items-center cursor-pointer transition-transform hover:scale-105"
-                              title={`Zu ${compName} wechseln`}
-                            >
-                              <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/20 bg-black/60 group-hover:border-amber-400 transition-colors shadow">
-                                <Image
-                                  src={compIconUrl}
-                                  alt={compName}
-                                  fill
-                                  sizes="40px"
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              </div>
-                              <span className="text-[10px] font-bold text-zinc-300 group-hover:text-amber-300 mt-0.5">
-                                {compGold}g
-                              </span>
-                            </button>
-
-                            {/* Sub-components (Level 2) */}
-                            {subComponents.length > 0 && (
-                              <div className="flex flex-col items-center mt-2">
-                                <div className="w-0.5 h-2 bg-white/20 mb-1" />
-                                <div className="flex items-center gap-1.5">
-                                  {subComponents.map((subId, subIdx) => {
-                                    const subItem = itemMap.get(subId);
-                                    const subIcon = getItemIconUrl(subId, version);
-                                    return (
-                                      <button
-                                        key={`${subId}-${subIdx}`}
-                                        type="button"
-                                        onClick={() => setActiveItemId(subId)}
-                                        className="relative h-7 w-7 rounded-md overflow-hidden border border-white/10 hover:border-amber-400 transition-all cursor-pointer shadow-sm hover:scale-110"
-                                        title={subItem?.name || `Item ${subId}`}
-                                      >
-                                        <Image
-                                          src={subIcon}
-                                          alt={subItem?.name || ''}
-                                          fill
-                                          sizes="28px"
-                                          className="object-cover"
-                                          unoptimized
-                                        />
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-zinc-500 italic">
-                    {t('itemsWiki.noRecipe') || 'Basis-Gegenstand (keine Vorstufen)'}
-                  </p>
-                )}
-              </div>
+              <ItemBuildTree
+                item={activeItem}
+                itemMap={itemMap}
+                version={version}
+                onItemClick={(id) => setActiveItemId(id)}
+              />
             </div>
 
             {/* Upgrades Into / Builds Into */}
@@ -1495,48 +1664,24 @@ export default function ItemsListView() {
               <button
                 type="button"
                 onClick={() => setActiveItemId(null)}
-                className="h-8 w-8 rounded-full bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center"
+                className="h-8 w-8 rounded-full bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Recipe Tree in Mobile Drawer */}
-            {activeItem.from && activeItem.from.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                  {t('itemsWiki.buildPathTitle') || 'Rezept / Vorstufen'}
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {activeItem.from.map((cId) => {
-                    const c = itemMap.get(cId);
-                    return (
-                      <button
-                        key={cId}
-                        type="button"
-                        onClick={() => setActiveItemId(cId)}
-                        className="flex items-center gap-2 p-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-left hover:border-amber-400/50"
-                      >
-                        <div className="relative h-8 w-8 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                          <Image
-                            src={getItemIconUrl(cId, version)}
-                            alt={c?.name || ''}
-                            fill
-                            sizes="32px"
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{c?.name || cId}</p>
-                          <p className="text-[10px] font-semibold text-amber-400">{c?.gold.total}g</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* In-game Recipe Tree in Mobile Drawer */}
+            <div className="space-y-2 border-b border-white/[0.08] pb-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                {t('itemsWiki.buildPathTitle') || 'Rezeptbaum & Baupfad'}
+              </span>
+              <ItemBuildTree
+                item={activeItem}
+                itemMap={itemMap}
+                version={version}
+                onItemClick={(id) => setActiveItemId(id)}
+              />
+            </div>
 
             {/* Description in Mobile Drawer */}
             {activeItem.description && (
