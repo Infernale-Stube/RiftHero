@@ -1158,8 +1158,9 @@ export default function ItemsListView() {
           <div className="flex items-center gap-1.5">
             <span>
               {t('itemsWiki.showingCount', {
-                count: filteredItems.length,
-              }) || `${filteredItems.length} Gegenstände`}
+                filtered: filteredItems.length,
+                total: items.length,
+              }) || `Zeige ${filteredItems.length} von ${items.length} Items`}
             </span>
           </div>
 
