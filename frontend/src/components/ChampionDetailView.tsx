@@ -1499,7 +1499,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : typeof skin.price === 'string' ? skin.price.replace(/[^0-9]/g, '') : '';
       return (
         <div
-          className={`flex items-center gap-1.5 rounded-lg bg-sky-950/80 border border-sky-400/40 px-2.5 py-1 text-xs font-black text-sky-200 backdrop-blur-md shadow-md ${extraClass}`}
+          className={`flex items-center gap-1.5 rounded-lg bg-sky-950/80 border border-sky-400/40 px-2.5 py-1 text-xs font-black text-sky-200 backdrop-blur-md shadow-[0_0_12px_rgba(56,189,248,0.25)] ${extraClass}`}
           title="Blue Essence"
         >
           <Image
@@ -1507,7 +1507,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             alt="BE"
             width={14}
             height={14}
-            className="h-3.5 w-3.5 object-contain"
+            className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]"
             unoptimized
           />
           <span>{amount}</span>
@@ -1527,13 +1527,16 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     if (!numAmount) return null;
 
     return (
-      <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
+      <div
+        className={`flex items-center gap-1.5 rounded-lg bg-amber-950/80 border border-amber-400/40 px-2.5 py-1 text-xs font-black text-amber-200 backdrop-blur-md shadow-[0_0_12px_rgba(245,158,11,0.25)] ${extraClass}`}
+        title="Riot Points (RP)"
+      >
         <Image
           src={RP_ICON_URL}
           alt="RP"
           width={14}
           height={14}
-          className="h-3.5 w-3.5 object-contain"
+          className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(245,158,11,0.9)]"
           unoptimized
         />
         <span>{numAmount}</span>
