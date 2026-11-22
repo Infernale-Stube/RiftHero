@@ -139,7 +139,9 @@ export default function LiveGameView({
           {t('live.notInGame')}
         </h3>
         <p className="text-xs text-slate-400 max-w-md mb-6">
-          {liveData?.message || t('live.notInGameDesc', { name: `${gameName}#${tagLine}` })}
+          {locale === 'de' && liveData?.message
+            ? liveData.message
+            : t('live.notInGameDesc', { name: `${gameName}#${tagLine}` })}
         </p>
         <button
           onClick={onRefresh}
@@ -175,29 +177,15 @@ export default function LiveGameView({
         >
           {/* Team Label & Average Rank Badge */}
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="font-black uppercase tracking-wider text-xs sm:text-sm">
-                {isBlue ? t('live.blueTeam') : t('live.redTeam')}
-              </span>
-              {winProbability && typeof winProbability.blueWinrate === 'number' && typeof winProbability.redWinrate === 'number' && (
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-black font-mono tracking-tight border ${
-                    isBlue
-                      ? 'bg-blue-500/20 text-cyan-300 border-blue-500/30'
-                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                  }`}
-                  title={`${isBlue ? winProbability.blueWinrate : winProbability.redWinrate}% Siegwahrscheinlichkeit`}
-                >
-                  {isBlue ? winProbability.blueWinrate : winProbability.redWinrate}%
-                </span>
-              )}
-            </div>
+            <span className="font-black uppercase tracking-wider text-xs sm:text-sm">
+              {isBlue ? t('live.blueTeam') : t('live.redTeam')}
+            </span>
 
-            {/* Average Rank & Winrate */}
+            {/* Average Rank */}
             {teamAvg ? (
               <div
                 className="flex items-center gap-2 text-zinc-300"
-                title={`Team Average: ${teamAvg.formatted} · Winrate: ${teamAvg.avgWinrate ?? '—'}% (${teamAvg.count}/${teamAvg.totalPlayers} ${t('live.rankedWinrate')})`}
+                title={`${t('live.avgRank')}: ${teamAvg.formatted}`}
               >
                 {/* Rank Section */}
                 <div className="flex items-center gap-1.5">
@@ -223,21 +211,6 @@ export default function LiveGameView({
                     </span>
                   )}
                 </div>
-
-                {/* Average Win Rate Section */}
-                {teamAvg.avgWinrate !== null && teamAvg.avgWinrate !== undefined && (
-                  <>
-                    <span className="text-white/20 font-bold">•</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                        {t('live.avgWinrate')}:
-                      </span>
-                      <span className={`text-xs font-black ${getWinrateColor(teamAvg.avgWinrate)}`}>
-                        {teamAvg.avgWinrate}%
-                      </span>
-                    </div>
-                  </>
-                )}
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500">
@@ -249,7 +222,7 @@ export default function LiveGameView({
           {/* Integrated Champion Bans in Header (Always 5 Slots) */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden sm:inline">
-              Bans:
+              {t('live.bans')}
             </span>
             {[0, 1, 2, 3, 4].map((slotIdx) => {
               const b = teamBans[slotIdx];
@@ -264,7 +237,7 @@ export default function LiveGameView({
                 <div
                   key={b?.pickTurn ?? slotIdx}
                   className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden bg-black/60 shadow-sm shrink-0 flex items-center justify-center"
-                  title={isValid ? `Ban: ${b.championName}` : 'Kein Ban'}
+                  title={isValid ? `${t('live.ban')}: ${b.championName}` : t('live.noBan')}
                 >
                   {isValid ? (
                     <>
@@ -303,7 +276,7 @@ export default function LiveGameView({
     if (!p) {
       return (
         <div className="flex items-center justify-center rounded-xl bg-black/20 p-6 text-xs text-zinc-500">
-          Kein Spieler
+          {t('live.noPlayer')}
         </div>
       );
     }
@@ -366,7 +339,7 @@ export default function LiveGameView({
               {p.summonerLevel != null && p.summonerLevel > 0 && (
                 <div
                   className="absolute bottom-0 right-0 rounded-tl-md bg-black/90 px-1 py-0.2 text-[8px] font-black text-amber-300 shadow-sm"
-                  title={`Account Level: ${p.summonerLevel}`}
+                  title={`${t('live.accountLevel')}: ${p.summonerLevel}`}
                 >
                   {p.summonerLevel}
                 </div>
@@ -515,10 +488,10 @@ export default function LiveGameView({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
           </span>
-          <span className="font-bold text-slate-200">{game.queueName || 'Live Game'}</span>
+          <span className="font-bold text-slate-200">{game.queueName || t('live.liveGame')}</span>
           {startTimeFormatted && (
             <span className="text-zinc-400 font-medium">
-              • {locale === 'de' ? 'Start:' : 'Started:'} {startTimeFormatted}
+              • {t('live.started')} {startTimeFormatted}
               {elapsedSeconds > 0 && (
                 <span className="text-amber-400 font-mono ml-1.5 font-bold">
                   ({formatTimer(elapsedSeconds)})
@@ -530,7 +503,7 @@ export default function LiveGameView({
 
         {fullMatchId ? (
           <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400">
-            <span className="text-zinc-500 font-sans">Match ID:</span>
+            <span className="text-zinc-500 font-sans">{t('live.matchId')}</span>
             <span className="text-zinc-300 font-semibold select-all">
               {fullMatchId}
             </span>
@@ -544,8 +517,8 @@ export default function LiveGameView({
                 }
               }}
               className="p-1 hover:text-amber-400 text-zinc-400 transition-colors"
-              title="Match ID kopieren"
-              aria-label="Match ID kopieren"
+              title={t('live.copyMatchId')}
+              aria-label={t('live.copyMatchId')}
             >
               {copiedId ? (
                 <Check className="h-3.5 w-3.5 text-emerald-400" />

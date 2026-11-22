@@ -79,22 +79,22 @@ export default function LiveGameWinProbability({
 
   const confidenceBadge = {
     high: {
-      text: t('live.confidenceHigh') || 'Hohe Datenbasis',
+      text: t('live.confidenceHigh'),
       color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       dot: 'bg-emerald-400',
     },
     medium: {
-      text: t('live.confidenceMedium') || 'Mittlere Datenbasis',
+      text: t('live.confidenceMedium'),
       color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
       dot: 'bg-amber-400',
     },
     low: {
-      text: t('live.confidenceLow') || 'Geringe Datenbasis',
+      text: t('live.confidenceLow'),
       color: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
       dot: 'bg-zinc-400',
     },
   }[confidence] || {
-    text: 'Mittlere Datenbasis',
+    text: t('live.confidenceMedium'),
     color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     dot: 'bg-amber-400',
   };
@@ -164,9 +164,9 @@ export default function LiveGameWinProbability({
               type="button"
               onClick={() => setShowDetails((prev) => !prev)}
               className="flex items-center gap-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] px-2.5 py-1 text-xs font-medium text-zinc-300 transition-colors"
-              title="Faktoren ein-/ausblenden"
+              title={t('live.toggleFactors')}
             >
-              <span>{showDetails ? 'Weniger' : 'Faktoren'}</span>
+              <span>{showDetails ? t('live.less') : t('live.factors')}</span>
               {showDetails ? (
                 <ChevronUp className="h-3.5 w-3.5 text-zinc-400" />
               ) : (
@@ -251,7 +251,7 @@ export default function LiveGameWinProbability({
             {/* Center Reference Line (50%) */}
             <div
               className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 bg-white/60 z-20 shadow-[0_0_4px_rgba(255,255,255,0.8)] pointer-events-none"
-              title="50% Balance Marker"
+              title={t('live.balanceMarker')}
             />
           </div>
         </div>
@@ -287,14 +287,14 @@ export default function LiveGameWinProbability({
                   {rankDiffLp !== 0 ? (
                     <>
                       {rankDiffLp > 0 ? '+' : ''}
-                      {rankDiffLp} LP Differenz
+                      {t('live.lpDiff', { count: rankDiffLp })}
                     </>
                   ) : (
-                    'Gleiches Rangniveau'
+                    t('live.equalRankLevel')
                   )}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
-                  Blau: {blueAvgMmr} MMR · Rot: {redAvgMmr} MMR
+                  {t('live.mmrComparison', { blue: blueAvgMmr, red: redAvgMmr })}
                 </div>
               </div>
 
@@ -331,7 +331,7 @@ export default function LiveGameWinProbability({
                   )}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
-                  Durchschnittliche Saison-Siegraten
+                  {t('live.avgSeasonWinrates')}
                 </div>
               </div>
 
@@ -364,15 +364,15 @@ export default function LiveGameWinProbability({
                       {blueChampWinrate}% vs {redChampWinrate}%
                     </span>
                   ) : blueChampWinrate !== null ? (
-                    <span>Blau: {blueChampWinrate}%</span>
+                    <span>{t('live.bluePrefix')}: {blueChampWinrate}%</span>
                   ) : redChampWinrate !== null ? (
-                    <span>Rot: {redChampWinrate}%</span>
+                    <span>{t('live.redPrefix')}: {redChampWinrate}%</span>
                   ) : (
-                    'Erste Matches'
+                    t('live.firstMatches')
                   )}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
-                  Erfahrung mit gewähltem Champion
+                  {t('live.champExpSubtitle')}
                 </div>
               </div>
 
@@ -384,14 +384,14 @@ export default function LiveGameWinProbability({
                     <span>{t('live.mapFactor')}</span>
                   </div>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-cyan-300">
-                    {sideAdvantage > 0 ? '+1.2% Blau' : 'Neutral'}
+                    {sideAdvantage > 0 ? t('live.sideAdvantageBlue') : t('live.sideAdvantageNeutral')}
                   </span>
                 </div>
                 <div className="text-xs font-bold text-slate-200">
-                  {sideAdvantage > 0 ? 'Blaues Team (First Pick)' : 'Symmetrische Karte'}
+                  {sideAdvantage > 0 ? t('live.sideAdvantageBlueDesc') : t('live.sideAdvantageSymmetric')}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
-                  Statistischer Summoner&apos;s Rift Bias
+                  {t('live.mapBiasSubtitle')}
                 </div>
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function LiveGameWinProbability({
             <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-zinc-400 bg-white/[0.02] p-2 rounded-lg border border-white/[0.03]">
               <Info className="h-3.5 w-3.5 text-amber-400 shrink-0" />
               <span>
-                Die Siegwahrscheinlichkeit wird vor Spielstart anhand von Team-MMR, saisonaler Siegrate, Champion-Beherrschung und Kartenseite prognostiziert.
+                {t('live.winProbDisclaimer')}
               </span>
             </div>
           </div>

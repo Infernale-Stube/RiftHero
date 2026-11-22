@@ -254,6 +254,32 @@ export interface TranslationDictionary {
     confidenceHigh: string;
     confidenceMedium: string;
     confidenceLow: string;
+    ban: string;
+    noBan: string;
+    noPlayer: string;
+    accountLevel: string;
+    started: string;
+    liveGame: string;
+    matchId: string;
+    copyMatchId: string;
+    toggleFactors: string;
+    factors: string;
+    less: string;
+    balanceMarker: string;
+    lpDiff: string;
+    equalRankLevel: string;
+    mmrComparison: string;
+    avgSeasonWinrates: string;
+    bluePrefix: string;
+    redPrefix: string;
+    firstMatches: string;
+    champExpSubtitle: string;
+    sideAdvantageBlue: string;
+    sideAdvantageNeutral: string;
+    sideAdvantageBlueDesc: string;
+    sideAdvantageSymmetric: string;
+    mapBiasSubtitle: string;
+    winProbDisclaimer: string;
   };
   footer: {
     copyright: string;
@@ -692,6 +718,32 @@ export const translations: Record<Locale, TranslationDictionary> = {
       confidenceHigh: 'Hohe Datenbasis',
       confidenceMedium: 'Mittlere Datenbasis',
       confidenceLow: 'Geringe Datenbasis (viele Unranked)',
+      ban: 'Ban',
+      noBan: 'Kein Ban',
+      noPlayer: 'Kein Spieler',
+      accountLevel: 'Account-Stufe',
+      started: 'Start:',
+      liveGame: 'Live Game',
+      matchId: 'Match ID:',
+      copyMatchId: 'Match ID kopieren',
+      toggleFactors: 'Faktoren ein-/ausblenden',
+      factors: 'Faktoren',
+      less: 'Weniger',
+      balanceMarker: '50% Ausgleichsmarkierung',
+      lpDiff: '{count} LP Differenz',
+      equalRankLevel: 'Gleiches Rangniveau',
+      mmrComparison: 'Blau: {blue} MMR · Rot: {red} MMR',
+      avgSeasonWinrates: 'Durchschnittliche Saison-Siegraten',
+      bluePrefix: 'Blau',
+      redPrefix: 'Rot',
+      firstMatches: 'Erste Matches',
+      champExpSubtitle: 'Erfahrung mit gewähltem Champion',
+      sideAdvantageBlue: '+1.2% Blau',
+      sideAdvantageNeutral: 'Neutral',
+      sideAdvantageBlueDesc: 'Blaues Team (First Pick)',
+      sideAdvantageSymmetric: 'Symmetrische Karte',
+      mapBiasSubtitle: 'Statistischer Summoner\'s-Rift-Vorteil',
+      winProbDisclaimer: 'Die Siegwahrscheinlichkeit wird vor Spielstart anhand von Team-MMR, saisonaler Siegrate, Champion-Beherrschung und Kartenseite prognostiziert.',
     },
     footer: {
       copyright: '© {year} RiftHero. Nicht affiliiert mit Riot Games. League of Legends und Riot Games sind Warenzeichen von Riot Games, Inc.',
@@ -1128,6 +1180,32 @@ export const translations: Record<Locale, TranslationDictionary> = {
       confidenceHigh: 'High data confidence',
       confidenceMedium: 'Medium data confidence',
       confidenceLow: 'Low data confidence (unranked players)',
+      ban: 'Ban',
+      noBan: 'No Ban',
+      noPlayer: 'No player',
+      accountLevel: 'Account Level',
+      started: 'Started:',
+      liveGame: 'Live Game',
+      matchId: 'Match ID:',
+      copyMatchId: 'Copy Match ID',
+      toggleFactors: 'Toggle factors',
+      factors: 'Factors',
+      less: 'Less',
+      balanceMarker: '50% Balance Marker',
+      lpDiff: '{count} LP difference',
+      equalRankLevel: 'Equal rank level',
+      mmrComparison: 'Blue: {blue} MMR · Red: {red} MMR',
+      avgSeasonWinrates: 'Average season win rates',
+      bluePrefix: 'Blue',
+      redPrefix: 'Red',
+      firstMatches: 'First matches',
+      champExpSubtitle: 'Experience on selected champion',
+      sideAdvantageBlue: '+1.2% Blue',
+      sideAdvantageNeutral: 'Neutral',
+      sideAdvantageBlueDesc: 'Blue Team (First Pick)',
+      sideAdvantageSymmetric: 'Symmetric Map',
+      mapBiasSubtitle: 'Statistical Summoner\'s Rift bias',
+      winProbDisclaimer: 'Win probability is predicted prior to game start based on team MMR, seasonal win rate, champion mastery, and map side.',
     },
     footer: {
       copyright: '© {year} RiftHero. Not affiliated with Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.',
