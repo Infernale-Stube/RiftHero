@@ -361,42 +361,44 @@ export default function SummonerHeader({
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}
-        <div className="relative z-10 mt-5 sm:mt-6 w-full border-t border-white/[0.08] pt-3">
-          <div className="relative">
-            <div
-              ref={navScrollRef}
-              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              {tabs.map((tab) => {
-                const isActive = currentTab === tab.id;
-                const Icon = tab.icon;
+        <div className="relative z-10 mt-5 sm:mt-6 w-full border-t border-white/[0.08] pt-2 sm:pt-3">
+          <div
+            ref={navScrollRef}
+            className="flex items-center justify-between sm:justify-start sm:gap-6 w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            {tabs.map((tab) => {
+              const isActive = currentTab === tab.id;
+              const Icon = tab.icon;
 
-                return (
-                  <Link
-                    key={tab.id}
-                    href={tab.href}
-                    ref={isActive ? activeTabRef : null}
-                    onClick={() => onTabChange?.(tab.id as any)}
-                    className={`group flex items-center gap-2 rounded-xl px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all select-none active:scale-95 ${
-                      isActive
-                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_14px_rgba(245,158,11,0.18)]'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] border border-transparent'
-                    }`}
-                  >
-                    {tab.isLive ? (
-                      <span className="relative flex h-2 w-2 mr-0.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                      </span>
-                    ) : (
-                      <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
-                    )}
-                    <span>{tab.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+              return (
+                <Link
+                  key={tab.id}
+                  href={tab.href}
+                  ref={isActive ? activeTabRef : null}
+                  onClick={() => onTabChange?.(tab.id as any)}
+                  className={`group relative flex items-center gap-1.5 sm:gap-2 pb-2.5 pt-1 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors select-none ${
+                    isActive
+                      ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400 after:shadow-[0_0_8px_rgba(245,158,11,0.7)]'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {tab.isLive ? (
+                    <span className="relative flex h-2 w-2 mr-0.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                  ) : (
+                    <Icon
+                      className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-colors hidden sm:inline-block ${
+                        isActive ? 'text-amber-400' : 'text-zinc-500 group-hover:text-zinc-300'
+                      }`}
+                    />
+                  )}
+                  <span>{tab.label}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
