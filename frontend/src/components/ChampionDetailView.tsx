@@ -28,6 +28,7 @@ import {
   Calendar,
   Maximize2,
   X,
+  History,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -140,6 +141,8 @@ interface TimelineSkinData {
   tier: string;
   image: string;
   price?: string | number;
+  currency?: string;
+  isLegacy?: boolean;
 }
 
 function LolDBGroupNode({
@@ -213,6 +216,8 @@ function LolDBGroupNode({
                 py: rect.top,
                 image: skin.image,
                 price: skin.price,
+                currency: skin.currency,
+                isLegacy: skin.isLegacy,
                 year: skin.year,
                 date: skin.date,
               });
@@ -329,15 +334,44 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
               </span>
               <span className="text-zinc-500">•</span>
               <span className="text-zinc-400 font-mono text-[11px]">{info.year}</span>
+              {info.isLegacy && (
+                <>
+                  <span className="text-zinc-500">•</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded shadow-sm">
+                    <History className="h-2.5 w-2.5 text-amber-400" />
+                    Legacy
+                  </span>
+                </>
+              )}
             </div>
             {info.price && (
               <div className="flex items-center gap-1.5 mt-0.5">
-                <img
-                  src={RP_ICON_URL}
-                  alt="RP"
-                  className="h-3.5 w-3.5 object-contain"
-                />
-                <span className="text-xs font-bold text-amber-400">{info.price}</span>
+                {String(info.price).includes('AS') ? (
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+                ) : String(info.price).includes('BE') ? (
+                  <img
+                    src={BE_ICON_URL}
+                    alt="BE"
+                    className="h-3.5 w-3.5 object-contain"
+                  />
+                ) : (
+                  <img
+                    src={RP_ICON_URL}
+                    alt="RP"
+                    className="h-3.5 w-3.5 object-contain"
+                  />
+                )}
+                <span
+                  className={`text-xs font-bold ${
+                    String(info.price).includes('AS')
+                      ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]'
+                      : String(info.price).includes('BE')
+                      ? 'text-sky-300'
+                      : 'text-amber-400'
+                  }`}
+                >
+                  {info.price}
+                </span>
               </div>
             )}
           </div>
@@ -511,12 +545,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 ...prev,
                 skins: prev.skins.map((s) => {
                   const cd = cdMap.get(String(s.id)) as any;
-                  if (cd && cd.rarity) {
-                    const mapped = mapSkinRarityClient(cd.rarity);
+                  if (cd) {
+                    const mapped = cd.rarity ? mapSkinRarityClient(cd.rarity) : null;
                     return {
                       ...s,
-                      rarity: mapped.rarity,
-                      rarityColor: mapped.rarityColor,
+                      ...(mapped ? { rarity: mapped.rarity, rarityColor: mapped.rarityColor } : {}),
+                      isLegacy: s.isLegacy !== undefined ? s.isLegacy : Boolean(cd.isLegacy),
                     };
                   }
                   return s;
@@ -621,13 +655,21 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           tier,
           image: getChampionLoadingUrl(data.id, s.num),
           price:
-            typeof s.cost === 'number'
+            s.currency === 'AS' || (typeof s.cost === 'string' && s.cost.includes('AS'))
+              ? `${typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : '40'} AS`
+              : s.currency === 'BE' || (typeof s.cost === 'string' && s.cost.includes('BE'))
+              ? `${typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : ''} BE`
+              : typeof s.cost === 'number'
               ? `${s.cost} RP`
               : s.cost === 'Special'
               ? (locale === 'de' ? 'Spezial' : 'Special')
+              : s.cost === 'N/A'
+              ? (locale === 'de' ? 'Nicht im Shop' : 'Not in Shop')
               : s.cost
               ? `${s.cost}`
               : undefined,
+          currency: s.currency,
+          isLegacy: s.isLegacy,
         };
       });
   }, [data, skins, t]);
@@ -1309,8 +1351,94 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
-  // SUB-RENDER: FULLSCREEN SPLASH LIGHTBOX MODAL
+  // SUB-RENDER: FULLSCREEN SPLASH LIGHTBOX MODAL & BADGE HELPERS
   // =========================================================================
+  const renderSkinCostBadge = (skin: DDragonSkin | null, extraClass = '') => {
+    if (!skin) return null;
+    if (skin.num === 0) {
+      return (
+        <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
+          <span>{locale === 'de' ? 'Klassischer Skin' : 'Base Skin'}</span>
+        </div>
+      );
+    }
+
+    const isAS = skin.currency === 'AS' || (typeof skin.cost === 'string' && skin.cost.includes('AS'));
+    const isBE = skin.currency === 'BE' || (typeof skin.cost === 'string' && skin.cost.includes('BE'));
+
+    if (isAS) {
+      const amount = typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '40';
+      return (
+        <div
+          className={`flex items-center gap-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/40 px-2.5 py-1 text-xs font-black text-cyan-200 backdrop-blur-md shadow-[0_0_12px_rgba(34,211,238,0.25)] ${extraClass}`}
+          title={locale === 'de' ? 'Uralte Funken (Ancient Sparks)' : 'Ancient Sparks (AS)'}
+        >
+          <Sparkles className="h-3.5 w-3.5 text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+          <span>{amount} AS</span>
+        </div>
+      );
+    }
+
+    if (isBE) {
+      const amount = typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '';
+      return (
+        <div
+          className={`flex items-center gap-1.5 rounded-lg bg-sky-950/80 border border-sky-400/40 px-2.5 py-1 text-xs font-black text-sky-200 backdrop-blur-md shadow-md ${extraClass}`}
+          title="Blue Essence"
+        >
+          <Image
+            src={BE_ICON_URL}
+            alt="BE"
+            width={14}
+            height={14}
+            className="h-3.5 w-3.5 object-contain"
+            unoptimized
+          />
+          <span>{amount} BE</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
+        {typeof skin.cost === 'number' && (
+          <Image
+            src={RP_ICON_URL}
+            alt="RP"
+            width={14}
+            height={14}
+            className="h-3.5 w-3.5 object-contain"
+            unoptimized
+          />
+        )}
+        <span>
+          {typeof skin.cost === 'number'
+            ? `${skin.cost} RP`
+            : skin.cost === 'Special'
+            ? (locale === 'de' ? 'Spezial' : 'Special')
+            : skin.cost === 'N/A'
+            ? (locale === 'de' ? 'Nicht im Shop' : 'Not in Shop')
+            : skin.cost
+            ? `${skin.cost}`
+            : '975 RP'}
+        </span>
+      </div>
+    );
+  };
+
+  const renderLegacyBadge = (skin: DDragonSkin | null, extraClass = '') => {
+    if (!skin?.isLegacy) return null;
+    return (
+      <div
+        className={`flex items-center gap-1 rounded-lg bg-amber-950/80 border border-amber-500/40 px-2 py-1 text-xs font-bold text-amber-300 backdrop-blur-md shadow-[0_0_10px_rgba(245,158,11,0.25)] ${extraClass}`}
+        title={locale === 'de' ? 'Legacy Skin (Nur zeitweise im Tresor verfügbar)' : 'Legacy Skin (Vault)'}
+      >
+        <History className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+        <span>Legacy</span>
+      </div>
+    );
+  };
+
   const renderSplashLightboxModal = () => {
     if (!isMounted || !isSplashModalOpen || !data) return null;
 
@@ -1342,17 +1470,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             {activeSkin && (
               <div className="hidden sm:flex items-center gap-2">
                 {/* Cost */}
-                <div className="flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-amber-300">
-                  {activeSkin.num === 0 ? (
-                    <span>{locale === 'de' ? 'Basis' : 'Base'}</span>
-                  ) : typeof activeSkin.cost === 'number' ? (
-                    `${activeSkin.cost} RP`
-                  ) : activeSkin.cost === 'Special' ? (
-                    locale === 'de' ? 'Spezial' : 'Special'
-                  ) : (
-                    activeSkin.cost || '975 RP'
-                  )}
-                </div>
+                {renderSkinCostBadge(activeSkin, 'px-2 py-0.5 text-xs')}
 
                 {/* Rarity */}
                 <div
@@ -1364,6 +1482,9 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 >
                   <span>{activeSkin.rarity || 'Regular'}</span>
                 </div>
+
+                {/* Legacy Badge */}
+                {renderLegacyBadge(activeSkin, 'px-2 py-0.5 text-xs')}
 
                 {/* Release Date */}
                 <div className="flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-medium text-zinc-300">
@@ -1490,61 +1611,41 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           unoptimized
         />
 
-        {/* Top-Left Badges on Splash: Cost & Rarity */}
+        {/* Top-Left Badges on Splash: Cost, Rarity & Legacy */}
         <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
-          {/* Top Badge: Cost */}
-          <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
-            {activeSkin?.num === 0 ? (
-              <span>{locale === 'de' ? 'Klassischer Skin' : 'Base Skin'}</span>
-            ) : (
-              <>
-                {typeof activeSkin?.cost === 'number' && (
-                  <Image
-                    src={RP_ICON_URL}
-                    alt="RP"
-                    width={14}
-                    height={14}
-                    className="h-3.5 w-3.5 object-contain"
-                    unoptimized
-                  />
-                )}
-                <span>
-                  {typeof activeSkin?.cost === 'number'
-                    ? `${activeSkin.cost} RP`
-                    : activeSkin?.cost === 'Special'
-                    ? (locale === 'de' ? 'Spezial' : 'Special')
-                    : activeSkin?.cost
-                    ? `${activeSkin.cost}`
-                    : '975 RP'}
-                </span>
-              </>
-            )}
-          </div>
+          {/* Top Badge: Cost (RP / Ancient Sparks / Blue Essence) */}
+          {renderSkinCostBadge(activeSkin)}
 
-          {/* Bottom Badge: Rarity */}
-          <div
-            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
-            style={{
-              backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
-              borderColor: activeSkin?.rarityColor || '#22c55e',
-            }}
-          >
-            {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
-              <Image
-                src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
-                alt={activeSkin?.rarity || 'Regular'}
-                width={14}
-                height={14}
-                className="h-3.5 w-3.5 object-contain"
-                unoptimized
-              />
-            ) : (
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
-              />
-            )}
-            <span>{activeSkin?.rarity || 'Regular'}</span>
+          {/* Bottom Badges Row: Rarity + Legacy */}
+          <div className="flex items-center gap-1.5">
+            {/* Rarity Badge */}
+            <div
+              className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
+              style={{
+                backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
+                borderColor: activeSkin?.rarityColor || '#22c55e',
+              }}
+            >
+              {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
+                <Image
+                  src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
+                  alt={activeSkin?.rarity || 'Regular'}
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain"
+                  unoptimized
+                />
+              ) : (
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
+                />
+              )}
+              <span>{activeSkin?.rarity || 'Regular'}</span>
+            </div>
+
+            {/* Legacy Badge */}
+            {renderLegacyBadge(activeSkin)}
           </div>
         </div>
 
@@ -1867,6 +1968,8 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                             py: rect.top,
                             image: s.image,
                             price: s.price,
+                            currency: s.currency,
+                            isLegacy: s.isLegacy,
                             year: s.year,
                             date: s.date,
                           });

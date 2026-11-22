@@ -47,6 +47,8 @@ export interface LoldbSkinInfo {
   releaseYear: number;
   releaseDate?: string;
   cost: number | string;
+  currency?: 'RP' | 'AS' | 'BE' | string;
+  isLegacy?: boolean;
   skinLines?: string[];
 }
 
@@ -155,15 +157,32 @@ export async function syncLoldbSkins(): Promise<void> {
       }
 
       let cost: number | string = 975;
+      let currency = 'RP';
       if (typeof s.price === 'string') {
-        if (s.price.toLowerCase().includes('free')) cost = 0;
-        else if (s.price.toLowerCase().includes('n/a')) cost = 'N/A';
-        else {
+        const pLower = s.price.toLowerCase();
+        if (pLower.includes('free')) {
+          cost = 0;
+          currency = 'RP';
+        } else if (pLower.includes('n/a')) {
+          cost = 'N/A';
+          currency = 'RP';
+        } else if (s.price.includes('AS')) {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          cost = isNaN(num) ? s.price : num;
+          currency = 'AS';
+        } else if (s.price.includes('BE')) {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          cost = isNaN(num) ? s.price : num;
+          currency = 'BE';
+        } else {
           const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
           if (!isNaN(num)) cost = num;
           else cost = s.price;
+          currency = 'RP';
         }
       }
+
+      const isLegacy = Boolean(s.isLegacy);
 
       const info: LoldbSkinInfo = {
         id: String(s.id),
@@ -173,6 +192,8 @@ export async function syncLoldbSkins(): Promise<void> {
         releaseYear,
         releaseDate: releaseDate || `${releaseYear}-01-01`,
         cost,
+        currency,
+        isLegacy,
         skinLines: s.skinLineNames || [],
       };
 
@@ -272,17 +293,35 @@ export async function fetchLoldbChampionSkins(slug: string): Promise<Map<string,
     for (const s of skins) {
       const skinId = String(s.communityDragonId || s.id || (s.skinNum !== undefined ? s.skinNum : ''));
       let cost: number | string = 975;
+      let currency = 'RP';
       if (typeof s.price === 'string') {
-        if (s.price.toLowerCase().includes('free')) cost = 0;
-        else if (s.price.toLowerCase().includes('special')) cost = 'Special';
-        else {
+        const pLower = s.price.toLowerCase();
+        if (pLower.includes('free')) {
+          cost = 0;
+          currency = 'RP';
+        } else if (pLower.includes('special')) {
+          cost = 'Special';
+          currency = 'RP';
+        } else if (s.price.includes('AS')) {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          cost = isNaN(num) ? s.price : num;
+          currency = 'AS';
+        } else if (s.price.includes('BE')) {
+          const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
+          cost = isNaN(num) ? s.price : num;
+          currency = 'BE';
+        } else {
           const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
           if (!isNaN(num)) cost = num;
           else cost = s.price;
+          currency = 'RP';
         }
       } else if (typeof s.costRP === 'number') {
         cost = s.costRP;
+        currency = 'RP';
       }
+
+      const isLegacy = Boolean(s.isLegacy);
 
       const releaseYear =
         s.releaseYear || (s.releaseDate ? parseInt(s.releaseDate.slice(0, 4), 10) : currentYear);
@@ -297,6 +336,8 @@ export async function fetchLoldbChampionSkins(slug: string): Promise<Map<string,
         releaseYear,
         releaseDate,
         cost,
+        currency,
+        isLegacy,
         skinLines: s.skinLines || [],
       };
 
@@ -400,6 +441,8 @@ export async function buildChampionRostersAndDetails(
                     releaseDate: storePrice.releaseDate,
                     releaseYear: isNaN(baseYear) ? 2011 : baseYear,
                     cost: 0,
+                    currency: 'RP',
+                    isLegacy: false,
                   };
                 }
 
@@ -418,6 +461,8 @@ export async function buildChampionRostersAndDetails(
                   skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
                 const relDate = skinInfo?.releaseDate || `${relYear}`;
                 const cost = skinInfo?.cost ?? 975;
+                const currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : 'RP');
+                const isLegacy = Boolean(skinInfo?.isLegacy);
 
                 return {
                   id: String(s.id),
@@ -428,6 +473,8 @@ export async function buildChampionRostersAndDetails(
                   releaseDate: relDate,
                   releaseYear: relYear,
                   cost,
+                  currency,
+                  isLegacy,
                   skinLines: skinInfo?.skinLines || [],
                 };
               });
@@ -523,6 +570,10 @@ export function isSnapshotFresh(row: any): boolean {
     // Check if Mecha Aatrox (num: 2 or id: '266002') has correct releaseYear 2014 and full releaseDate from LoLDB /skins
     const mecha = aatrox.skins.find((s: any) => s.num === 2 || s.id === '266002');
     if (!mecha || mecha.releaseYear !== 2014 || mecha.releaseDate !== '2014-07-23') {
+      return false;
+    }
+    // Also check if isLegacy and currency fields are present
+    if (mecha.isLegacy === undefined || mecha.currency === undefined) {
       return false;
     }
     return true;

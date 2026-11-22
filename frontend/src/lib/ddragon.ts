@@ -234,11 +234,13 @@ export interface DDragonSkin {
   name: string;
   chromas: boolean;
   parentSkin?: number;
-  rarity?: 'Regular' | 'Epic' | 'Legendary' | 'Mythic' | 'Transcendent' | string;
+  rarity?: 'Regular' | 'Epic' | 'Legendary' | 'Mythic' | 'Transcendent' | 'Exalted' | string;
   rarityColor?: string;
   releaseDate?: string;
   releaseYear?: number;
   cost?: number | string;
+  currency?: 'RP' | 'AS' | 'BE' | string;
+  isLegacy?: boolean;
 }
 
 export interface DDragonChampionDetail extends DDragonChampionSummary {
