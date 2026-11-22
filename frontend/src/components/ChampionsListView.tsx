@@ -14,11 +14,11 @@ import {
   Layers,
   RotateCcw,
   X,
+  Trophy,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import {
-  getChampionIconUrl,
   getChampionLoadingUrl,
   getPositionIconUrl,
   getDDragonVersion,
@@ -29,6 +29,7 @@ import championPositionsRaw from '@/lib/championPositions.json';
 
 type LaneFilter = 'ALL' | 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
 type ClassFilter = 'ALL' | 'Fighter' | 'Mage' | 'Assassin' | 'Marksman' | 'Tank' | 'Support';
+type SortOption = 'name-asc' | 'name-desc';
 
 interface ChampionPosInfo {
   id: string;
@@ -75,6 +76,21 @@ const CLASS_OPTIONS: ClassOption[] = [
   { key: 'Support', labelKey: 'championWiki.filterSupport', fallbackLabel: 'Unterstützer', icon: HeartHandshake },
 ];
 
+/**
+ * Maps champion class name to CommunityDragon role icon (matching loldb.info)
+ */
+function getClassIconUrl(className: string): string {
+  const norm = className.toLowerCase();
+  const base = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-champion-details/global/default';
+  if (norm.includes('fighter') || norm.includes('kämpfer')) return `${base}/role-icon-fighter.png`;
+  if (norm.includes('tank')) return `${base}/role-icon-tank.png`;
+  if (norm.includes('mage') || norm.includes('magier')) return `${base}/role-icon-mage.png`;
+  if (norm.includes('assassin') || norm.includes('assassinen')) return `${base}/role-icon-assassin.png`;
+  if (norm.includes('support') || norm.includes('unterstützer')) return `${base}/role-icon-support.png`;
+  if (norm.includes('marksman') || norm.includes('schütze') || norm.includes('carry')) return `${base}/role-icon-marksman.png`;
+  return `${base}/role-icon-fighter.png`;
+}
+
 export default function ChampionsListView() {
   const { t, locale } = useTranslation();
   const [champions, setChampions] = useState<ChampionRosterItem[]>([]);
@@ -85,6 +101,7 @@ export default function ChampionsListView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLane, setSelectedLane] = useState<LaneFilter>('ALL');
   const [selectedClass, setSelectedClass] = useState<ClassFilter>('ALL');
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
 
   useEffect(() => {
     setIsLoading(true);
@@ -108,12 +125,14 @@ export default function ChampionsListView() {
     setSearchQuery('');
     setSelectedLane('ALL');
     setSelectedClass('ALL');
+    setSortBy('name-asc');
   };
 
   const isFilterActive =
     searchQuery.trim().length > 0 ||
     selectedLane !== 'ALL' ||
-    selectedClass !== 'ALL';
+    selectedClass !== 'ALL' ||
+    sortBy !== 'name-asc';
 
   // Filter & Sort champions
   const filteredChampions = useMemo(() => {
@@ -159,7 +178,7 @@ export default function ChampionsListView() {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = champ.name.toLowerCase().includes(q);
         const matchesTitle = champ.title.toLowerCase().includes(q);
-        const matchesTag = champ.tags?.some((t) => t.toLowerCase().includes(q));
+        const matchesTag = champ.tags?.some((tg) => tg.toLowerCase().includes(q));
         const matchesRole = posMeta?.role?.toLowerCase().includes(q);
         if (!matchesName && !matchesTitle && !matchesTag && !matchesRole) {
           return false;
@@ -169,23 +188,43 @@ export default function ChampionsListView() {
       return true;
     });
 
-    // Always alphabetical A-Z
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [champions, selectedLane, selectedClass, searchQuery]);
+    // Sorting
+    list.sort((a, b) => {
+      if (sortBy === 'name-desc') {
+        return b.name.localeCompare(a.name);
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    return list;
+  }, [champions, selectedLane, selectedClass, searchQuery, sortBy]);
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
       {/* Breadcrumb Navigation */}
-      <Breadcrumbs
-        items={[
-          { label: t('nav.champions') || 'Champions' },
-        ]}
-      />
+      <Breadcrumbs items={[{ label: t('nav.champions') || 'Champions' }]} />
 
-      {/* Filter Bar (LoLDB Style Sticky-like Container) */}
+      {/* Page Header (LoLDB Style) */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <Trophy className="h-4 w-4" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {t('championWiki.pageTitle') || 'Alle Champions'}
+          </h1>
+        </div>
+        <p className="text-xs sm:text-sm text-zinc-400">
+          {t('championWiki.pageSubtitle', {
+            count: champions.length || 170,
+          }) || `Vollständiges Roster aller ${champions.length || 170} League of Legends Champions.`}
+        </p>
+      </div>
+
+      {/* Filter Bar (LoLDB Style Sticky-like Glassmorphic Container) */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-4">
-        {/* Top Controls: Search Input + Reset Button */}
-        <div className="flex items-center gap-3">
+        {/* Top Controls: Search Input + Sort Dropdown + Reset Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search Box */}
           <div className="group relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 transition-colors group-focus-within:text-amber-400 pointer-events-none" />
@@ -193,14 +232,14 @@ export default function ChampionsListView() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('championWiki.searchPlaceholder')}
+              placeholder={t('championWiki.searchPlaceholder') || 'Champion suchen (z.B. Ahri, Aatrox, Yasuo)...'}
               className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-9 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-400/60 transition-all shadow-inner"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 title="Suche leeren"
               >
                 <X className="h-4 w-4" />
@@ -208,13 +247,23 @@ export default function ChampionsListView() {
             )}
           </div>
 
+          {/* Sort By Dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60 transition-colors cursor-pointer"
+          >
+            <option value="name-asc">Name (A - Z)</option>
+            <option value="name-desc">Name (Z - A)</option>
+          </select>
+
           {/* Reset Filters Button */}
           {isFilterActive && (
             <button
               type="button"
               onClick={handleResetFilters}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer shadow-sm"
-              title={t('championWiki.resetFilters')}
+              title={t('championWiki.resetFilters') || 'Filter zurücksetzen'}
             >
               <RotateCcw className="h-4 w-4" />
             </button>
@@ -262,6 +311,8 @@ export default function ChampionsListView() {
           {CLASS_OPTIONS.map((cls) => {
             const Icon = cls.icon;
             const isActive = selectedClass === cls.key;
+            const classIcon = cls.key !== 'ALL' ? getClassIconUrl(cls.key) : null;
+
             return (
               <button
                 key={cls.key}
@@ -273,21 +324,32 @@ export default function ChampionsListView() {
                     : 'text-zinc-400 hover:text-zinc-200 bg-transparent hover:bg-white/[0.03]'
                 }`}
               >
-                <Icon className={`h-3 w-3 ${isActive ? 'text-amber-400' : 'text-zinc-500'}`} />
+                {classIcon ? (
+                  <Image
+                    src={classIcon}
+                    alt={cls.key}
+                    width={12}
+                    height={12}
+                    className={`h-3 w-3 object-contain ${isActive ? 'opacity-100 brightness-110' : 'opacity-70'}`}
+                    unoptimized
+                  />
+                ) : (
+                  <Icon className={`h-3 w-3 ${isActive ? 'text-amber-400' : 'text-zinc-500'}`} />
+                )}
                 <span>{t(cls.labelKey) || cls.fallbackLabel}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Filter Summary & Quick Active Pills */}
+        {/* Filter Summary & Quick Active Badges */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">
           <div className="flex items-center gap-1.5">
             <span>
               {t('championWiki.showingCount', {
                 filtered: filteredChampions.length,
                 total: champions.length,
-              })}
+              }) || `Zeige ${filteredChampions.length} von ${champions.length} Champions`}
             </span>
           </div>
 
@@ -300,31 +362,33 @@ export default function ChampionsListView() {
                   <button
                     type="button"
                     onClick={() => setSelectedLane('ALL')}
-                    className="hover:text-white"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
                 </span>
               )}
+
               {selectedClass !== 'ALL' && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                   {selectedClass}
                   <button
                     type="button"
                     onClick={() => setSelectedClass('ALL')}
-                    className="hover:text-white"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
                 </span>
               )}
+
               {searchQuery && (
                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                   "{searchQuery}"
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="hover:text-white"
+                    className="hover:text-white cursor-pointer ml-0.5"
                   >
                     ×
                   </button>
@@ -335,27 +399,32 @@ export default function ChampionsListView() {
         </div>
       </div>
 
-      {/* Champions Grid (LoLDB Style Loading Art Portrait Cards) */}
+      {/* Champions Grid (LoLDB 5-Column Responsive Grid with High-Quality Cards) */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
-          {[...Array(18)].map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
+          {[...Array(15)].map((_, i) => (
             <div
               key={i}
-              className="relative aspect-[3/4] w-full rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-4 animate-pulse flex flex-col justify-end"
+              className="relative h-64 sm:h-72 w-full rounded-xl border border-white/[0.06] bg-gradient-to-br from-zinc-900/60 to-zinc-800/40 p-4 animate-pulse flex flex-col justify-end"
             >
-              <div className="h-5 w-24 bg-white/10 rounded mb-2" />
-              <div className="h-3 w-16 bg-white/5 rounded" />
+              <div className="h-5 w-28 bg-white/10 rounded mb-2" />
+              <div className="h-3 w-20 bg-white/5 rounded mb-3" />
+              <div className="flex gap-2">
+                <div className="h-4 w-12 bg-white/5 rounded" />
+                <div className="h-4 w-12 bg-white/5 rounded" />
+              </div>
             </div>
           ))}
         </div>
       ) : filteredChampions.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
           {filteredChampions.map((champ) => {
             const slug = champ.id.toLowerCase();
             const meta = championPositionsMap[champ.id];
             const primaryPos = meta?.recommendedPositions?.[0] || meta?.role || 'Top';
+            const primaryClass = meta?.class || champ.tags?.[0] || 'Fighter';
 
-            // Map position to PositionKey for icon
+            // Map position to PositionKey
             const posKey: PositionKey = (() => {
               const up = primaryPos.toUpperCase();
               if (up === 'TOP') return 'TOP';
@@ -366,66 +435,105 @@ export default function ChampionsListView() {
               return 'TOP';
             })();
 
+            // Lane filter key for click filter
+            const laneFilterKey: LaneFilter = (() => {
+              if (posKey === 'TOP') return 'TOP';
+              if (posKey === 'JUNGLE') return 'JUNGLE';
+              if (posKey === 'MID') return 'MID';
+              if (posKey === 'ADC') return 'ADC';
+              if (posKey === 'SUPPORT') return 'SUPPORT';
+              return 'TOP';
+            })();
+
             return (
               <Link
                 key={champ.id}
                 href={`/${locale}/champions/${slug}`}
-                className="group relative block rounded-2xl overflow-hidden border border-white/[0.08] bg-gradient-to-br from-zinc-900/90 via-[#0a0d14] to-zinc-900/90 transition-all duration-300 hover:scale-[1.03] hover:border-amber-500/50 hover:shadow-[0_0_25px_rgba(245,158,11,0.22)] active:scale-98"
+                className="group relative block rounded-xl overflow-hidden border border-white/[0.08] bg-gradient-to-br from-zinc-900/80 via-[#0a0d14] to-zinc-900/80 transition-all duration-300 hover:scale-[1.02] hover:border-amber-400/50 hover:shadow-2xl hover:shadow-black/70 active:scale-[0.99]"
               >
-                {/* Loading Art Image (Portrait Card matching LoLDB) */}
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-950">
+                {/* LoLDB Style Loading Art Portrait Container */}
+                <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-zinc-950">
                   <Image
                     src={getChampionLoadingUrl(champ.id)}
                     alt={champ.name}
                     fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
                     className="object-cover object-top brightness-90 contrast-[1.05] group-hover:brightness-105 group-hover:scale-105 transition-all duration-500"
                     unoptimized
                   />
 
-                  {/* Subtle Top & Bottom Gradient Overlays */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-95" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-50" />
+                  {/* Gradient Overlays (LoLDB Style) */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent opacity-85 group-hover:opacity-70 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent opacity-40" />
 
-                  {/* Top Badges: Role Icon & Difficulty */}
-                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-                    {/* Primary Role Tag */}
-                    <div className="flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-md px-2 py-0.5 border border-white/10 shadow-sm">
-                      <Image
-                        src={getPositionIconUrl(posKey)}
-                        alt={primaryPos}
-                        width={12}
-                        height={12}
-                        className="h-3 w-3 object-contain opacity-90"
-                        unoptimized
-                      />
-                      <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight">
-                        {primaryPos}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Content Area */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-3.5 flex flex-col justify-end">
+                  {/* Bottom Content Area (LoLDB Typography & Badges) */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-col justify-end">
                     {/* Champion Name */}
-                    <h3 className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-amber-400 transition-colors drop-shadow-md truncate">
+                    <h3 className="text-base sm:text-lg font-bold text-white drop-shadow-md truncate group-hover:text-amber-400 transition-colors">
                       {champ.name}
                     </h3>
+
                     {/* Champion Title */}
-                    <p className="text-[11px] text-zinc-400 font-medium capitalize truncate drop-shadow">
+                    <p className="text-xs text-zinc-400 font-medium truncate capitalize mt-0.5 drop-shadow">
                       {champ.title}
                     </p>
 
-                    {/* Role & Class Tags */}
-                    <div className="flex flex-wrap items-center gap-1 mt-2">
-                      {champ.tags?.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center rounded-md bg-white/[0.08] group-hover:bg-white/[0.14] border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-zinc-300 transition-colors backdrop-blur-sm"
-                        >
-                          {tag}
+                    {/* Position & Class Badges (LoLDB Style) */}
+                    <div className="flex items-center gap-1.5 mt-2.5">
+                      {/* Primary Role Pill */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedLane(laneFilterKey);
+                        }}
+                        className="flex items-center gap-1 bg-white/[0.08] hover:bg-white/[0.16] border border-white/[0.08] rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                        title={`Filtere nach ${primaryPos}`}
+                      >
+                        <Image
+                          src={getPositionIconUrl(posKey)}
+                          alt={primaryPos}
+                          width={10}
+                          height={10}
+                          className="w-2.5 h-2.5 opacity-80 object-contain"
+                          unoptimized
+                        />
+                        <span className="text-zinc-300 text-[10px] font-semibold leading-none">
+                          {primaryPos}
                         </span>
-                      ))}
+                      </button>
+
+                      {/* Class Pill */}
+                      {primaryClass && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const matchedClass = CLASS_OPTIONS.find(
+                              (c) => c.key.toLowerCase() === primaryClass.toLowerCase()
+                            );
+                            if (matchedClass) {
+                              setSelectedClass(matchedClass.key);
+                            }
+                          }}
+                          className="flex items-center gap-1 bg-white/[0.08] hover:bg-white/[0.16] border border-white/[0.08] rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                          title={`Filtere nach ${primaryClass}`}
+                        >
+                          <Image
+                            src={getClassIconUrl(primaryClass)}
+                            alt={primaryClass}
+                            width={10}
+                            height={10}
+                            className="w-2.5 h-2.5 opacity-80 object-contain"
+                            unoptimized
+                          />
+                          <span className="text-zinc-300 text-[10px] font-semibold leading-none">
+                            {primaryClass}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -438,7 +546,7 @@ export default function ChampionsListView() {
         <div className="flex flex-col items-center justify-center py-20 text-center text-zinc-500 rounded-2xl border border-white/[0.06] bg-[#0c1017]/50">
           <Shield className="h-12 w-12 text-zinc-600 mb-3 opacity-40" />
           <p className="text-lg font-bold text-zinc-300 mb-1">
-            {t('championWiki.noChampions')}
+            {t('championWiki.noChampions') || 'Keine Champions gefunden'}
           </p>
           <p className="text-xs text-zinc-500 max-w-sm mb-4">
             {searchQuery
@@ -451,7 +559,7 @@ export default function ChampionsListView() {
             className="inline-flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-500/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-all cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span>{t('championWiki.resetFilters')}</span>
+            <span>{t('championWiki.resetFilters') || 'Filter zurücksetzen'}</span>
           </button>
         </div>
       )}
