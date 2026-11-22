@@ -19,7 +19,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
 
   return (
     <nav
-      className={`flex items-center gap-2 text-xs font-medium text-zinc-400 ${className}`}
+      className={`flex items-center gap-2 text-xs font-medium text-zinc-400 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5 ${className}`}
       aria-label="Breadcrumb"
     >
       {/* Root: Homepage */}

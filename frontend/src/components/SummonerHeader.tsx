@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Radio, Globe } from 'lucide-react';
+import { Radio, Globe, Swords, Users, Trophy, Target } from 'lucide-react';
 import { SummonerData, SummonerRank, LiveGameResponse } from '@/types';
 import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import RankBadge, { TIER_COLORS } from './RankBadge';
@@ -86,6 +86,61 @@ export default function SummonerHeader({
   const formattedTag = `${summoner.gameName}-${summoner.tagLine}`;
   const basePath = `/${locale}/summoner/${summoner.region}/${encodeURIComponent(formattedTag)}`;
 
+  // Active tab auto-scroll into view on mobile
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current && navScrollRef.current) {
+      const timeout = setTimeout(() => {
+        activeTabRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        });
+      }, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentTab]);
+
+  const tabs = [
+    {
+      id: 'matches',
+      label: t('summoner.tabMatches'),
+      href: basePath,
+      icon: Swords,
+    },
+    {
+      id: 'champions',
+      label: t('summoner.tabChampions'),
+      href: `${basePath}/champions`,
+      icon: Users,
+    },
+    {
+      id: 'masteries',
+      label: t('summoner.tabMasteries'),
+      href: `${basePath}/masteries`,
+      icon: Trophy,
+    },
+    {
+      id: 'challenges',
+      label: t('summoner.tabChallenges'),
+      href: `${basePath}/challenges`,
+      icon: Target,
+    },
+    ...((isLive || currentTab === 'live')
+      ? [
+          {
+            id: 'live',
+            label: t('summoner.tabLive'),
+            href: `${basePath}/live`,
+            icon: Radio,
+            isLive: true,
+          },
+        ]
+      : []),
+  ];
+
   const rankCards = [
     {
       id: 'solo',
@@ -148,7 +203,7 @@ export default function SummonerHeader({
   return (
     <div className="flex flex-col gap-4">
       {/* Main Profile Header Card with Splash Background */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1116] p-6 shadow-2xl backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1116] p-4 sm:p-6 shadow-2xl backdrop-blur-md">
         {/* Profile Background Image (Most Played / Top Mastery Champion Splash Art) */}
         <div className="absolute inset-y-0 right-0 w-full sm:w-4/5 md:w-3/4 lg:w-2/3 pointer-events-none select-none overflow-hidden">
           <Image
@@ -164,11 +219,11 @@ export default function SummonerHeader({
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d1116] via-transparent to-[#0d1116]/30" />
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-6">
           {/* Left Block: Avatar + Name + Pills */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3.5 sm:gap-5">
             {/* Circular Avatar with Yellow/Amber Accent Border */}
-            <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 sm:border-[2.5px] border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
+            <div className="relative h-16 w-16 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-full border-2 sm:border-[2.5px] border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.35)]">
               <Image
                 src={getProfileIconUrl(summoner.profileIconId)}
                 alt={summoner.gameName}
@@ -180,15 +235,15 @@ export default function SummonerHeader({
             </div>
 
             {/* Info Block */}
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-center min-w-0">
               {/* Name & Tag */}
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-baseline">
-                <span>{summoner.gameName}</span>
-                <span className="text-zinc-500 font-bold ml-1">#{summoner.tagLine}</span>
+              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white flex items-baseline flex-wrap">
+                <span className="truncate max-w-[200px] sm:max-w-none">{summoner.gameName}</span>
+                <span className="text-zinc-500 font-bold ml-1 text-sm sm:text-2xl">#{summoner.tagLine}</span>
               </h1>
 
               {/* Pills Row (Level + Region) */}
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <div className="mt-1.5 sm:mt-2 flex items-center gap-2 flex-wrap">
                 <span className="rounded-full bg-white/[0.07] border border-white/[0.08] px-2.5 py-0.5 text-xs font-semibold text-zinc-300">
                   Level {summoner.summonerLevel.toString()}
                 </span>
@@ -241,7 +296,7 @@ export default function SummonerHeader({
         </div>
 
         {/* Ranks Showcase Row: Background-free & Clean */}
-        <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <div className="relative z-10 mt-4 sm:mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-6">
           {rankCards.map((rc) => {
             const hasRank = !!rc.rank;
             const theme = hasRank
@@ -251,30 +306,30 @@ export default function SummonerHeader({
             return (
               <div
                 key={rc.id}
-                className="group relative flex items-center gap-4 py-2 transition-all duration-200"
+                className="group relative flex items-center gap-3 sm:gap-4 py-1.5 sm:py-2 transition-all duration-200"
               >
                 <RankBadge
                   tier={rc.rank?.tier || 'UNRANKED'}
                   size="lg"
                   showGlow={hasRank}
-                  className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 transition-transform duration-200 group-hover:scale-105"
+                  className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 transition-transform duration-200 group-hover:scale-105"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-400">
                     {rc.title}
                   </span>
                   {hasRank ? (
                     <>
-                      <div className="flex items-baseline gap-1.5 leading-tight mt-1 truncate">
-                        <span className={`text-base sm:text-lg font-black uppercase tracking-tight ${theme.text} truncate`}>
+                      <div className="flex items-baseline gap-1.5 leading-tight mt-0.5 sm:mt-1 truncate">
+                        <span className={`text-sm sm:text-lg font-black uppercase tracking-tight ${theme.text} truncate`}>
                           {rc.rank!.tier} {rc.rank!.rank}
                         </span>
                         <span className="text-zinc-500 font-bold text-xs">·</span>
-                        <span className="text-sm font-black text-amber-400 shrink-0">
+                        <span className="text-xs sm:text-sm font-black text-amber-400 shrink-0">
                           {rc.rank!.leaguePoints} LP
                         </span>
                       </div>
-                      <div className="mt-1.5 flex items-center gap-2 text-xs text-zinc-400 font-medium">
+                      <div className="mt-1 sm:mt-1.5 flex items-center gap-2 text-[11px] sm:text-xs text-zinc-400 font-medium">
                         <span className="font-bold text-emerald-400">{rc.rank!.wins}W</span>
                         <span className="font-bold text-rose-400">{rc.rank!.losses}L</span>
                         <span className="text-zinc-500">•</span>
@@ -291,10 +346,10 @@ export default function SummonerHeader({
                     </>
                   ) : (
                     <>
-                      <span className="text-base font-bold text-zinc-400 mt-1">
+                      <span className="text-sm sm:text-base font-bold text-zinc-400 mt-0.5 sm:mt-1">
                         {t('summoner.unranked')}
                       </span>
-                      <span className="text-xs text-zinc-500 mt-0.5">
+                      <span className="text-[11px] sm:text-xs text-zinc-500 mt-0.5">
                         {t('summoner.noGamesRecorded')}
                       </span>
                     </>
@@ -306,74 +361,42 @@ export default function SummonerHeader({
         </div>
 
         {/* Bottom Tab Bar with Subpage Links */}
-        <div className="relative z-10 mt-6 w-full border-t border-white/[0.08] pt-3">
-          <div className="flex items-center gap-6 text-xs font-bold overflow-x-auto">
-            <Link
-              href={basePath}
-              onClick={() => onTabChange?.('matches')}
-              className={`relative pb-2 shrink-0 transition-colors ${
-                currentTab === 'matches'
-                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+        <div className="relative z-10 mt-5 sm:mt-6 w-full border-t border-white/[0.08] pt-3">
+          <div className="relative">
+            <div
+              ref={navScrollRef}
+              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              {t('summoner.tabMatches')}
-            </Link>
+              {tabs.map((tab) => {
+                const isActive = currentTab === tab.id;
+                const Icon = tab.icon;
 
-            <Link
-              href={`${basePath}/champions`}
-              onClick={() => onTabChange?.('champions')}
-              className={`relative pb-2 shrink-0 transition-colors ${
-                currentTab === 'champions'
-                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {t('summoner.tabChampions')}
-            </Link>
-
-            <Link
-              href={`${basePath}/masteries`}
-              onClick={() => onTabChange?.('masteries')}
-              className={`relative pb-2 shrink-0 transition-colors ${
-                currentTab === 'masteries'
-                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {t('summoner.tabMasteries')}
-            </Link>
-
-            <Link
-              href={`${basePath}/challenges`}
-              onClick={() => onTabChange?.('challenges')}
-              className={`relative pb-2 shrink-0 transition-colors ${
-                currentTab === 'challenges'
-                  ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {t('summoner.tabChallenges')}
-            </Link>
-
-            {/* Live Game Tab: Only shown when in an active live game */}
-            {(isLive || currentTab === 'live') && (
-              <Link
-                href={`${basePath}/live`}
-                onClick={() => onTabChange?.('live')}
-                className={`relative flex items-center gap-1.5 pb-2 shrink-0 transition-colors ${
-                  currentTab === 'live'
-                    ? 'text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-amber-400'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <span className="relative flex h-2 w-2 mr-0.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                </span>
-                <span>{t('summoner.tabLive')}</span>
-              </Link>
-            )}
+                return (
+                  <Link
+                    key={tab.id}
+                    href={tab.href}
+                    ref={isActive ? activeTabRef : null}
+                    onClick={() => onTabChange?.(tab.id as any)}
+                    className={`group flex items-center gap-2 rounded-xl px-3.5 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all select-none active:scale-95 ${
+                      isActive
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_14px_rgba(245,158,11,0.18)]'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] border border-transparent'
+                    }`}
+                  >
+                    {tab.isLive ? (
+                      <span className="relative flex h-2 w-2 mr-0.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                      </span>
+                    ) : (
+                      <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+                    )}
+                    <span>{tab.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
