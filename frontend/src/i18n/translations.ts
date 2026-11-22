@@ -11,6 +11,7 @@ export interface TranslationDictionary {
     pageNotFoundTitle: string;
     pageNotFoundDesc: string;
     backToHome: string;
+    details: string;
   };
   nav: {
     brandSubtitle: string;
@@ -333,6 +334,7 @@ export interface TranslationDictionary {
     allLanes: string;
     allClasses: string;
     resetFilters: string;
+    clickForDetails: string;
     faqTitle1: string;
     faqDesc1: string;
     faqTitle2: string;
@@ -445,6 +447,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       pageNotFoundTitle: 'Seite nicht gefunden',
       pageNotFoundDesc: 'Das gesuchte Profil oder die Seite existiert nicht oder konnte nicht aufgelöst werden.',
       backToHome: 'Zur Startseite',
+      details: 'Details',
     },
     nav: {
       brandSubtitle: 'LoL Stats & Analytics',
@@ -769,6 +772,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       allLanes: 'Alle Positionen',
       allClasses: 'Alle Klassen',
       resetFilters: 'Filter zurücksetzen',
+      clickForDetails: 'Klicken für Details',
       faqTitle1: 'Wie viele Champions gibt es in League of Legends?',
       faqDesc1: 'League of Legends verfügt derzeit über {count} spielbare Champions. Riot Games veröffentlicht regelmäßig neue Champions und Reworks im Laufe des Jahres (typischerweise 3 bis 4 neue Champions jährlich, zuletzt Ambessa).',
       faqTitle2: 'Champion-Verteilung nach Rollen',
@@ -879,6 +883,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       pageNotFoundTitle: 'Page Not Found',
       pageNotFoundDesc: 'The requested profile or page does not exist or could not be resolved.',
       backToHome: 'Back to Home',
+      details: 'Details',
     },
     nav: {
       brandSubtitle: 'LoL Stats & Analytics',
@@ -1203,6 +1208,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       allLanes: 'All Positions',
       allClasses: 'All Classes',
       resetFilters: 'Reset filters',
+      clickForDetails: 'Click for details',
       faqTitle1: 'How Many Champions Are in League of Legends?',
       faqDesc1: 'League of Legends currently features {count} playable champions. Riot Games regularly releases new champions and gameplay updates throughout the year (typically 3 to 4 annually, most recently Ambessa).',
       faqTitle2: 'Champion Distribution by Role',

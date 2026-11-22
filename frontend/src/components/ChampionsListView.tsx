@@ -14,7 +14,6 @@ import {
   Layers,
   RotateCcw,
   X,
-  Trophy,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -234,23 +233,6 @@ export default function ChampionsListView() {
       {/* Breadcrumb Navigation */}
       <Breadcrumbs items={[{ label: t('nav.champions') || 'Champions' }]} />
 
-      {/* Page Header (LoLDB Style) */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <Trophy className="h-4 w-4" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {t('championWiki.pageTitle') || 'Alle Champions'}
-          </h1>
-        </div>
-        <p className="text-xs sm:text-sm text-zinc-400">
-          {t('championWiki.pageSubtitle', {
-            count: champions.length || 170,
-          }) || `Vollständiges Roster aller ${champions.length || 170} League of Legends Champions.`}
-        </p>
-      </div>
-
       {/* Filter Bar (LoLDB Style Sticky-like Glassmorphic Container) */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-4">
         {/* Top Controls: Search Input + Sort Dropdown + Reset Button */}
@@ -283,8 +265,8 @@ export default function ChampionsListView() {
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60 transition-colors cursor-pointer"
           >
-            <option value="name-asc">Name (A - Z)</option>
-            <option value="name-desc">Name (Z - A)</option>
+            <option value="name-asc">{t('championWiki.sortByNameAsc') || 'Name (A - Z)'}</option>
+            <option value="name-desc">{t('championWiki.sortByNameDesc') || 'Name (Z - A)'}</option>
           </select>
 
           {/* Reset Filters Button */}
@@ -623,7 +605,7 @@ export default function ChampionsListView() {
               ))}
             </div>
             <span className="text-[10px] font-semibold text-amber-400/90">
-              {t('common.details') || 'Klicken für Details'} →
+              {t('championWiki.clickForDetails') || t('common.details')} →
             </span>
           </div>
         </div>
