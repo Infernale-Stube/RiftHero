@@ -25,6 +25,7 @@ import {
   Palette,
   RotateCcw,
   Award,
+  Calendar,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -613,7 +614,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           rank: LOLDB_RARITY_RANKS[tier] ?? 1,
           tier,
           image: getChampionLoadingUrl(data.id, s.num),
-          price: s.cost ? `${s.cost} RP` : undefined,
+          price:
+            typeof s.cost === 'number'
+              ? `${s.cost} RP`
+              : s.cost === 'Special'
+              ? (locale === 'de' ? 'Spezial' : 'Special')
+              : s.cost
+              ? `${s.cost}`
+              : undefined,
         };
       });
   }, [data, skins, t]);
@@ -1274,7 +1282,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           unoptimized
         />
 
-        {/* Top-Left Badges on Splash: Cost + Rarity */}
+        {/* Top-Left Badges on Splash: Cost, Rarity & Release Year */}
         <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
           {/* Top Badge: Cost */}
           <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
@@ -1305,30 +1313,44 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             )}
           </div>
 
-          {/* Bottom Badge: Rarity */}
-          <div
-            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
-            style={{
-              backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
-              borderColor: activeSkin?.rarityColor || '#22c55e',
-            }}
-          >
-            {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
-              <Image
-                src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
-                alt={activeSkin?.rarity || 'Regular'}
-                width={14}
-                height={14}
-                className="h-3.5 w-3.5 object-contain"
-                unoptimized
-              />
-            ) : (
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
-              />
-            )}
-            <span>{activeSkin?.rarity || 'Regular'}</span>
+          {/* Bottom Badges Row: Rarity + Release Year */}
+          <div className="flex items-center gap-1.5">
+            {/* Rarity Badge */}
+            <div
+              className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
+              style={{
+                backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
+                borderColor: activeSkin?.rarityColor || '#22c55e',
+              }}
+            >
+              {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
+                <Image
+                  src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
+                  alt={activeSkin?.rarity || 'Regular'}
+                  width={14}
+                  height={14}
+                  className="h-3.5 w-3.5 object-contain"
+                  unoptimized
+                />
+              ) : (
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
+                />
+              )}
+              <span>{activeSkin?.rarity || 'Regular'}</span>
+            </div>
+
+            {/* Release Year Badge */}
+            <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-bold text-zinc-200 backdrop-blur-md shadow-md">
+              <Calendar className="h-3.5 w-3.5 text-amber-400" />
+              <span>
+                {activeSkin?.releaseYear ||
+                  (activeSkin?.releaseDate
+                    ? new Date(activeSkin.releaseDate).getFullYear()
+                    : releaseYear)}
+              </span>
+            </div>
           </div>
         </div>
 

@@ -154,22 +154,51 @@ interface LoldbSkinInfo {
   cost: number | string;
 }
 
-// In-memory cache for dynamic LoLDB skin metadata
+// Global in-memory maps for LoLDB data
+const loldbCatalogMap = new Map<string, any>();
 const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
 
+async function syncLoldbCatalog(): Promise<void> {
+  if (loldbCatalogMap.size > 0) return;
+  try {
+    const res = await fetch('https://loldb.info/api/champions');
+    if (res.ok) {
+      const json = (await res.json()) as any;
+      const rawList = json?.data || [];
+      // Strictly filter out non-standard TFT/Jade variants that overwrite standard champions
+      const list = rawList.filter((c: any) => !c.id.startsWith('Jade_') && !c.id.startsWith('TFT_'));
+      for (const v of list) {
+        const cleanId = v.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanSlug = (v.slug || v.id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = v.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        loldbCatalogMap.set(cleanId, v);
+        loldbCatalogMap.set(cleanSlug, v);
+        loldbCatalogMap.set(cleanName, v);
+        if (v.championId) loldbCatalogMap.set(String(v.championId), v);
+      }
+    }
+  } catch (err) {
+    console.warn('[MetaService] LoLDB catalog fetch warning:', (err as Error).message);
+  }
+}
+
 async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbSkinInfo> | null> {
-  const cacheKey = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (loldbSkinsCache.has(cacheKey)) {
-    return loldbSkinsCache.get(cacheKey)!;
+  const cleanKey = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (loldbSkinsCache.has(cleanKey)) {
+    return loldbSkinsCache.get(cleanKey)!;
   }
 
+  await syncLoldbCatalog();
+  const loldbEntry = loldbCatalogMap.get(cleanKey);
+  const actualSlug = loldbEntry?.slug || loldbEntry?.id || (slug.charAt(0).toUpperCase() + slug.slice(1));
+
   try {
-    const res = await fetch(`https://loldb.info/champions/${slug}`, {
+    const res = await fetch(`https://loldb.info/champions/${actualSlug}`, {
       headers: {
         RSC: '1',
         'Next-Router-State-Tree':
           '%5B%22%22%2C%7B%22children%22%3A%5B%22champions%22%2C%7B%22children%22%3A%5B%22' +
-          slug +
+          actualSlug +
           '%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D',
       },
     });
@@ -206,6 +235,7 @@ async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbS
         else {
           const num = parseInt(s.price.replace(/[^0-9]/g, ''), 10);
           if (!isNaN(num)) cost = num;
+          else cost = s.price;
         }
       } else if (typeof s.costRP === 'number') {
         cost = s.costRP;
@@ -230,8 +260,14 @@ async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbS
       if (s.skinNum !== undefined) {
         skinMap.set(String(s.skinNum), info);
       }
+      if (s.name) {
+        skinMap.set(s.name.toLowerCase().replace(/[^a-z0-9]/g, ''), info);
+      }
     }
-    loldbSkinsCache.set(cacheKey, skinMap);
+    loldbSkinsCache.set(cleanKey, skinMap);
+    if (actualSlug) {
+      loldbSkinsCache.set(actualSlug.toLowerCase().replace(/[^a-z0-9]/g, ''), skinMap);
+    }
     return skinMap;
   } catch (err) {
     console.warn(`[Loldb] Failed to fetch skins for ${slug}:`, (err as Error).message);
@@ -266,25 +302,26 @@ async function buildChampionRostersAndDetails(
     tierMap.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
   }
 
-  // 1. Fetch live LoLDB champions catalog for store pricing (BE/RP), release dates, and positions
-  const loldbMap = new Map<string, any>();
-  try {
-    const loldbRes = await fetch('https://loldb.info/api/champions');
-    if (loldbRes.ok) {
-      const loldbJson = (await loldbRes.json()) as any;
-      const list = loldbJson?.data || [];
-      for (const v of list) {
-        if (v.id) loldbMap.set(v.id.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
-        if (v.slug) loldbMap.set(v.slug.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
-        if (v.name) loldbMap.set(v.name.toLowerCase().replace(/[^a-z0-9]/g, ''), v);
-        if (v.championId) loldbMap.set(String(v.championId), v);
-      }
-    }
-  } catch (err) {
-    console.warn('[MetaService] LoLDB catalog fetch warning:', (err as Error).message);
+  // 1. Ensure live LoLDB champions catalog is synced (with TFT/Jade filtered out)
+  await syncLoldbCatalog();
+
+  // 1b. Pre-fetch all champion skins from LoLDB in parallel batches (concurrency 15)
+  const standardChamps = Array.from(new Set(Array.from(loldbCatalogMap.values())));
+  const concurrency = 15;
+  for (let i = 0; i < standardChamps.length; i += concurrency) {
+    const chunk = standardChamps.slice(i, i + concurrency);
+    await Promise.all(
+      chunk.map(async (c: any) => {
+        const slug = c.slug || c.id;
+        const key = (c.id || c.slug).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!loldbSkinsCache.has(key)) {
+          await fetchLoldbChampionSkins(slug);
+        }
+      })
+    );
   }
 
-  // Seed in-memory skins cache from existing PostgreSQL snapshot if available
+  // Seed in-memory skins cache from existing PostgreSQL snapshot if not already fetched
   try {
     const existing = await prisma.championSnapshot.findUnique({
       where: { id: 'active' },
@@ -340,7 +377,10 @@ async function buildChampionRostersAndDetails(
 
             // Live LoLDB match for store pricing, release dates, and positions
             const loldbChamp =
-              loldbMap.get(cleanId) || loldbMap.get(cleanName) || loldbMap.get(cleanKey) || null;
+              loldbCatalogMap.get(cleanId) ||
+              loldbCatalogMap.get(cleanName) ||
+              loldbCatalogMap.get(cleanKey) ||
+              null;
 
             const loldbIsoDate = loldbChamp?.storeData?.releaseDate
               ? loldbChamp.storeData.releaseDate.split('T')[0]
@@ -395,10 +435,15 @@ async function buildChampionRostersAndDetails(
                   };
                 }
 
-                const skinInfo = skinsLookup?.get(String(s.id)) || skinsLookup?.get(String(s.num));
+                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const skinInfo =
+                  skinsLookup?.get(String(s.id)) ||
+                  skinsLookup?.get(String(s.num)) ||
+                  skinsLookup?.get(normName);
                 const rarityRaw = skinInfo?.rarity || 'Regular';
                 const rarityInfo = mapSkinRarity(rarityRaw);
-                const relYear = skinInfo?.releaseYear || currentYear;
+                const relYear =
+                  skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
                 const relDate = skinInfo?.releaseDate || `${relYear}-01-01`;
                 const cost = skinInfo?.cost ?? 975;
 
@@ -977,7 +1022,10 @@ export async function getChampionDetail(
           // Enrich with dynamic LoLDB skin release dates, rarities, and store costs
           let skinsLookup = loldbSkinsCache.get(cleanTarget);
           if (!skinsLookup) {
-            skinsLookup = (await fetchLoldbChampionSkins(champId)) || undefined;
+            await syncLoldbCatalog();
+            const entry = loldbCatalogMap.get(cleanTarget);
+            const actualSlug = entry?.slug || entry?.id || champId;
+            skinsLookup = (await fetchLoldbChampionSkins(actualSlug)) || undefined;
           }
 
           const relDateFinal = champData.releaseDate || '2012-01-01';
@@ -1002,11 +1050,16 @@ export async function getChampionDetail(
                 cost: 0,
               };
             }
-            const skinInfo = skinsLookup?.get(String(s.id)) || skinsLookup?.get(String(s.num));
+            const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const skinInfo =
+              skinsLookup?.get(String(s.id)) ||
+              skinsLookup?.get(String(s.num)) ||
+              skinsLookup?.get(normName);
             const skinRarity = skinInfo?.rarity || 'Regular';
             const rarityInfo = mapSkinRarity(skinRarity);
-            const relDate = skinInfo?.releaseDate || `${skinInfo?.releaseYear || currentYear}-01-01`;
-            const finalYear = skinInfo?.releaseYear || currentYear;
+            const finalYear =
+              skinInfo?.releaseYear || (isNaN(relYearFinal) ? currentYear : relYearFinal);
+            const relDate = skinInfo?.releaseDate || `${finalYear}-01-01`;
             const finalCost = skinInfo?.cost ?? 975;
 
             return {
