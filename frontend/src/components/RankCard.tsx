@@ -30,7 +30,13 @@ export default function RankCard({
   const { t } = useTranslation();
   const [activeMode, setActiveMode] = useState<RankMode>('solo');
 
-  const isMultiMode = soloRank !== undefined || flexRank !== undefined;
+  const isMultiMode = soloRank !== undefined || flexRank !== undefined || ranked5s !== undefined;
+
+  const modes: { id: RankMode; label: string }[] = [
+    { id: 'solo', label: t('summoner.soloRank') || 'Solo/Duo' },
+    { id: 'flex', label: t('summoner.flexRank') || 'Flex' },
+    { id: '5s', label: t('summoner.ranked5sRank') || '5s' },
+  ];
 
   const currentRank = isMultiMode
     ? activeMode === 'solo'
@@ -45,44 +51,26 @@ export default function RankCard({
 
   return (
     <div className="flex flex-col rounded-xl border border-white/[0.06] bg-[#0d1116] p-4 shadow-xl">
-      {/* If Multi-Mode: Show Segmented Toggle between Ranked Solo, Flex, and 5s (Borderless) */}
+      {/* If Multi-Mode: Show Segmented Toggle between Ranked Solo, Flex, and 5s as Pills */}
       {isMultiMode ? (
-        <div className="flex rounded-lg bg-black/50 p-1 mb-3.5">
-          <button
-            type="button"
-            onClick={() => setActiveMode('solo')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
-              activeMode === 'solo'
-                ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
-            }`}
-          >
-            Solo/Duo
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveMode('flex')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
-              activeMode === 'flex'
-                ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
-                : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
-            }`}
-          >
-            Flex
-          </button>
-          {ranked5s && (
-            <button
-              type="button"
-              onClick={() => setActiveMode('5s')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all text-center cursor-pointer ${
-                activeMode === '5s'
-                  ? 'text-amber-400 bg-white/[0.06] shadow-sm font-extrabold'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
-              }`}
-            >
-              5s
-            </button>
-          )}
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-3.5">
+          {modes.map((mode) => {
+            const isActive = activeMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setActiveMode(mode.id)}
+                className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl transition-all text-center cursor-pointer select-none active:scale-95 ${
+                  isActive
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35 shadow-[0_0_12px_rgba(245,158,11,0.18)]'
+                    : 'bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-200 border border-white/[0.06]'
+                }`}
+              >
+                {mode.label}
+              </button>
+            );
+          })}
         </div>
       ) : (
         /* Legacy Card Header */
