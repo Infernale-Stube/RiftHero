@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   Search,
-  Sparkles,
   Shield,
   Swords,
   Wand2,
+  Crosshair,
+  HeartHandshake,
+  Skull,
   Layers,
-  ChevronRight,
   RotateCcw,
   X,
   Footprints,
@@ -21,37 +21,319 @@ import {
   SlidersHorizontal,
   ArrowUpRight,
   GitFork,
-  ArrowLeft,
-  Check,
   Info,
+  Sparkles,
+  Zap,
+  Clock,
+  Flame,
+  Droplet,
+  ShieldAlert,
+  ShieldCheck,
+  HeartPulse,
+  Anchor,
+  Waves,
+  LayoutGrid,
+  ChevronRight,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import { getMajorMinorPatch, getDDragonVersion, getItemIconUrl } from '@/lib/ddragon';
+import {
+  getMajorMinorPatch,
+  getDDragonVersion,
+  getItemIconUrl,
+  fetchDDragonItemsList,
+} from '@/lib/ddragon';
 import { fetchItemsRosterApi } from '@/lib/api';
-import { fetchDDragonItemsList } from '@/lib/ddragon';
 import { ItemRosterItem } from '@/types';
 
-type CategoryFilter = 'ALL' | 'ATTACK' | 'MAGIC' | 'DEFENSE' | 'MOVEMENT' | 'STARTER_CONSUMABLE';
+type RoleFilter = 'All' | 'Fighter' | 'Marksman' | 'Assassin' | 'Mage' | 'Tank' | 'Support';
 type MapFilter = '11' | '12' | '30' | 'ALL';
-type TierFilter = 'ALL' | 'legendary' | 'epic' | 'basic' | 'boots' | 'starter' | 'consumable';
 type SortOption = 'gold-desc' | 'gold-asc' | 'name-asc' | 'name-desc';
 
-interface CategoryOption {
-  key: CategoryFilter;
+interface RoleOption {
+  key: RoleFilter;
   labelKey: string;
   fallbackLabel: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const CATEGORY_OPTIONS: CategoryOption[] = [
-  { key: 'ALL', labelKey: 'itemsWiki.allCategories', fallbackLabel: 'Alle Kategorien', icon: Layers },
-  { key: 'ATTACK', labelKey: 'itemsWiki.catAttack', fallbackLabel: 'Angriff', icon: Swords },
-  { key: 'MAGIC', labelKey: 'itemsWiki.catMagic', fallbackLabel: 'Magie', icon: Wand2 },
-  { key: 'DEFENSE', labelKey: 'itemsWiki.catDefense', fallbackLabel: 'Verteidigung', icon: Shield },
-  { key: 'MOVEMENT', labelKey: 'itemsWiki.catMovement', fallbackLabel: 'Bewegung', icon: Footprints },
-  { key: 'STARTER_CONSUMABLE', labelKey: 'itemsWiki.catStarterConsumable', fallbackLabel: 'Start & Verbrauch', icon: Package },
+const ROLE_OPTIONS: RoleOption[] = [
+  { key: 'All', labelKey: 'itemsWiki.roleAll', fallbackLabel: 'Alle Rollen', icon: LayoutGrid },
+  { key: 'Fighter', labelKey: 'itemsWiki.roleFighter', fallbackLabel: 'Kämpfer', icon: Swords },
+  { key: 'Marksman', labelKey: 'itemsWiki.roleMarksman', fallbackLabel: 'Schützen', icon: Crosshair },
+  { key: 'Assassin', labelKey: 'itemsWiki.roleAssassin', fallbackLabel: 'Assassinen', icon: Skull },
+  { key: 'Mage', labelKey: 'itemsWiki.roleMage', fallbackLabel: 'Magier', icon: Wand2 },
+  { key: 'Tank', labelKey: 'itemsWiki.roleTank', fallbackLabel: 'Tanks', icon: Shield },
+  { key: 'Support', labelKey: 'itemsWiki.roleSupport', fallbackLabel: 'Unterstützer', icon: HeartHandshake },
 ];
+
+interface StatDefinition {
+  id: string;
+  labelDe: string;
+  labelEn: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  color: string;
+  tagMatches?: string[];
+  rawStatKeys?: string[];
+}
+
+interface StatGroup {
+  labelDe: string;
+  labelEn: string;
+  stats: StatDefinition[];
+}
+
+const STAT_GROUPS: StatGroup[] = [
+  {
+    labelDe: 'Angriff',
+    labelEn: 'Attack',
+    stats: [
+      {
+        id: 'Attack Damage',
+        labelDe: 'Angriffsschaden',
+        labelEn: 'Attack Damage',
+        icon: Swords,
+        color: '#f97316',
+        tagMatches: ['Damage'],
+        rawStatKeys: ['FlatPhysicalDamageMod'],
+      },
+      {
+        id: 'Attack Speed',
+        labelDe: 'Angriffstempo',
+        labelEn: 'Attack Speed',
+        icon: Zap,
+        color: '#fb923c',
+        tagMatches: ['AttackSpeed'],
+        rawStatKeys: ['PercentAttackSpeedMod'],
+      },
+      {
+        id: 'Critical Strike Chance',
+        labelDe: 'Krit. Trefferchance',
+        labelEn: 'Critical Strike',
+        icon: Crosshair,
+        color: '#f43f5e',
+        tagMatches: ['CriticalStrike'],
+        rawStatKeys: ['FlatCritChanceMod'],
+      },
+      {
+        id: 'Lethality',
+        labelDe: 'Tödlichkeitsfaktor',
+        labelEn: 'Lethality',
+        icon: Skull,
+        color: '#ef4444',
+        tagMatches: ['ArmorPenetration'],
+        rawStatKeys: [],
+      },
+      {
+        id: 'Life Steal',
+        labelDe: 'Lebensraub',
+        labelEn: 'Life Steal',
+        icon: Flame,
+        color: '#f87171',
+        tagMatches: ['LifeSteal'],
+        rawStatKeys: ['PercentLifeStealMod'],
+      },
+    ],
+  },
+  {
+    labelDe: 'Magie',
+    labelEn: 'Magic',
+    stats: [
+      {
+        id: 'Ability Power',
+        labelDe: 'Fähigkeitsstärke',
+        labelEn: 'Ability Power',
+        icon: Wand2,
+        color: '#a855f7',
+        tagMatches: ['SpellDamage'],
+        rawStatKeys: ['FlatMagicDamageMod'],
+      },
+      {
+        id: 'Ability Haste',
+        labelDe: 'Fähigkeitstempo',
+        labelEn: 'Ability Haste',
+        icon: Clock,
+        color: '#818cf8',
+        tagMatches: ['CooldownReduction'],
+        rawStatKeys: ['FlatAbilityHaste'],
+      },
+      {
+        id: 'Magic Penetration',
+        labelDe: 'Magiedurchdringung',
+        labelEn: 'Magic Pen',
+        icon: Sparkles,
+        color: '#38bdf8',
+        tagMatches: ['MagicPenetration'],
+        rawStatKeys: [],
+      },
+      {
+        id: 'Omnivamp',
+        labelDe: 'Omnivampirismus',
+        labelEn: 'Omnivamp',
+        icon: Flame,
+        color: '#ec4899',
+        tagMatches: ['SpellVamp'],
+        rawStatKeys: [],
+      },
+      {
+        id: 'Mana',
+        labelDe: 'Mana',
+        labelEn: 'Mana',
+        icon: Droplet,
+        color: '#60a5fa',
+        tagMatches: ['Mana'],
+        rawStatKeys: ['FlatMPPoolMod'],
+      },
+    ],
+  },
+  {
+    labelDe: 'Verteidigung',
+    labelEn: 'Defense',
+    stats: [
+      {
+        id: 'Health',
+        labelDe: 'Leben',
+        labelEn: 'Health',
+        icon: Shield,
+        color: '#4ade80',
+        tagMatches: ['Health'],
+        rawStatKeys: ['FlatHPPoolMod'],
+      },
+      {
+        id: 'Armor',
+        labelDe: 'Rüstung',
+        labelEn: 'Armor',
+        icon: ShieldAlert,
+        color: '#facc15',
+        tagMatches: ['Armor'],
+        rawStatKeys: ['FlatArmorMod'],
+      },
+      {
+        id: 'Magic Resist',
+        labelDe: 'Magieresistenz',
+        labelEn: 'Magic Resist',
+        icon: ShieldCheck,
+        color: '#c084fc',
+        tagMatches: ['SpellBlock'],
+        rawStatKeys: ['FlatSpellBlockMod'],
+      },
+      {
+        id: 'Health Regen',
+        labelDe: 'Lebensregeneration',
+        labelEn: 'Health Regen',
+        icon: HeartPulse,
+        color: '#86efac',
+        tagMatches: ['HealthRegen'],
+        rawStatKeys: ['FlatHPRegenMod'],
+      },
+      {
+        id: 'Tenacity',
+        labelDe: 'Zähigkeit',
+        labelEn: 'Tenacity',
+        icon: Anchor,
+        color: '#2dd4bf',
+        tagMatches: ['Tenacity'],
+        rawStatKeys: [],
+      },
+    ],
+  },
+  {
+    labelDe: 'Nützlichkeit',
+    labelEn: 'Utility',
+    stats: [
+      {
+        id: 'Move Speed',
+        labelDe: 'Lauftempo',
+        labelEn: 'Move Speed',
+        icon: Footprints,
+        color: '#a3e635',
+        tagMatches: ['Boots', 'NonbootsMovement'],
+        rawStatKeys: ['FlatMovementSpeedMod', 'PercentMovementSpeedMod'],
+      },
+      {
+        id: 'Mana Regen',
+        labelDe: 'Manaregeneration',
+        labelEn: 'Mana Regen',
+        icon: Waves,
+        color: '#38bdf8',
+        tagMatches: ['ManaRegen'],
+        rawStatKeys: [],
+      },
+    ],
+  },
+];
+
+// Gold value map per stat for Gold Efficiency calculation
+const STAT_GOLD_VALUE: Record<string, number> = {
+  FlatPhysicalDamageMod: 35, // 35g / 1 AD
+  FlatMagicDamageMod: 20, // 20g / 1 AP
+  FlatHPPoolMod: 2.67, // 400g / 150 HP
+  FlatArmorMod: 20, // 300g / 15 Armor
+  FlatSpellBlockMod: 20, // 400g / 20 MR
+  FlatMPPoolMod: 1.4, // 350g / 250 Mana
+  PercentAttackSpeedMod: 25, // 300g / 12% AS
+  FlatCritChanceMod: 40, // 600g / 15% Crit
+  FlatMovementSpeedMod: 12, // 300g / 25 MS
+  PercentLifeStealMod: 25, // Vampiric Scepter
+  FlatHPRegenMod: 36, // Rejuvenation Bead
+  FlatAbilityHaste: 50, // Glowing Mote: 250g / 5 AH
+};
+
+/**
+ * Calculates Gold Efficiency in percent
+ */
+function calculateGoldEfficiency(item: ItemRosterItem): number | null {
+  if (!item.gold.purchasable || item.gold.total <= 0) return null;
+  if (item.tags.includes('Consumable') || item.tags.includes('Trinket')) return null;
+
+  let totalStatWorth = 0;
+  let hasValidStat = false;
+
+  if (item.stats) {
+    for (const [key, val] of Object.entries(item.stats)) {
+      const rate = STAT_GOLD_VALUE[key];
+      if (rate && val && val > 0) {
+        totalStatWorth += (val < 1 && (key.includes('Percent') || key.includes('Crit')) ? val * 100 : val) * rate;
+        hasValidStat = true;
+      }
+    }
+  }
+
+  // Also check parsed formatted stats
+  if (!hasValidStat && item.formattedStats) {
+    for (const st of item.formattedStats) {
+      const numMatch = st.value.match(/([0-9]+)/);
+      if (numMatch) {
+        const val = parseInt(numMatch[1], 10);
+        const nameLower = st.name.toLowerCase();
+        if (nameLower.includes('angriffsschaden') || nameLower.includes('attack damage')) {
+          totalStatWorth += val * 35;
+          hasValidStat = true;
+        } else if (nameLower.includes('fähigkeit') || nameLower.includes('ability power')) {
+          totalStatWorth += val * 20;
+          hasValidStat = true;
+        } else if (nameLower.includes('leben') || nameLower.includes('health')) {
+          totalStatWorth += val * 2.67;
+          hasValidStat = true;
+        } else if (nameLower.includes('rüstung') || nameLower.includes('armor')) {
+          totalStatWorth += val * 20;
+          hasValidStat = true;
+        } else if (nameLower.includes('magieresistenz') || nameLower.includes('magic resist')) {
+          totalStatWorth += val * 20;
+          hasValidStat = true;
+        } else if (nameLower.includes('tempo') || nameLower.includes('speed')) {
+          totalStatWorth += val * 25;
+          hasValidStat = true;
+        }
+      }
+    }
+  }
+
+  if (!hasValidStat || totalStatWorth <= 0) return null;
+  return Math.round((totalStatWorth / item.gold.total) * 100);
+}
 
 /**
  * Transforms DDragon XML-style tags into styled HTML
@@ -61,13 +343,13 @@ function renderItemDescription(rawDesc: string): string {
   return rawDesc
     .replace(/<mainText>/gi, '<div class="space-y-2">')
     .replace(/<\/mainText>/gi, '</div>')
-    .replace(/<stats>/gi, '<div class="py-2.5 my-2 border-y border-white/[0.08] text-sm text-zinc-200 font-medium space-y-1">')
+    .replace(/<stats>/gi, '<div class="py-2.5 my-2 border-y border-white/[0.08] text-xs text-zinc-200 font-medium space-y-1">')
     .replace(/<\/stats>/gi, '</div>')
     .replace(/<attention>/gi, '<span class="text-amber-300 font-bold">')
     .replace(/<\/attention>/gi, '</span>')
-    .replace(/<passive>/gi, '<span class="inline-flex items-center gap-1 rounded bg-amber-500/15 text-amber-300 font-bold px-1.5 py-0.5 text-xs mr-1 border border-amber-500/30">PASSIV: ')
+    .replace(/<passive>/gi, '<span class="inline-flex items-center gap-1 rounded bg-amber-500/15 text-amber-300 font-bold px-1.5 py-0.5 text-[11px] mr-1.5 border border-amber-500/30">PASSIV: ')
     .replace(/<\/passive>/gi, '</span>')
-    .replace(/<active>/gi, '<span class="inline-flex items-center gap-1 rounded bg-cyan-500/15 text-cyan-300 font-bold px-1.5 py-0.5 text-xs mr-1 border border-cyan-500/30">AKTIV: ')
+    .replace(/<active>/gi, '<span class="inline-flex items-center gap-1 rounded bg-cyan-500/15 text-cyan-300 font-bold px-1.5 py-0.5 text-[11px] mr-1.5 border border-cyan-500/30">AKTIV: ')
     .replace(/<\/active>/gi, '</span>')
     .replace(/<physicalDamage>/gi, '<span class="text-orange-400 font-semibold">')
     .replace(/<\/physicalDamage>/gi, '</span>')
@@ -81,7 +363,7 @@ function renderItemDescription(rawDesc: string): string {
     .replace(/<\/shield>/gi, '</span>')
     .replace(/<healing>/gi, '<span class="text-emerald-400 font-semibold">')
     .replace(/<\/healing>/gi, '</span>')
-    .replace(/<rules>/gi, '<span class="text-zinc-400 text-xs italic block mt-1">')
+    .replace(/<rules>/gi, '<span class="text-zinc-400 text-[11px] italic block mt-1">')
     .replace(/<\/rules>/gi, '</span>')
     .replace(/<scaleAP>/gi, '<span class="text-cyan-400 font-medium">')
     .replace(/<\/scaleAP>/gi, '</span>')
@@ -99,90 +381,108 @@ function renderItemDescription(rawDesc: string): string {
 }
 
 /**
- * Returns tier styling: border, badge colors, and glow
+ * Extracts raw stats into formatted name/value pairs if formattedStats is empty
  */
-function getTierStyle(tier: string) {
-  switch (tier) {
-    case 'legendary':
-      return {
-        border: 'border-amber-500/50 hover:border-amber-400',
-        badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
-        label: 'Legendär',
-        glow: 'group-hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-      };
-    case 'epic':
-      return {
-        border: 'border-purple-500/40 hover:border-purple-400',
-        badgeBg: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
-        label: 'Episch',
-        glow: 'group-hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-      };
-    case 'boots':
-      return {
-        border: 'border-emerald-500/40 hover:border-emerald-400',
-        badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
-        label: 'Stiefel',
-        glow: 'group-hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]',
-      };
-    case 'starter':
-      return {
-        border: 'border-blue-500/40 hover:border-blue-400',
-        badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
-        label: 'Start',
-        glow: 'group-hover:shadow-[0_0_20px_rgba(59,130,246,0.25)]',
-      };
-    case 'consumable':
-      return {
-        border: 'border-teal-500/40 hover:border-teal-400',
-        badgeBg: 'bg-teal-500/10 text-teal-300 border-teal-500/30',
-        label: 'Verbrauch',
-        glow: 'group-hover:shadow-[0_0_20px_rgba(20,184,166,0.25)]',
-      };
-    case 'basic':
-    default:
-      return {
-        border: 'border-zinc-700/60 hover:border-zinc-500',
-        badgeBg: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-        label: 'Basis',
-        glow: 'group-hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]',
-      };
+function parseStatsFromItem(item: ItemRosterItem, isDe = true): { name: string; value: string; color: string }[] {
+  if (item.formattedStats && item.formattedStats.length > 0) {
+    return item.formattedStats.map((st) => ({
+      name: st.name,
+      value: st.value,
+      color: st.color || '#f59e0b',
+    }));
   }
+
+  const list: { name: string; value: string; color: string }[] = [];
+  const statMap: Record<string, { de: string; en: string; color: string; isPercent?: boolean }> = {
+    FlatPhysicalDamageMod: { de: 'Angriffsschaden', en: 'Attack Damage', color: '#f97316' },
+    FlatMagicDamageMod: { de: 'Fähigkeitsstärke', en: 'Ability Power', color: '#38bdf8' },
+    FlatArmorMod: { de: 'Rüstung', en: 'Armor', color: '#facc15' },
+    FlatSpellBlockMod: { de: 'Magieresistenz', en: 'Magic Resist', color: '#c084fc' },
+    FlatHPPoolMod: { de: 'Leben', en: 'Health', color: '#4ade80' },
+    FlatMPPoolMod: { de: 'Mana', en: 'Mana', color: '#60a5fa' },
+    PercentAttackSpeedMod: { de: 'Angriffstempo', en: 'Attack Speed', color: '#fb923c', isPercent: true },
+    FlatCritChanceMod: { de: 'Krit. Trefferchance', en: 'Critical Strike Chance', color: '#f43f5e', isPercent: true },
+    FlatMovementSpeedMod: { de: 'Lauftempo', en: 'Move Speed', color: '#a3e635' },
+    PercentMovementSpeedMod: { de: 'Lauftempo', en: 'Move Speed', color: '#a3e635', isPercent: true },
+    FlatHPRegenMod: { de: 'Lebensregeneration', en: 'Health Regen', color: '#86efac' },
+    PercentLifeStealMod: { de: 'Lebensraub', en: 'Life Steal', color: '#f87171', isPercent: true },
+    FlatAbilityHaste: { de: 'Fähigkeitstempo', en: 'Ability Haste', color: '#818cf8' },
+  };
+
+  if (item.stats) {
+    for (const [k, v] of Object.entries(item.stats)) {
+      if (v === undefined || v === null || v === 0) continue;
+      const def = statMap[k];
+      if (def) {
+        const valStr = def.isPercent
+          ? `${v > 0 ? '+' : ''}${Math.round(v * (v < 1 ? 100 : 1))}%`
+          : `${v > 0 ? '+' : ''}${v}`;
+        list.push({
+          name: isDe ? def.de : def.en,
+          value: valStr,
+          color: def.color,
+        });
+      }
+    }
+  }
+
+  return list;
 }
+
+// 6 LoLDB Tier Section Ordering
+const TIER_ORDER: ('legendary' | 'epic' | 'basic' | 'starter' | 'boots' | 'consumable')[] = [
+  'legendary',
+  'epic',
+  'basic',
+  'starter',
+  'boots',
+  'consumable',
+];
 
 export default function ItemsListView() {
   const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [items, setItems] = useState<ItemRosterItem[]>([]);
   const [version, setVersion] = useState<string>(() => getDDragonVersion());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filters & Sorting state
+  // Filters State
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
-  const [selectedMap, setSelectedMap] = useState<MapFilter>('11'); // Default: Summoner's Rift
-  const [selectedTier, setSelectedTier] = useState<TierFilter>('ALL');
+  const [selectedRole, setSelectedRole] = useState<RoleFilter>('All');
+  const [selectedStats, setSelectedStats] = useState<string[]>([]);
+  const [selectedMap, setSelectedMap] = useState<MapFilter>('11'); // Summoner's Rift default
   const [sortBy, setSortBy] = useState<SortOption>('gold-desc');
   const [onlyPurchasable, setOnlyPurchasable] = useState(true);
 
-  // Active item detail modal
-  const [activeItem, setActiveItem] = useState<ItemRosterItem | null>(null);
+  // Active / Selected Item for Detail Inspector
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
 
-  // Read URL search query and active item id from query params
-  useEffect(() => {
-    const q = searchParams.get('search');
-    const itId = searchParams.get('item');
-    if (q) {
-      setSearchQuery(q);
-    }
-    if (itId && items.length > 0) {
-      const found = items.find((it) => it.id === itId || it.name.toLowerCase() === itId.toLowerCase());
-      if (found) {
-        setActiveItem(found);
-      }
-    }
-  }, [searchParams, items]);
+  // Mobile Stat Filter Drawer toggle
+  const [isMobileStatsOpen, setIsMobileStatsOpen] = useState(false);
 
-  // Load items from API with DDragon fallback
+  // Hover Tooltip State
+  const [hoveredItem, setHoveredItem] = useState<{
+    item: ItemRosterItem;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const isDe = locale !== 'en';
+  const patchString = getMajorMinorPatch(version);
+
+  // Quick lookup map
+  const itemMap = useMemo(() => {
+    const map = new Map<string, ItemRosterItem>();
+    for (const item of items) {
+      map.set(item.id, item);
+    }
+    return map;
+  }, [items]);
+
+  // Load items data with DDragon fallback
   useEffect(() => {
     setIsLoading(true);
     fetchItemsRosterApi(locale)
@@ -208,36 +508,86 @@ export default function ItemsListView() {
       });
   }, [locale]);
 
-  const patchString = getMajorMinorPatch(version);
-
-  // Keyboard shortcut to close modal (Escape)
+  // Read URL query params on mount
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setActiveItem(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    const q = searchParams.get('search');
+    const r = searchParams.get('role');
+    const itId = searchParams.get('item');
+    const st = searchParams.getAll('stat');
+
+    if (q) setSearchQuery(q);
+    if (r && ['All', 'Fighter', 'Marksman', 'Assassin', 'Mage', 'Tank', 'Support'].includes(r)) {
+      setSelectedRole(r as RoleFilter);
+    }
+    if (st && st.length > 0) {
+      setSelectedStats(st);
+    }
+    if (itId) {
+      setActiveItemId(itId);
+    }
+  }, [searchParams]);
+
+  // Sync activeItemId when items load
+  const activeItem = useMemo(() => {
+    if (!activeItemId) return null;
+    return itemMap.get(activeItemId) || null;
+  }, [activeItemId, itemMap]);
+
+  // Toggle stat in multi-select
+  const handleToggleStat = useCallback((statId: string) => {
+    setSelectedStats((prev) =>
+      prev.includes(statId) ? prev.filter((s) => s !== statId) : [...prev, statId]
+    );
   }, []);
 
   // Reset all filters
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearchQuery('');
-    setSelectedCategory('ALL');
+    setSelectedRole('All');
+    setSelectedStats([]);
     setSelectedMap('11');
-    setSelectedTier('ALL');
     setSortBy('gold-desc');
     setOnlyPurchasable(true);
-  };
+    setActiveItemId(null);
+  }, []);
 
   const isFilterActive =
     searchQuery.trim().length > 0 ||
-    selectedCategory !== 'ALL' ||
+    selectedRole !== 'All' ||
+    selectedStats.length > 0 ||
     selectedMap !== '11' ||
-    selectedTier !== 'ALL' ||
     sortBy !== 'gold-desc' ||
     !onlyPurchasable;
+
+  // Check if an item provides a specific stat definition
+  const itemMatchesStat = useCallback((item: ItemRosterItem, statDef: StatDefinition): boolean => {
+    // Check tags
+    if (statDef.tagMatches && statDef.tagMatches.some((t) => item.tags.some((it) => it.toLowerCase() === t.toLowerCase()))) {
+      return true;
+    }
+    // Check rawStats
+    if (statDef.rawStatKeys && statDef.rawStatKeys.some((k) => item.stats && item.stats[k])) {
+      return true;
+    }
+    // Check description or plaintext
+    const fullText = (item.description + ' ' + (item.plaintext || '')).toLowerCase();
+    if (fullText.includes(statDef.id.toLowerCase())) {
+      return true;
+    }
+    if (statDef.id === 'Lethality' && (fullText.includes('tödlichkeitsfaktor') || fullText.includes('lethality') || fullText.includes('rüstungsdurchdringung'))) {
+      return true;
+    }
+    if (statDef.id === 'Magic Penetration' && (fullText.includes('magiedurchdringung') || fullText.includes('magic penetration'))) {
+      return true;
+    }
+    if (statDef.id === 'Omnivamp' && (fullText.includes('omnivamp') || fullText.includes('omnivampirismus'))) {
+      return true;
+    }
+    if (statDef.id === 'Tenacity' && (fullText.includes('zähigkeit') || fullText.includes('tenacity'))) {
+      return true;
+    }
+    return false;
+  }, []);
 
   // Filter & Sort items
   const filteredItems = useMemo(() => {
@@ -256,21 +606,7 @@ export default function ItemsListView() {
         }
       }
 
-      // 3. Category filter
-      if (selectedCategory !== 'ALL') {
-        if (!item.categories || !item.categories.includes(selectedCategory)) {
-          return false;
-        }
-      }
-
-      // 4. Tier filter
-      if (selectedTier !== 'ALL') {
-        if (item.tier !== selectedTier) {
-          return false;
-        }
-      }
-
-      // 5. Search query
+      // 3. Search query
       if (q) {
         const nameMatch = item.name.toLowerCase().includes(q);
         const colloqMatch = (item.colloq || '').toLowerCase().includes(q);
@@ -281,10 +617,78 @@ export default function ItemsListView() {
         }
       }
 
+      // 4. Role filter (LoLDB Algorithm)
+      if (selectedRole !== 'All') {
+        const tags = item.tags || [];
+        const stats = item.stats || {};
+        const fullDesc = (item.description || '').toLowerCase();
+
+        const isMage =
+          tags.some((t) => ['SpellDamage', 'Mana'].includes(t)) ||
+          Boolean(stats.FlatMagicDamageMod) ||
+          fullDesc.includes('fähigkeitsstärke') ||
+          fullDesc.includes('ability power');
+
+        const isMarksman =
+          tags.some((t) => ['CriticalStrike', 'AttackSpeed'].includes(t)) ||
+          Boolean(stats.FlatCritChanceMod) ||
+          Boolean(stats.PercentAttackSpeedMod) ||
+          Boolean(stats.PercentLifeStealMod);
+
+        const isAssassin =
+          fullDesc.includes('lethality') ||
+          fullDesc.includes('tödlichkeitsfaktor') ||
+          tags.some((t) => ['ArmorPenetration'].includes(t));
+
+        const isTank =
+          tags.some((t) => ['Health', 'Armor', 'SpellBlock'].includes(t)) ||
+          Boolean(stats.FlatArmorMod) ||
+          Boolean(stats.FlatSpellBlockMod) ||
+          Boolean(stats.FlatHPPoolMod);
+
+        const isSupport =
+          tags.some((t) => ['SpellVamp', 'ManaRegen', 'HealthRegen', 'GoldPer', 'Vision'].includes(t)) ||
+          fullDesc.includes('gold') ||
+          fullDesc.includes('heilen und schild') ||
+          fullDesc.includes('heal and shield');
+
+        const isFighter =
+          tags.some((t) => ['Damage', 'Health'].includes(t)) && !isMage && !isAssassin;
+
+        const roles: RoleFilter[] = [];
+        if (isMage) roles.push('Mage');
+        if (isMarksman) roles.push('Marksman');
+        if (isAssassin) roles.push('Assassin');
+        if (isFighter) roles.push('Fighter');
+        if (isTank) roles.push('Tank');
+        if (isSupport) roles.push('Support');
+
+        if (!roles.includes(selectedRole)) {
+          return false;
+        }
+      }
+
+      // 5. Stat filters (LoLDB: Any selected stat match)
+      if (selectedStats.length > 0) {
+        const matchesAnyStat = selectedStats.some((statId) => {
+          for (const grp of STAT_GROUPS) {
+            const def = grp.stats.find((s) => s.id === statId);
+            if (def && itemMatchesStat(item, def)) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (!matchesAnyStat) {
+          return false;
+        }
+      }
+
       return true;
     });
 
-    // Sort list
+    // Sorting
     list.sort((a, b) => {
       switch (sortBy) {
         case 'gold-desc':
@@ -301,66 +705,72 @@ export default function ItemsListView() {
     });
 
     return list;
-  }, [items, searchQuery, selectedCategory, selectedMap, selectedTier, sortBy, onlyPurchasable]);
+  }, [items, searchQuery, selectedRole, selectedStats, selectedMap, sortBy, onlyPurchasable, itemMatchesStat]);
 
-  // Navigate to item inside modal
-  const handleSelectComponent = useCallback(
-    (componentId: string) => {
-      const found = items.find((i) => i.id === componentId);
-      if (found) {
-        setActiveItem(found);
+  // Group items by Tier
+  const tierBuckets = useMemo(() => {
+    const buckets: Record<string, ItemRosterItem[]> = {
+      legendary: [],
+      epic: [],
+      basic: [],
+      starter: [],
+      boots: [],
+      consumable: [],
+    };
+
+    for (const item of filteredItems) {
+      const t = item.tier || 'basic';
+      if (buckets[t]) {
+        buckets[t].push(item);
+      } else {
+        buckets.basic.push(item);
       }
-    },
-    [items]
-  );
+    }
+
+    return buckets;
+  }, [filteredItems]);
+
+  // Close active item on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveItemId(null);
+        setHoveredItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Helper for Tier section title
+  const getTierSectionTitle = (tier: string) => {
+    switch (tier) {
+      case 'legendary':
+        return t('itemsWiki.tierLegendaries') || 'LEGENDÄRE GEGENSTÄNDE';
+      case 'epic':
+        return t('itemsWiki.tierEpics') || 'EPISCHE GEGENSTÄNDE';
+      case 'basic':
+        return t('itemsWiki.tierBasics') || 'BASISGEGENSTÄNDE';
+      case 'starter':
+        return t('itemsWiki.tierStarters') || 'STARTGEGENSTÄNDE';
+      case 'boots':
+        return t('itemsWiki.tierBootsPlural') || 'STIEFEL';
+      case 'consumable':
+        return t('itemsWiki.tierConsumablesPlural') || 'VERBRAUCHSGÜTER';
+      default:
+        return tier.toUpperCase();
+    }
+  };
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-8">
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs
-        items={[
-          { label: t('nav.items') || 'Items' },
-        ]}
-      />
+    <div className="mx-auto flex max-w-[1680px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+      {/* Breadcrumb Navigation - Analog to /champions */}
+      <Breadcrumbs items={[{ label: t('nav.items') || 'Items' }]} />
 
-      {/* Hero Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-white/[0.08] pb-6">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Patch {patchString} Items</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
-            {t('itemsWiki.pageTitle') || 'Item Enzyklopädie & Rezepte'}
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-zinc-400 max-w-2xl leading-relaxed">
-            {t('itemsWiki.pageSubtitle', {
-              count: items.length || 863,
-              patch: patchString,
-            }) || 'Vollständige Übersicht aller League of Legends Gegenstände, Werte, Goldkosten und Baupfade.'}
-          </p>
-        </div>
-
-        {/* Counter Badge */}
-        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 px-4 py-3 shrink-0 shadow-lg backdrop-blur-md">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <Coins className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-              {t('itemsWiki.goldCost') || 'Gegenstände'}
-            </span>
-            <span className="text-lg font-black text-white">
-              {isLoading ? '...' : `${filteredItems.length} / ${items.length}`}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
+      {/* Filter Bar - Exactly Analog to /champions Glassmorphic Header */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-4">
-        {/* Top Controls: Search Input + Sorting + Map Selector + Reset Button */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+        {/* Top Controls: Search Input + Map + Sort + Reset */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search Box */}
           <div className="group relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 transition-colors group-focus-within:text-amber-400 pointer-events-none" />
@@ -368,7 +778,7 @@ export default function ItemsListView() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('itemsWiki.searchPlaceholder') || 'Item suchen (z.B. Rabadon, Klinge der Unendlichkeit, IE)...'}
+              placeholder={t('itemsWiki.searchPlaceholder') || 'Item suchen (z.B. Rabadon, Infinity Edge, IE)...'}
               className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-9 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400/60 focus:ring-1 focus:ring-amber-400/60 transition-all shadow-inner"
             />
             {searchQuery && (
@@ -385,11 +795,11 @@ export default function ItemsListView() {
 
           {/* Map Selector */}
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
+            <MapPin className="h-4 w-4 text-zinc-400 shrink-0 hidden md:block" />
             <select
               value={selectedMap}
               onChange={(e) => setSelectedMap(e.target.value as MapFilter)}
-              className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60"
+              className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60 transition-colors cursor-pointer"
             >
               <option value="11">{t('itemsWiki.mapSR') || "Kluft der Beschwörer (5v5)"}</option>
               <option value="12">{t('itemsWiki.mapARAM') || 'ARAM (Heulende Schlucht)'}</option>
@@ -398,417 +808,818 @@ export default function ItemsListView() {
             </select>
           </div>
 
-          {/* Tier Selector */}
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
-            <select
-              value={selectedTier}
-              onChange={(e) => setSelectedTier(e.target.value as TierFilter)}
-              className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60"
-            >
-              <option value="ALL">{t('itemsWiki.allTiers') || 'Alle Stufen'}</option>
-              <option value="legendary">{t('itemsWiki.tierLegendary') || 'Legendär & Vollständig'}</option>
-              <option value="epic">{t('itemsWiki.tierEpic') || 'Episch'}</option>
-              <option value="basic">{t('itemsWiki.tierBasic') || 'Basis'}</option>
-              <option value="boots">{t('itemsWiki.tierBoots') || 'Stiefel'}</option>
-              <option value="starter">{t('itemsWiki.tierStarter') || 'Startgegenstände'}</option>
-              <option value="consumable">{t('itemsWiki.tierConsumable') || 'Verbrauchsgüter'}</option>
-            </select>
-          </div>
-
           {/* Sort By Dropdown */}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60"
+            className="h-10 rounded-xl border border-white/[0.08] bg-[#121721] px-3 text-xs sm:text-sm font-medium text-zinc-200 focus:outline-none focus:border-amber-400/60 transition-colors cursor-pointer"
           >
-            <option value="gold-desc">{t('itemsWiki.sortGoldDesc') || 'Gold: Teuerste zuerst'}</option>
+            <option value="gold-desc">{t('itemsWiki.sortGoldDesc') || 'Gold: Höchste zuerst'}</option>
             <option value="gold-asc">{t('itemsWiki.sortGoldAsc') || 'Gold: Günstigste zuerst'}</option>
             <option value="name-asc">{t('itemsWiki.sortNameAsc') || 'Name (A - Z)'}</option>
             <option value="name-desc">{t('itemsWiki.sortNameDesc') || 'Name (Z - A)'}</option>
           </select>
+
+          {/* Mobile Stat Filter Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsMobileStatsOpen(!isMobileStatsOpen)}
+            className={`flex lg:hidden h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all cursor-pointer ${
+              selectedStats.length > 0
+                ? 'border-amber-500/50 bg-amber-500/15 text-amber-300'
+                : 'border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-white'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{t('itemsWiki.statFilters') || 'Attribute'}</span>
+            {selectedStats.length > 0 && (
+              <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-black text-black">
+                {selectedStats.length}
+              </span>
+            )}
+          </button>
 
           {/* Reset Filters Button */}
           {isFilterActive && (
             <button
               type="button"
               onClick={handleResetFilters}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-all shrink-0"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer shadow-sm"
               title={t('itemsWiki.resetFilters') || 'Filter zurücksetzen'}
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>{t('itemsWiki.resetFilters') || 'Zurücksetzen'}</span>
+              <RotateCcw className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* Category Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-2 border-t border-white/[0.06]">
-          {CATEGORY_OPTIONS.map((cat) => {
-            const Icon = cat.icon;
-            const isSelected = selectedCategory === cat.key;
-            return (
-              <button
-                key={cat.key}
-                type="button"
-                onClick={() => setSelectedCategory(cat.key)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
-                  isSelected
-                    ? 'border border-amber-500/50 bg-amber-500/15 text-amber-300 shadow-md shadow-amber-500/10'
-                    : 'border border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.15] hover:bg-white/[0.06] hover:text-white'
-                }`}
-              >
-                <Icon className={`h-3.5 w-3.5 ${isSelected ? 'text-amber-400' : 'text-zinc-500'}`} />
-                <span>{t(cat.labelKey) || cat.fallbackLabel}</span>
-              </button>
-            );
-          })}
+        {/* Role Filter Tabs - Exactly Matching /champions & LoLDB */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {ROLE_OPTIONS.map((role) => {
+              const Icon = role.icon;
+              const isActive = selectedRole === role.key;
+              return (
+                <button
+                  key={role.key}
+                  type="button"
+                  onClick={() => setSelectedRole(role.key)}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                      : 'text-zinc-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05]'
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-amber-400' : 'text-zinc-400'}`} />
+                  <span>{t(role.labelKey) || role.fallbackLabel}</span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* Only Purchasable Toggle */}
-          <label className="ml-auto flex items-center gap-2 cursor-pointer select-none text-xs text-zinc-400 hover:text-white transition-colors py-1">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-zinc-400 hover:text-white transition-colors py-1">
             <input
               type="checkbox"
               checked={onlyPurchasable}
               onChange={(e) => setOnlyPurchasable(e.target.checked)}
-              className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0 focus:ring-offset-0"
+              className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
             />
             <span>{t('itemsWiki.onlyPurchasable') || 'Nur Shop-Items'}</span>
           </label>
         </div>
+
+        {/* Filter Summary & Active Badges */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3 text-xs text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span>
+              {t('itemsWiki.showingCount', {
+                count: filteredItems.length,
+              }) || `${filteredItems.length} Gegenstände`}
+            </span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-zinc-500">Patch {patchString}</span>
+          </div>
+
+          {/* Active Filter Badges */}
+          {isFilterActive && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedRole !== 'All' && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                  {selectedRole}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRole('All')}
+                    className="hover:text-white ml-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+
+              {selectedStats.map((st) => (
+                <span
+                  key={st}
+                  className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300"
+                >
+                  {st}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStat(st)}
+                    className="hover:text-white ml-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                  "{searchQuery}"
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="hover:text-white ml-0.5"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Items Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
-          {[...Array(24)].map((_, i) => (
-            <div
-              key={i}
-              className="relative aspect-[4/5] w-full rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-4 animate-pulse flex flex-col justify-end"
-            >
-              <div className="h-5 w-24 bg-white/10 rounded mb-2" />
-              <div className="h-3 w-16 bg-white/5 rounded" />
+      {/* Main Layout: Left Stat Sidebar + Center Tier Grid + Right Detail Panel */}
+      <div className="flex items-start gap-5 w-full">
+        {/* Left Stat Sidebar - Desktop */}
+        <aside
+          className="sticky top-20 hidden lg:flex w-52 shrink-0 flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 p-4 shadow-xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
+        >
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              {t('itemsWiki.statFilters') || 'Attribute'}
+            </span>
+            {selectedStats.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedStats([])}
+                className="text-[10px] font-semibold text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+              >
+                {t('itemsWiki.clearStats') || 'Leeren'}
+              </button>
+            )}
+          </div>
+
+          {STAT_GROUPS.map((group) => (
+            <div key={group.labelEn} className="space-y-1.5">
+              <p className="px-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                {isDe ? group.labelDe : group.labelEn}
+              </p>
+              <div className="flex flex-col gap-1">
+                {group.stats.map((stat) => {
+                  const Icon = stat.icon;
+                  const isSelected = selectedStats.includes(stat.id);
+                  return (
+                    <button
+                      key={stat.id}
+                      type="button"
+                      onClick={() => handleToggleStat(stat.id)}
+                      className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border border-amber-400/50 bg-amber-400/15 text-amber-300 font-semibold shadow-sm'
+                          : 'border border-transparent text-zinc-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-200'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: stat.color }} />
+                      <span className="truncate">{isDe ? stat.labelDe : stat.labelEn}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ))}
-        </div>
-      ) : filteredItems.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
-          {filteredItems.map((item) => {
-            const style = getTierStyle(item.tier);
-            const iconUrl = getItemIconUrl(item.id, version);
+        </aside>
 
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveItem(item)}
-                className={`group relative flex flex-col text-left rounded-2xl overflow-hidden border bg-gradient-to-br from-[#0e131d] via-[#090d14] to-[#0a0e16] p-3 sm:p-3.5 transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] ${style.border} ${style.glow}`}
-              >
-                {/* Top Row: Icon + Price */}
-                <div className="flex items-start justify-between gap-2 mb-2.5">
-                  <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden border border-white/10 bg-black/50 shadow-md">
-                    <Image
-                      src={iconUrl}
-                      alt={item.name}
-                      fill
-                      sizes="56px"
-                      className="object-cover group-hover:scale-105 transition-transform"
-                      unoptimized
-                    />
-                  </div>
-
-                  {/* Gold Price Badge */}
-                  <div className="flex flex-col items-end">
-                    <div className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-xs font-black text-amber-300">
-                      <Coins className="h-3 w-3 text-amber-400" />
-                      <span>{item.gold.total}</span>
-                    </div>
-
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 border ${style.badgeBg}`}>
-                      {style.label}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Item Name */}
-                <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1">
-                  {item.name}
+        {/* Mobile Stat Filter Drawer (Modal Overlay) */}
+        {isMobileStatsOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-black/80 backdrop-blur-sm lg:hidden animate-in fade-in duration-150">
+            <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl border border-white/15 bg-[#0c1017] p-5 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-amber-400" />
+                  <span>{t('itemsWiki.statFilters') || 'Attribute filtern'}</span>
                 </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileStatsOpen(false)}
+                  className="rounded-full bg-white/10 p-1 text-zinc-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-                {/* Plaintext / Short summary */}
-                <p className="mt-1 text-[11px] text-zinc-400 line-clamp-2 leading-relaxed h-8">
-                  {item.plaintext || (item.formattedStats?.[0] ? `${item.formattedStats[0].name}: ${item.formattedStats[0].value}` : 'Keine Beschreibung')}
-                </p>
-
-                {/* Key Stats Pills */}
-                {item.formattedStats && item.formattedStats.length > 0 && (
-                  <div className="mt-2.5 flex flex-wrap gap-1">
-                    {item.formattedStats.slice(0, 2).map((st, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-zinc-300"
-                        style={{ color: st.color }}
-                      >
-                        {st.value} {st.name}
-                      </span>
-                    ))}
-                    {item.formattedStats.length > 2 && (
-                      <span className="text-[10px] text-zinc-500 px-1 py-0.5">
-                        +{item.formattedStats.length - 2}
-                      </span>
-                    )}
+              {STAT_GROUPS.map((group) => (
+                <div key={group.labelEn} className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    {isDe ? group.labelDe : group.labelEn}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {group.stats.map((stat) => {
+                      const Icon = stat.icon;
+                      const isSelected = selectedStats.includes(stat.id);
+                      return (
+                        <button
+                          key={stat.id}
+                          type="button"
+                          onClick={() => handleToggleStat(stat.id)}
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition-all ${
+                            isSelected
+                              ? 'border border-amber-400/50 bg-amber-400/15 text-amber-300 font-semibold'
+                              : 'border border-white/[0.06] bg-white/[0.02] text-zinc-400'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: stat.color }} />
+                          <span className="truncate">{isDe ? stat.labelDe : stat.labelEn}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-
-                {/* Bottom Indicators: Build from / into counts */}
-                <div className="mt-auto pt-2.5 flex items-center justify-between text-[10px] text-zinc-500 border-t border-white/[0.04]">
-                  {item.from && item.from.length > 0 ? (
-                    <span className="flex items-center gap-1">
-                      <GitFork className="h-2.5 w-2.5 text-zinc-400" />
-                      <span>{item.from.length} Vorstufen</span>
-                    </span>
-                  ) : (
-                    <span>Basis</span>
-                  )}
-
-                  {item.into && item.into.length > 0 && (
-                    <span className="flex items-center gap-1 text-amber-400/80">
-                      <span>{item.into.length} Ausbauten</span>
-                      <ArrowUpRight className="h-2.5 w-2.5" />
-                    </span>
-                  )}
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        /* Empty State */
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 py-16 px-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800/80 border border-white/10 text-zinc-500 mb-4">
-            <Search className="h-8 w-8" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {t('itemsWiki.noItemsFound') || 'Keine Items gefunden'}
-          </h3>
-          <p className="text-sm text-zinc-400 max-w-md mb-6">
-            {t('itemsWiki.noItemsDesc') || 'Passe deine Suchbegriffe oder Filter an, um passende Gegenstände zu finden.'}
-          </p>
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-black hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span>{t('itemsWiki.resetFilters') || 'Filter zurücksetzen'}</span>
-          </button>
-        </div>
-      )}
+              ))}
 
-      {/* Item Detail Modal */}
-      {activeItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-gradient-to-b from-[#111723] via-[#0b0e14] to-[#080b0f] p-5 sm:p-7 shadow-2xl space-y-6"
-            onClick={(e) => e.stopPropagation()}
+              <div className="flex items-center gap-3 pt-3 border-t border-white/[0.08]">
+                {selectedStats.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStats([])}
+                    className="flex-1 py-2.5 rounded-xl border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/10"
+                  >
+                    {t('itemsWiki.clearStats') || 'Zurücksetzen'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileStatsOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-xs font-bold text-black hover:bg-amber-400"
+                >
+                  {t('common.done') || 'Fertig'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Center: Items Grid Grouped by Tiers (LoLDB Style) */}
+        <main className="flex-1 min-w-0 space-y-8">
+          {isLoading ? (
+            /* Loading Skeleton */
+            <div className="space-y-8">
+              {[...Array(3)].map((_, idx) => (
+                <div key={idx} className="space-y-3">
+                  <div className="h-5 w-44 bg-white/10 rounded animate-pulse" />
+                  <div className="flex flex-wrap gap-2.5">
+                    {[...Array(14)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-16 w-16 rounded-xl border border-white/[0.06] bg-zinc-900/50 animate-pulse"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredItems.length > 0 ? (
+            TIER_ORDER.map((tierKey) => {
+              const bucketItems = tierBuckets[tierKey];
+              if (!bucketItems || bucketItems.length === 0) return null;
+
+              return (
+                <section key={tierKey} className="space-y-3">
+                  {/* Tier Section Header (LoLDB Style) */}
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-[11px] sm:text-xs font-black tracking-[0.15em] text-zinc-300 uppercase">
+                      {getTierSectionTitle(tierKey)}
+                    </h2>
+                    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-bold text-zinc-500">
+                      {bucketItems.length}
+                    </span>
+                    <div className="h-px flex-1 bg-white/[0.08]" />
+                  </div>
+
+                  {/* Tier Item Cards Grid */}
+                  <div className="flex flex-wrap gap-2 sm:gap-2.5">
+                    {bucketItems.map((item) => {
+                      const isSelected = activeItemId === item.id;
+                      const iconUrl = getItemIconUrl(item.id, version);
+                      const isLegacy = !item.inStore;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="relative"
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setHoveredItem({
+                              item,
+                              x: rect.right + 12,
+                              y: rect.top,
+                            });
+                          }}
+                          onMouseLeave={() => setHoveredItem(null)}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveItemId(item.id === activeItemId ? null : item.id);
+                            }}
+                            className={`group relative flex flex-col items-center gap-1 p-1 rounded-xl transition-all duration-150 cursor-pointer ${
+                              isSelected
+                                ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-[#0b0e14] bg-amber-500/10 scale-105'
+                                : 'hover:scale-105'
+                            } ${isLegacy ? 'opacity-55' : ''}`}
+                          >
+                            {/* Item Icon */}
+                            <div
+                              className={`relative h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-xl border transition-all ${
+                                isSelected
+                                  ? 'border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]'
+                                  : 'border-white/[0.1] bg-black/60 group-hover:border-white/30 group-hover:shadow-md'
+                              }`}
+                            >
+                              <Image
+                                src={iconUrl}
+                                alt={item.name}
+                                fill
+                                sizes="64px"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+
+                            {/* Gold Total Tag below Item */}
+                            {item.gold.total > 0 ? (
+                              <span className="text-[12px] font-black text-[#d0a85d] tracking-tight group-hover:text-amber-300 transition-colors">
+                                {item.gold.total}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-zinc-500">0</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })
+          ) : (
+            /* Empty State */
+            <div className="flex flex-col items-center justify-center py-20 text-center text-zinc-500 rounded-2xl border border-white/[0.06] bg-[#0c1017]/50">
+              <Shield className="h-12 w-12 text-zinc-600 mb-3 opacity-40" />
+              <p className="text-lg font-bold text-zinc-300 mb-1">
+                {t('itemsWiki.noItemsFound') || 'Keine Items gefunden'}
+              </p>
+              <p className="text-xs text-zinc-500 max-w-sm mb-4">
+                {searchQuery
+                  ? `Keine Treffer für "${searchQuery}". Überprüfe deine Rechtschreibung oder setze den Filter zurück.`
+                  : 'Aktuell sind keine Gegenstände für diese Filterauswahl verfügbar.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-500/40 px-4 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-all cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>{t('itemsWiki.resetFilters') || 'Filter zurücksetzen'}</span>
+              </button>
+            </div>
+          )}
+        </main>
+
+        {/* Right Detail Inspector Panel - Desktop (LoLDB Style) */}
+        {activeItem && (
+          <aside
+            className="hidden lg:flex w-[340px] xl:w-[380px] shrink-0 sticky top-20 flex-col rounded-2xl border border-white/[0.08] bg-[#0c1017]/95 p-5 shadow-2xl backdrop-blur-md max-h-[calc(100vh-100px)] overflow-y-auto space-y-5 animate-in fade-in slide-in-from-right-4 duration-200"
+            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
           >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl overflow-hidden border-2 border-amber-500/50 bg-black/60 shadow-xl shrink-0">
+            {/* Inspector Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-4">
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="relative h-14 w-14 rounded-xl overflow-hidden border-2 border-amber-400/70 bg-black/80 shadow-lg shrink-0">
                   <Image
                     src={getItemIconUrl(activeItem.id, version)}
                     alt={activeItem.name}
                     fill
-                    sizes="80px"
+                    sizes="56px"
                     className="object-cover"
                     unoptimized
                   />
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getTierStyle(activeItem.tier).badgeBg}`}>
-                      {getTierStyle(activeItem.tier).label}
-                    </span>
-                    {activeItem.requiredChampion && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                        {t('itemsWiki.exclusiveChampion') || 'Exklusiv'}: {activeItem.requiredChampion}
-                      </span>
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-white leading-tight truncate">
+                    {activeItem.name}
+                  </h3>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {activeItem.gold.total > 0 && (
+                      <div className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 text-xs font-black text-amber-300">
+                        <Coins className="h-3 w-3 text-amber-400" />
+                        <span>{activeItem.gold.total}g</span>
+                      </div>
                     )}
+                    {(() => {
+                      const eff = calculateGoldEfficiency(activeItem);
+                      if (eff === null) return null;
+                      const effColor =
+                        eff >= 100
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : eff >= 75
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-red-500/10 text-red-400 border-red-500/30';
+                      return (
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${effColor}`}>
+                          {eff}% eff.
+                        </span>
+                      );
+                    })()}
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white">{activeItem.name}</h2>
-                  {activeItem.plaintext && (
-                    <p className="text-xs sm:text-sm text-zinc-400 mt-0.5 italic">{activeItem.plaintext}</p>
+                  {activeItem.gold.sell > 0 && (
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      {t('itemsWiki.sellValue') || 'Verkaufswert'}: {activeItem.gold.sell}g
+                    </p>
                   )}
                 </div>
               </div>
 
-              {/* Close Button */}
+              {/* Close Panel Button */}
               <button
                 type="button"
-                onClick={() => setActiveItem(null)}
-                className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                onClick={() => setActiveItemId(null)}
+                className="h-8 w-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                 title={t('itemsWiki.close') || 'Schließen'}
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Price Overview Card */}
-            <div className="grid grid-cols-3 gap-3 p-3.5 rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  {t('itemsWiki.totalCost') || 'Gesamtkosten'}
-                </span>
-                <span className="text-lg font-black text-amber-300 flex items-center gap-1 mt-0.5">
-                  <Coins className="h-4 w-4 text-amber-400" />
-                  {activeItem.gold.total}
-                </span>
-              </div>
-              <div className="flex flex-col border-x border-white/[0.06] px-3">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  {t('itemsWiki.recipeCost') || 'Rezeptkosten'}
-                </span>
-                <span className="text-lg font-black text-zinc-200 mt-0.5">
-                  {activeItem.gold.base}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  {t('itemsWiki.sellValue') || 'Verkaufswert'}
-                </span>
-                <span className="text-lg font-black text-emerald-400 mt-0.5">
-                  {activeItem.gold.sell}
-                </span>
+            {/* Visual Build Path / Recipe Tree (Interactive LoLDB Tree Graph) */}
+            <div className="space-y-3 border-b border-white/[0.06] pb-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                {t('itemsWiki.buildPathTitle') || 'Rezeptbaum & Baupfad'}
+              </span>
+
+              {/* Tree Container */}
+              <div className="flex flex-col items-center py-2 space-y-4">
+                {/* Root Item Node */}
+                <div className="flex flex-col items-center">
+                  <div className="relative h-12 w-12 rounded-xl overflow-hidden border-2 border-amber-400 bg-black/80 shadow-md">
+                    <Image
+                      src={getItemIconUrl(activeItem.id, version)}
+                      alt={activeItem.name}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <span className="text-[11px] font-black text-amber-300 mt-1">
+                    {activeItem.gold.total}g
+                  </span>
+                </div>
+
+                {/* Direct Components (Level 1) */}
+                {activeItem.from && activeItem.from.length > 0 ? (
+                  <div className="w-full flex flex-col items-center">
+                    {/* SVG Branching Lines */}
+                    <div className="relative w-full h-4 flex justify-center">
+                      <div className="w-0.5 h-full bg-amber-500/40" />
+                    </div>
+
+                    <div className="flex flex-wrap items-start justify-center gap-4 w-full">
+                      {activeItem.from.map((compChildId, idx) => {
+                        const compItem = itemMap.get(compChildId);
+                        const compIconUrl = getItemIconUrl(compChildId, version);
+                        const compName = compItem?.name || `Item ${compChildId}`;
+                        const compGold = compItem?.gold?.total ?? 0;
+                        const subComponents = compItem?.from || [];
+
+                        return (
+                          <div key={`${compChildId}-${idx}`} className="flex flex-col items-center">
+                            {/* Component Button */}
+                            <button
+                              type="button"
+                              onClick={() => setActiveItemId(compChildId)}
+                              className="group flex flex-col items-center cursor-pointer transition-transform hover:scale-105"
+                              title={`Zu ${compName} wechseln`}
+                            >
+                              <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/20 bg-black/60 group-hover:border-amber-400 transition-colors shadow">
+                                <Image
+                                  src={compIconUrl}
+                                  alt={compName}
+                                  fill
+                                  sizes="40px"
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              </div>
+                              <span className="text-[10px] font-bold text-zinc-300 group-hover:text-amber-300 mt-0.5">
+                                {compGold}g
+                              </span>
+                            </button>
+
+                            {/* Sub-components (Level 2) */}
+                            {subComponents.length > 0 && (
+                              <div className="flex flex-col items-center mt-2">
+                                <div className="w-0.5 h-2 bg-white/20 mb-1" />
+                                <div className="flex items-center gap-1.5">
+                                  {subComponents.map((subId, subIdx) => {
+                                    const subItem = itemMap.get(subId);
+                                    const subIcon = getItemIconUrl(subId, version);
+                                    return (
+                                      <button
+                                        key={`${subId}-${subIdx}`}
+                                        type="button"
+                                        onClick={() => setActiveItemId(subId)}
+                                        className="relative h-7 w-7 rounded-md overflow-hidden border border-white/10 hover:border-amber-400 transition-all cursor-pointer shadow-sm hover:scale-110"
+                                        title={subItem?.name || `Item ${subId}`}
+                                      >
+                                        <Image
+                                          src={subIcon}
+                                          alt={subItem?.name || ''}
+                                          fill
+                                          sizes="28px"
+                                          className="object-cover"
+                                          unoptimized
+                                        />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-zinc-500 italic">
+                    {t('itemsWiki.noRecipe') || 'Basis-Gegenstand (keine Vorstufen)'}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Formatted Stats Grid */}
-            {activeItem.formattedStats && activeItem.formattedStats.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5 text-amber-400" />
-                  <span>{t('itemsWiki.statsTitle') || 'Attribute & Werte'}</span>
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {activeItem.formattedStats.map((st, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]"
-                    >
-                      <span className="text-xs text-zinc-300">{st.name}</span>
-                      <span className="text-sm font-black" style={{ color: st.color || '#f59e0b' }}>
-                        {st.value}
-                      </span>
-                    </div>
-                  ))}
+            {/* Upgrades Into / Builds Into */}
+            {activeItem.into && activeItem.into.length > 0 && (
+              <div className="space-y-2.5 border-b border-white/[0.06] pb-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  {t('itemsWiki.buildsInto') || 'Ausbauten / Baut zu'}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {activeItem.into.map((intoId) => {
+                    const upgrade = itemMap.get(intoId);
+                    if (!upgrade) return null;
+                    return (
+                      <button
+                        key={intoId}
+                        type="button"
+                        onClick={() => setActiveItemId(intoId)}
+                        className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1.5 hover:border-amber-400/50 hover:bg-white/[0.06] transition-all cursor-pointer text-left"
+                      >
+                        <div className="relative h-8 w-8 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-black/60">
+                          <Image
+                            src={getItemIconUrl(intoId, version)}
+                            alt={upgrade.name}
+                            fill
+                            sizes="32px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="min-w-0 pr-1.5">
+                          <p className="text-xs font-bold text-white group-hover:text-amber-300 truncate max-w-[120px]">
+                            {upgrade.name}
+                          </p>
+                          <p className="text-[10px] font-black text-amber-400">
+                            {upgrade.gold.total}g
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Formatted Description & Passives */}
+            {/* Stats Breakdown */}
+            {(() => {
+              const parsedStats = parseStatsFromItem(activeItem, isDe);
+              if (parsedStats.length === 0) return null;
+              return (
+                <div className="space-y-2 border-b border-white/[0.06] pb-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    {t('itemsWiki.statsTitle') || 'Attribute & Werte'}
+                  </span>
+                  <div className="space-y-1.5">
+                    {parsedStats.map((st, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
+                      >
+                        <span className="text-zinc-300 font-medium">{st.name}</span>
+                        <span className="font-bold" style={{ color: st.color }}>
+                          {st.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Effects & Passives */}
             {activeItem.description && (
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                   {t('itemsWiki.effectsTitle') || 'Passiv- & Aktiv-Effekte'}
-                </h4>
+                </span>
                 <div
-                  className="p-4 rounded-2xl border border-white/[0.08] bg-black/40 text-xs sm:text-sm text-zinc-300 leading-relaxed space-y-2"
+                  className="rounded-xl border border-white/[0.06] bg-black/40 p-3 text-xs text-zinc-300 leading-relaxed space-y-2"
                   dangerouslySetInnerHTML={{
                     __html: renderItemDescription(activeItem.description),
                   }}
                 />
               </div>
             )}
+          </aside>
+        )}
+      </div>
 
-            {/* Recipe / Build Path ("Baut aus") */}
-            <div className="space-y-2.5">
-              <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                <GitFork className="h-3.5 w-3.5 text-amber-400" />
-                <span>{t('itemsWiki.buildsFrom') || 'Rezept / Vorstufen'}</span>
-              </h4>
-
-              {activeItem.fromItems && activeItem.fromItems.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {activeItem.fromItems.map((comp) => (
-                    <button
-                      key={comp.id}
-                      type="button"
-                      onClick={() => handleSelectComponent(comp.id)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-amber-400/50 hover:bg-white/[0.06] transition-all text-left group"
-                    >
-                      <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-black/40">
-                        <Image
-                          src={comp.icon}
-                          alt={comp.name}
-                          fill
-                          sizes="40px"
-                          className="object-cover group-hover:scale-105 transition-transform"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition-colors">
-                          {comp.name}
-                        </div>
-                        <div className="text-[11px] font-semibold text-amber-400">
-                          {comp.totalGold} G
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+      {/* Mobile Item Details Drawer (When item is clicked on mobile screen) */}
+      {activeItem && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-3 sm:p-4 bg-black/80 backdrop-blur-md lg:hidden animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-gradient-to-b from-[#111723] via-[#0b0e14] to-[#080b0f] p-5 shadow-2xl space-y-5">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="relative h-14 w-14 rounded-xl overflow-hidden border-2 border-amber-400 bg-black/80 shadow-md shrink-0">
+                  <Image
+                    src={getItemIconUrl(activeItem.id, version)}
+                    alt={activeItem.name}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
-              ) : (
-                <p className="text-xs text-zinc-500 italic bg-white/[0.01] p-3 rounded-xl border border-white/[0.04]">
-                  {t('itemsWiki.noRecipe') || 'Basis-Gegenstand (keine Vorstufen erforderlich)'}
-                </p>
-              )}
+                <div>
+                  <h3 className="text-base font-black text-white truncate">{activeItem.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs font-black text-amber-300">
+                      {activeItem.gold.total}g
+                    </span>
+                    {(() => {
+                      const eff = calculateGoldEfficiency(activeItem);
+                      if (eff === null) return null;
+                      return (
+                        <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-bold text-emerald-400">
+                          {eff}% eff.
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveItemId(null)}
+                className="h-8 w-8 rounded-full bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Builds into ("Baut zu") */}
-            <div className="space-y-2.5">
-              <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                <ArrowUpRight className="h-3.5 w-3.5 text-amber-400" />
-                <span>{t('itemsWiki.buildsInto') || 'Ausbauten / Baut zu'}</span>
-              </h4>
-
-              {activeItem.intoItems && activeItem.intoItems.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {activeItem.intoItems.map((upgrade) => (
-                    <button
-                      key={upgrade.id}
-                      type="button"
-                      onClick={() => handleSelectComponent(upgrade.id)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-amber-400/50 hover:bg-white/[0.06] transition-all text-left group"
-                    >
-                      <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-black/40">
-                        <Image
-                          src={upgrade.icon}
-                          alt={upgrade.name}
-                          fill
-                          sizes="40px"
-                          className="object-cover group-hover:scale-105 transition-transform"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition-colors">
-                          {upgrade.name}
+            {/* Recipe Tree in Mobile Drawer */}
+            {activeItem.from && activeItem.from.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  {t('itemsWiki.buildPathTitle') || 'Rezept / Vorstufen'}
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeItem.from.map((cId) => {
+                    const c = itemMap.get(cId);
+                    return (
+                      <button
+                        key={cId}
+                        type="button"
+                        onClick={() => setActiveItemId(cId)}
+                        className="flex items-center gap-2 p-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-left hover:border-amber-400/50"
+                      >
+                        <div className="relative h-8 w-8 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                          <Image
+                            src={getItemIconUrl(cId, version)}
+                            alt={c?.name || ''}
+                            fill
+                            sizes="32px"
+                            className="object-cover"
+                            unoptimized
+                          />
                         </div>
-                        <div className="text-[11px] font-semibold text-amber-400">
-                          {upgrade.totalGold} G
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{c?.name || cId}</p>
+                          <p className="text-[10px] font-semibold text-amber-400">{c?.gold.total}g</p>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : (
-                <p className="text-xs text-zinc-500 italic bg-white/[0.01] p-3 rounded-xl border border-white/[0.04]">
-                  {t('itemsWiki.noUpgrades') || 'Vollständiger Gegenstand (keine weiteren Ausbauten)'}
-                </p>
+              </div>
+            )}
+
+            {/* Description in Mobile Drawer */}
+            {activeItem.description && (
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  {t('itemsWiki.effectsTitle') || 'Effekte'}
+                </span>
+                <div
+                  className="rounded-xl border border-white/[0.06] bg-black/40 p-3 text-xs text-zinc-300 leading-relaxed space-y-2"
+                  dangerouslySetInnerHTML={{
+                    __html: renderItemDescription(activeItem.description),
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Hover Tooltip (LoLDB Style Instant Preview) */}
+      {hoveredItem && !activeItem && (
+        <div
+          className="fixed z-50 pointer-events-none hidden lg:block w-72 rounded-xl border border-white/15 bg-[#00060d]/95 p-3.5 shadow-2xl backdrop-blur-md animate-in fade-in duration-100"
+          style={{
+            left: Math.min(hoveredItem.x, window.innerWidth - 320),
+            top: Math.min(hoveredItem.y, window.innerHeight - 280),
+          }}
+        >
+          <div className="flex items-start gap-2.5 mb-2.5">
+            <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/20 shrink-0 bg-black/70">
+              <Image
+                src={getItemIconUrl(hoveredItem.item.id, version)}
+                alt={hoveredItem.item.name}
+                fill
+                sizes="40px"
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#f0e6d3] leading-tight truncate">
+                {hoveredItem.item.name}
+              </p>
+              {hoveredItem.item.gold.total > 0 && (
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+                  <span className="font-bold text-[#d0a85d]">
+                    {hoveredItem.item.gold.total}g
+                  </span>
+                  {(() => {
+                    const eff = calculateGoldEfficiency(hoveredItem.item);
+                    if (eff === null) return null;
+                    return (
+                      <span className="text-[10px] text-zinc-400">
+                        ({eff}% Effizient)
+                      </span>
+                    );
+                  })()}
+                </div>
               )}
             </div>
           </div>
+
+          {/* Formatted stats preview */}
+          {(() => {
+            const parsedStats = parseStatsFromItem(hoveredItem.item, isDe);
+            if (parsedStats.length === 0) return null;
+            return (
+              <div className="space-y-0.5 border-t border-white/[0.08] pt-2 mb-2">
+                {parsedStats.slice(0, 4).map((st, i) => (
+                  <p key={i} className="text-xs text-zinc-300">
+                    <span className="font-semibold text-white">{st.value}</span> {st.name}
+                  </p>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Plaintext / passive snippet */}
+          {hoveredItem.item.plaintext && (
+            <p className="text-[11px] text-zinc-400 line-clamp-2 italic pt-1 border-t border-white/[0.06]">
+              {hoveredItem.item.plaintext}
+            </p>
+          )}
         </div>
       )}
     </div>

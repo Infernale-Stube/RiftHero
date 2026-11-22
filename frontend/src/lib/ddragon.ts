@@ -433,30 +433,85 @@ export async function fetchDDragonItemsList(locale = 'de'): Promise<{
     if (res.ok) {
       const data = await res.json();
       if (data && data.data) {
-        const items = Object.entries(data.data).map(([id, raw]: [string, any]) => ({
-          id,
-          name: raw.name || `Item ${id}`,
-          plaintext: raw.plaintext || '',
-          description: raw.description || '',
-          colloq: raw.colloq || '',
-          gold: {
-            base: raw.gold?.base ?? 0,
-            total: raw.gold?.total ?? 0,
-            sell: raw.gold?.sell ?? 0,
-            purchasable: raw.gold?.purchasable ?? true,
-          },
-          tags: Array.isArray(raw.tags) ? raw.tags : [],
-          categories: [],
-          tier: (raw.tags || []).includes('Boots') ? 'boots' : (raw.gold?.total >= 2200 ? 'legendary' : 'basic'),
-          depth: raw.depth ?? 1,
-          maps: raw.maps || {},
-          stats: raw.stats || {},
-          formattedStats: [],
-          from: Array.isArray(raw.from) ? raw.from : [],
-          into: Array.isArray(raw.into) ? raw.into : [],
-          icon: `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${id}.png`,
-          inStore: raw.inStore !== false && (raw.gold?.purchasable ?? true),
-        }));
+        const rawMap = data.data as Record<string, any>;
+        const items = Object.entries(rawMap).map(([id, raw]: [string, any]) => {
+          const tags: string[] = Array.isArray(raw.tags) ? raw.tags : [];
+          const from: string[] = Array.isArray(raw.from) ? raw.from : [];
+          const into: string[] = Array.isArray(raw.into) ? raw.into : [];
+          const goldTotal = raw.gold?.total ?? 0;
+
+          // LoLDB accurate tier classification
+          let tier: 'basic' | 'epic' | 'legendary' | 'boots' | 'consumable' | 'starter' = 'basic';
+          if (tags.includes('Consumable') || tags.includes('Trinket')) {
+            tier = 'consumable';
+          } else if (tags.includes('Boots')) {
+            tier = 'boots';
+          } else if (into.length === 0 && (from.length > 0 || goldTotal >= 2200)) {
+            tier = 'legendary';
+          } else if (into.length > 0 && from.length > 0) {
+            tier = 'epic';
+          } else if (into.length === 0 && from.length === 0 && goldTotal > 0 && goldTotal <= 950) {
+            tier = 'starter';
+          } else {
+            tier = 'basic';
+          }
+
+          // From items refs
+          const fromItems = from
+            .map((compId) => {
+              const comp = rawMap[compId];
+              if (!comp) return null;
+              return {
+                id: compId,
+                name: comp.name || `Item ${compId}`,
+                icon: `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${compId}.png`,
+                totalGold: comp.gold?.total ?? 0,
+              };
+            })
+            .filter(Boolean);
+
+          // Into items refs
+          const intoItems = into
+            .map((upId) => {
+              const up = rawMap[upId];
+              if (!up) return null;
+              return {
+                id: upId,
+                name: up.name || `Item ${upId}`,
+                icon: `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${upId}.png`,
+                totalGold: up.gold?.total ?? 0,
+              };
+            })
+            .filter(Boolean);
+
+          return {
+            id,
+            name: raw.name || `Item ${id}`,
+            plaintext: raw.plaintext || '',
+            description: raw.description || '',
+            colloq: raw.colloq || '',
+            gold: {
+              base: raw.gold?.base ?? 0,
+              total: goldTotal,
+              sell: raw.gold?.sell ?? 0,
+              purchasable: raw.gold?.purchasable ?? true,
+            },
+            tags,
+            categories: [],
+            tier,
+            depth: raw.depth ?? 1,
+            maps: raw.maps || {},
+            stats: raw.stats || {},
+            formattedStats: [],
+            from,
+            into,
+            fromItems,
+            intoItems,
+            icon: `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${id}.png`,
+            inStore: raw.inStore !== false && (raw.gold?.purchasable ?? true),
+            requiredChampion: raw.requiredChampion || null,
+          };
+        });
         return { version: data.version || v, items };
       }
     }

@@ -411,6 +411,25 @@ export interface TranslationDictionary {
     tagsTitle: string;
     exclusiveChampion: string;
     ornnUpgrade: string;
+    roleAll: string;
+    roleFighter: string;
+    roleMarksman: string;
+    roleAssassin: string;
+    roleMage: string;
+    roleTank: string;
+    roleSupport: string;
+    statFilters: string;
+    clearStats: string;
+    goldEfficiency: string;
+    efficiencyBadge: string;
+    buildPathTitle: string;
+    upgradedFrom: string;
+    tierLegendaries: string;
+    tierEpics: string;
+    tierBasics: string;
+    tierStarters: string;
+    tierBootsPlural: string;
+    tierConsumablesPlural: string;
   };
 }
 
@@ -828,6 +847,25 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tagsTitle: 'Kategorien',
       exclusiveChampion: 'Exklusiv für',
       ornnUpgrade: 'Ornn Meisterwerk',
+      roleAll: 'Alle Rollen',
+      roleFighter: 'Kämpfer',
+      roleMarksman: 'Schützen',
+      roleAssassin: 'Assassinen',
+      roleMage: 'Magier',
+      roleTank: 'Tanks',
+      roleSupport: 'Unterstützer',
+      statFilters: 'Attribut-Filter',
+      clearStats: 'Attribute leeren',
+      goldEfficiency: 'Gold-Effizienz',
+      efficiencyBadge: '{pct}% eff.',
+      buildPathTitle: 'Rezeptbaum & Baupfad',
+      upgradedFrom: 'Baut aus',
+      tierLegendaries: 'LEGENDÄRE GEGENSTÄNDE',
+      tierEpics: 'EPISCHE GEGENSTÄNDE',
+      tierBasics: 'BASISGEGENSTÄNDE',
+      tierStarters: 'STARTGEGENSTÄNDE',
+      tierBootsPlural: 'STIEFEL',
+      tierConsumablesPlural: 'VERBRAUCHSGÜTER',
     },
   },
   en: {
@@ -1243,6 +1281,25 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tagsTitle: 'Categories',
       exclusiveChampion: 'Exclusive to',
       ornnUpgrade: 'Ornn Masterwork',
+      roleAll: 'All Roles',
+      roleFighter: 'Fighter',
+      roleMarksman: 'Marksman',
+      roleAssassin: 'Assassin',
+      roleMage: 'Mage',
+      roleTank: 'Tank',
+      roleSupport: 'Support',
+      statFilters: 'Stat Filters',
+      clearStats: 'Clear Stats',
+      goldEfficiency: 'Gold Efficiency',
+      efficiencyBadge: '{pct}% eff.',
+      buildPathTitle: 'Build Path & Recipe Tree',
+      upgradedFrom: 'Upgraded From',
+      tierLegendaries: 'LEGENDARIES',
+      tierEpics: 'EPICS',
+      tierBasics: 'BASICS',
+      tierStarters: 'STARTERS',
+      tierBootsPlural: 'BOOTS',
+      tierConsumablesPlural: 'CONSUMABLES',
     },
   },
 };
