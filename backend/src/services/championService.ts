@@ -110,51 +110,11 @@ export function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor
 const loldbCatalogMap = new Map<string, any>();
 const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
 const globalSkinMap = new Map<string, LoldbSkinInfo>();
-const mythicShopMap = new Map<string, { cost: number; currency: string }>();
 const skinDetailCache = new Map<string, { price?: number | string; cost?: number | string; currency?: string; mythicCost?: any }>();
 
 /**
- * Synchronizes the live Mythic Shop rotation from LoLDB /mythic-shop.
- */
-export async function syncLoldbMythicShop(): Promise<void> {
-  if (mythicShopMap.size > 0) return;
-  try {
-    const res = await fetch('https://loldb.info/mythic-shop', {
-      headers: { RSC: '1', 'User-Agent': 'Mozilla/5.0' },
-    });
-    if (!res.ok) return;
-    const rsc = await res.text();
-    const idx = rsc.indexOf('{"storefront":');
-    if (idx === -1) return;
-    let depth = 0;
-    let endIdx = -1;
-    for (let i = idx; i < rsc.length; i++) {
-      if (rsc[i] === '{') depth++;
-      else if (rsc[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          endIdx = i + 1;
-          break;
-        }
-      }
-    }
-    const data = JSON.parse(rsc.slice(idx, endIdx));
-    const items = data.storefront?.mythicshop?.items || [];
-    for (const item of items) {
-      if (item.collectionItemId && item.cost) {
-        mythicShopMap.set(String(item.collectionItemId), {
-          cost: item.cost,
-          currency: 'ME',
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('[ChampionService] Mythic shop sync warning:', (err as Error).message);
-  }
-}
-
-/**
- * Fetches single skin detail page (/skins/[slug]) from LoLDB for exact Mythic / Prestige pricing.
+ * Fetches skin info exclusively from the single skin detail page (/skins/[slug]) from LoLDB.
+ * If mythicCost has a cost, it takes the price and currency directly from mythicCost.
  */
 export async function fetchLoldbSkinDetail(skinName: string): Promise<{
   price?: number | string;
@@ -203,39 +163,11 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<{
       }
     }
 
-    let lastMythicCost = mythicCost?.cost;
-    if (!lastMythicCost) {
-      const hIdx = text.indexOf('"mythicHistory":[');
-      if (hIdx !== -1 && !text.slice(hIdx, hIdx + 25).includes('"mythicHistory":[]')) {
-        const start = hIdx + '"mythicHistory":'.length;
-        let depth = 0;
-        let end = -1;
-        for (let i = start; i < text.length; i++) {
-          if (text[i] === '[') depth++;
-          else if (text[i] === ']') {
-            depth--;
-            if (depth === 0) {
-              end = i + 1;
-              break;
-            }
-          }
-        }
-        if (end !== -1) {
-          try {
-            const history = JSON.parse(text.slice(start, end));
-            if (history.length > 0) {
-              lastMythicCost = history[0].cost;
-            }
-          } catch {}
-        }
-      }
-    }
-
     const detail: any = {};
-    if (lastMythicCost) {
-      detail.cost = lastMythicCost;
-      detail.price = lastMythicCost;
-      detail.currency = 'ME';
+    if (mythicCost && typeof mythicCost.cost === 'number') {
+      detail.cost = mythicCost.cost;
+      detail.price = mythicCost.cost;
+      detail.currency = mythicCost.currency || 'ME';
       detail.mythicCost = mythicCost;
     }
 
@@ -252,7 +184,6 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<{
  */
 export async function syncLoldbSkins(): Promise<void> {
   if (globalSkinMap.size > 0) return;
-  await syncLoldbMythicShop();
   try {
     const res = await fetch('https://loldb.info/skins', {
       headers: { RSC: '1' },
@@ -318,13 +249,6 @@ export async function syncLoldbSkins(): Promise<void> {
           else cost = s.price;
           currency = 'RP';
         }
-      }
-
-      // Check active Mythic Shop items
-      const mythicShopItem = mythicShopMap.get(String(s.id));
-      if (mythicShopItem) {
-        cost = mythicShopItem.cost;
-        currency = 'ME';
       }
 
       const isLegacy = Boolean(s.isLegacy);
@@ -578,59 +502,75 @@ export async function buildChampionRostersAndDetails(
               : 2011;
             const currentYear = new Date().getFullYear();
 
-            const processedSkins = rawSkins
-              .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
-              .map((s: any) => {
-                if (s.num === 0) {
+            const processedSkins = await Promise.all(
+              rawSkins
+                .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
+                .map(async (s: any) => {
+                  if (s.num === 0) {
+                    return {
+                      id: String(s.id),
+                      num: 0,
+                      name: s.name,
+                      rarity: 'Regular',
+                      rarityColor: '#2E8D4C',
+                      releaseDate: storePrice.releaseDate,
+                      releaseYear: isNaN(baseYear) ? 2011 : baseYear,
+                      cost: 0,
+                      price: 0,
+                      currency: 'RP',
+                      isLegacy: false,
+                    };
+                  }
+
+                  const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                  const skinInfo =
+                    globalSkinMap.get(String(s.id)) ||
+                    skinsLookup?.get(String(s.id)) ||
+                    skinsLookup?.get(String(s.num)) ||
+                    skinsLookup?.get(normName);
+
+                  const rarityRaw = skinInfo?.rarity || 'Regular';
+                  const rarityInfo = mapSkinRarity(rarityRaw);
+
+                  const relYear =
+                    skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
+                  const relDate = skinInfo?.releaseDate || `${relYear}`;
+                  let cost = skinInfo?.cost ?? 975;
+                  let price = skinInfo?.price ?? cost;
+                  let currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : typeof cost === 'string' && cost.includes('ME') ? 'ME' : 'RP');
+                  const isLegacy = Boolean(skinInfo?.isLegacy);
+
+                  // Exclusively check /skins/[slug] if this is a Mythic skin
+                  if (
+                    (rarityInfo.rarity === 'Mythic' || (s.name && s.name.toLowerCase().includes('prestige'))) &&
+                    currency !== 'AS' &&
+                    currency !== 'ME'
+                  ) {
+                    const detail = await fetchLoldbSkinDetail(s.name);
+                    if (detail && detail.currency === 'ME' && detail.price) {
+                      cost = detail.cost!;
+                      price = detail.price!;
+                      currency = 'ME';
+                    }
+                  }
+
                   return {
                     id: String(s.id),
-                    num: 0,
+                    num: s.num,
                     name: s.name,
-                    rarity: 'Regular',
-                    rarityColor: '#2E8D4C',
-                    releaseDate: storePrice.releaseDate,
-                    releaseYear: isNaN(baseYear) ? 2011 : baseYear,
-                    cost: 0,
-                    price: 0,
-                    currency: 'RP',
-                    isLegacy: false,
+                    rarity: rarityInfo.rarity,
+                    rarityColor: rarityInfo.rarityColor,
+                    releaseDate: relDate,
+                    releaseYear: relYear,
+                    cost,
+                    price,
+                    currency,
+                    isLegacy,
+                    skinLines: skinInfo?.skinLines || [],
                   };
-                }
-
-                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                const skinInfo =
-                  globalSkinMap.get(String(s.id)) ||
-                  skinsLookup?.get(String(s.id)) ||
-                  skinsLookup?.get(String(s.num)) ||
-                  skinsLookup?.get(normName);
-
-                const rarityRaw = skinInfo?.rarity || 'Regular';
-                const rarityInfo = mapSkinRarity(rarityRaw);
-
-                const relYear =
-                  skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
-                const relDate = skinInfo?.releaseDate || `${relYear}`;
-                const cost = skinInfo?.cost ?? 975;
-                const price = skinInfo?.price ?? cost;
-                const currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : typeof cost === 'string' && cost.includes('ME') ? 'ME' : 'RP');
-                const isLegacy = Boolean(skinInfo?.isLegacy);
-
-                return {
-                  id: String(s.id),
-                  num: s.num,
-                  name: s.name,
-                  rarity: rarityInfo.rarity,
-                  rarityColor: rarityInfo.rarityColor,
-                  releaseDate: relDate,
-                  releaseYear: relYear,
-                  cost,
-                  price,
-                  currency,
-                  isLegacy,
-                  skinLines: skinInfo?.skinLines || [],
-                };
-              });
+                })
+            );
 
             // 1. Roster summary entry
             const rosterEntry = {
