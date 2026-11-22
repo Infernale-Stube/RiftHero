@@ -335,7 +335,7 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
             <p className="truncate text-sm font-bold leading-tight text-white">{info.name}</p>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold" style={{ color }}>
-                {info.tier}
+                {info.tier?.endsWith('Skin') ? info.tier : `${info.tier || 'Regular'} Skin`}
               </span>
               <span className="text-zinc-500">•</span>
               <span className="text-zinc-400 font-mono text-[11px]">{info.year}</span>
@@ -353,48 +353,58 @@ function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
                 </>
               )}
             </div>
-            {info.price && (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {String(info.price).includes('AS') ? (
-                  <img
-                    src={ANCIENT_SPARK_ICON_URL}
-                    alt="AS"
-                    className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
-                  />
-                ) : String(info.price).includes('ME') ? (
-                  <img
-                    src={MYTHIC_ESSENCE_ICON_URL}
-                    alt="ME"
-                    className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(168,85,247,0.9)]"
-                  />
-                ) : String(info.price).includes('BE') ? (
-                  <img
-                    src={BE_ICON_URL}
-                    alt="BE"
-                    className="h-3.5 w-3.5 object-contain"
-                  />
-                ) : (
-                  <img
-                    src={RP_ICON_URL}
-                    alt="RP"
-                    className="h-3.5 w-3.5 object-contain"
-                  />
-                )}
-                <span
-                  className={`text-xs font-bold ${
-                    String(info.price).includes('AS')
-                      ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]'
-                      : String(info.price).includes('ME')
-                      ? 'text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
-                      : String(info.price).includes('BE')
-                      ? 'text-sky-300'
-                      : 'text-amber-400'
-                  }`}
-                >
-                  {info.price}
-                </span>
-              </div>
-            )}
+            {info.price &&
+              !String(info.price).toLowerCase().includes('n/a') &&
+              String(info.price).trim().toUpperCase() !== 'N/A' && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {String(info.price).includes('AS') ? (
+                    <img
+                      src={ANCIENT_SPARK_ICON_URL}
+                      alt="AS"
+                      className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+                    />
+                  ) : String(info.price).includes('ME') ? (
+                    <img
+                      src={MYTHIC_ESSENCE_ICON_URL}
+                      alt="ME"
+                      className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(168,85,247,0.9)]"
+                    />
+                  ) : String(info.price).includes('BE') ? (
+                    <Image
+                      src={BE_ICON_URL}
+                      alt="BE"
+                      width={14}
+                      height={14}
+                      className="h-3.5 w-3.5 object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <Image
+                      src={RP_ICON_URL}
+                      alt="RP"
+                      width={14}
+                      height={14}
+                      className="h-3.5 w-3.5 object-contain"
+                      unoptimized
+                    />
+                  )}
+                  <span
+                    className={`text-xs font-bold ${
+                      String(info.price).includes('AS')
+                        ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]'
+                        : String(info.price).includes('ME')
+                        ? 'text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
+                        : String(info.price).includes('BE')
+                        ? 'text-sky-300'
+                        : 'text-amber-400'
+                    }`}
+                  >
+                    {typeof info.price === 'number'
+                      ? info.price
+                      : String(info.price).replace(/[^0-9]/g, '') || info.price}
+                  </span>
+                </div>
+              )}
           </div>
         </div>
       </div>
@@ -1437,12 +1447,22 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       );
     }
 
+    const displayCost = skin.price ?? skin.cost;
+    if (
+      displayCost === 'N/A' ||
+      displayCost === 'n/a' ||
+      (typeof displayCost === 'string' && displayCost.trim().toUpperCase() === 'N/A') ||
+      !displayCost
+    ) {
+      return null;
+    }
+
     const isAS = skin.currency === 'AS' || (typeof skin.cost === 'string' && skin.cost.includes('AS')) || (typeof skin.price === 'string' && skin.price.includes('AS'));
     const isME = skin.currency === 'ME' || (typeof skin.cost === 'string' && skin.cost.includes('ME')) || (typeof skin.price === 'string' && skin.price.includes('ME'));
     const isBE = skin.currency === 'BE' || (typeof skin.cost === 'string' && skin.cost.includes('BE')) || (typeof skin.price === 'string' && skin.price.includes('BE'));
 
     if (isAS) {
-      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '40';
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : typeof skin.price === 'string' ? skin.price.replace(/[^0-9]/g, '') : '40';
       return (
         <div
           className={`flex items-center gap-1.5 rounded-lg bg-cyan-950/80 border border-cyan-400/40 px-2.5 py-1 text-xs font-black text-cyan-200 backdrop-blur-md shadow-[0_0_12px_rgba(34,211,238,0.25)] ${extraClass}`}
@@ -1453,13 +1473,13 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             alt="AS"
             className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
           />
-          <span>{amount} AS</span>
+          <span>{amount}</span>
         </div>
       );
     }
 
     if (isME) {
-      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '150';
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : typeof skin.price === 'string' ? skin.price.replace(/[^0-9]/g, '') : '150';
       return (
         <div
           className={`flex items-center gap-1.5 rounded-lg bg-purple-950/80 border border-purple-400/40 px-2.5 py-1 text-xs font-black text-purple-200 backdrop-blur-md shadow-[0_0_12px_rgba(168,85,247,0.3)] ${extraClass}`}
@@ -1470,13 +1490,13 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             alt="ME"
             className="h-3.5 w-3.5 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(168,85,247,0.9)]"
           />
-          <span>{amount} ME</span>
+          <span>{amount}</span>
         </div>
       );
     }
 
     if (isBE) {
-      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : '';
+      const amount = typeof skin.price === 'number' ? skin.price : typeof skin.cost === 'number' ? skin.cost : typeof skin.cost === 'string' ? skin.cost.replace(/[^0-9]/g, '') : typeof skin.price === 'string' ? skin.price.replace(/[^0-9]/g, '') : '';
       return (
         <div
           className={`flex items-center gap-1.5 rounded-lg bg-sky-950/80 border border-sky-400/40 px-2.5 py-1 text-xs font-black text-sky-200 backdrop-blur-md shadow-md ${extraClass}`}
@@ -1490,37 +1510,33 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             className="h-3.5 w-3.5 object-contain"
             unoptimized
           />
-          <span>{amount} BE</span>
+          <span>{amount}</span>
         </div>
       );
     }
 
-    const displayCost = skin.price ?? skin.cost;
-    const isNumCost = typeof displayCost === 'number';
+    if (displayCost === 'Special') {
+      return (
+        <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
+          <span>{locale === 'de' ? 'Spezial' : 'Special'}</span>
+        </div>
+      );
+    }
+
+    const numAmount = typeof displayCost === 'number' ? displayCost : typeof displayCost === 'string' ? displayCost.replace(/[^0-9]/g, '') : '';
+    if (!numAmount) return null;
 
     return (
       <div className={`flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md ${extraClass}`}>
-        {isNumCost && (
-          <Image
-            src={RP_ICON_URL}
-            alt="RP"
-            width={14}
-            height={14}
-            className="h-3.5 w-3.5 object-contain"
-            unoptimized
-          />
-        )}
-        <span>
-          {isNumCost
-            ? `${displayCost} RP`
-            : displayCost === 'Special'
-            ? (locale === 'de' ? 'Spezial' : 'Special')
-            : displayCost === 'N/A'
-            ? (locale === 'de' ? 'Nicht im Shop' : 'Not in Shop')
-            : displayCost
-            ? `${displayCost}`
-            : '975 RP'}
-        </span>
+        <Image
+          src={RP_ICON_URL}
+          alt="RP"
+          width={14}
+          height={14}
+          className="h-3.5 w-3.5 object-contain"
+          unoptimized
+        />
+        <span>{numAmount}</span>
       </div>
     );
   };
@@ -1583,7 +1599,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     borderColor: activeSkin.rarityColor || '#22c55e',
                   }}
                 >
-                  <span>{activeSkin.rarity || 'Regular'}</span>
+                  <span>
+                    {(activeSkin.rarity || 'Regular').endsWith('Skin')
+                      ? activeSkin.rarity || 'Regular'
+                      : `${activeSkin.rarity || 'Regular'} Skin`}
+                  </span>
                 </div>
 
                 {/* Legacy Badge */}
@@ -1744,7 +1764,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                   style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
                 />
               )}
-              <span>{activeSkin?.rarity || 'Regular'}</span>
+              <span>
+                {(activeSkin?.rarity || 'Regular').endsWith('Skin')
+                  ? activeSkin?.rarity || 'Regular'
+                  : `${activeSkin?.rarity || 'Regular'} Skin`}
+              </span>
             </div>
 
             {/* Legacy Badge */}
@@ -1934,7 +1958,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                     />
                   )}
                   <span className={`text-[11px] font-medium transition-colors ${isHidden ? 'text-zinc-500 line-through' : 'text-zinc-300'}`}>
-                    {tier}
+                    {tier.endsWith('Skin') ? tier : `${tier} Skin`}
                   </span>
                 </button>
               );
