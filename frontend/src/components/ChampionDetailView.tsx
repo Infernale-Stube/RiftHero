@@ -133,6 +133,7 @@ interface TimelineSkinData {
   num: number;
   name: string;
   year: number;
+  date?: string;
   rank: number;
   tier: string;
   image: string;
@@ -211,6 +212,7 @@ function LolDBGroupNode({
                 image: skin.image,
                 price: skin.price,
                 year: skin.year,
+                date: skin.date,
               });
             }}
             onMouseLeave={() => {
@@ -263,7 +265,7 @@ function LolDBGroupNode({
   );
 }
 
-function LolDBTooltip({ info }: { info: any }) {
+function LolDBTooltip({ info, locale = 'de' }: { info: any; locale?: string }) {
   if (!info) return null;
   const color = LOLDB_RARITY_COLORS[info.tier] ?? '#ffffff';
   const isTop = info.py < 180;
@@ -324,7 +326,9 @@ function LolDBTooltip({ info }: { info: any }) {
                 {info.tier}
               </span>
               <span className="text-zinc-500">•</span>
-              <span className="text-zinc-400 font-mono text-[11px]">{info.year}</span>
+              <span className="text-zinc-300 font-medium text-[11px]">
+                {info.date ? formatReleaseDate(info.date, locale) : info.year}
+              </span>
             </div>
             {info.price && (
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -611,6 +615,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           num: s.num,
           name: s.name === 'default' ? (t('championWiki.defaultSkin') || 'Base Skin') : s.name,
           year,
+          date: s.releaseDate,
           rank: LOLDB_RARITY_RANKS[tier] ?? 1,
           tier,
           image: getChampionLoadingUrl(data.id, s.num),
@@ -1341,14 +1346,13 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <span>{activeSkin?.rarity || 'Regular'}</span>
             </div>
 
-            {/* Release Year Badge */}
+            {/* Release Date Badge */}
             <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-bold text-zinc-200 backdrop-blur-md shadow-md">
               <Calendar className="h-3.5 w-3.5 text-amber-400" />
               <span>
-                {activeSkin?.releaseYear ||
-                  (activeSkin?.releaseDate
-                    ? new Date(activeSkin.releaseDate).getFullYear()
-                    : releaseYear)}
+                {activeSkin?.releaseDate
+                  ? formatReleaseDate(activeSkin.releaseDate, locale)
+                  : activeSkin?.releaseYear || releaseYear}
               </span>
             </div>
           </div>
@@ -1637,6 +1641,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                             image: s.image,
                             price: s.price,
                             year: s.year,
+                            date: s.date,
                           });
                         }}
                         onMouseLeave={() => setTimelineTooltip(null)}
@@ -1695,7 +1700,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         </div>
 
         {/* Floating Tooltip via Portal */}
-        {isMounted && timelineTooltip && createPortal(<LolDBTooltip info={timelineTooltip} />, document.body)}
+        {isMounted && timelineTooltip && createPortal(<LolDBTooltip info={timelineTooltip} locale={locale} />, document.body)}
       </section>
     );
   };

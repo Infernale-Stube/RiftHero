@@ -4,9 +4,25 @@ import {
   getFullTierList,
   getChampionsRoster,
   getChampionDetail,
+  computeAndSaveMetaAnalysis,
 } from '../../services/metaService';
 
 export async function metaRoutes(fastify: FastifyInstance) {
+  // Force refresh precomputed champion & meta snapshot
+  fastify.all('/meta/refresh', async (request, reply) => {
+    try {
+      const result = await computeAndSaveMetaAnalysis();
+      return {
+        success: true,
+        message: 'Champion snapshot recomputed successfully with exact Meraki & LoLDB metadata',
+        patch: result.patch,
+        championsCount: result.championsCount,
+      };
+    } catch (err) {
+      request.log.error(err, 'Failed to refresh meta snapshot');
+      return reply.status(500).send({ error: (err as Error).message });
+    }
+  });
   // Top 4 meta picks per role
   fastify.get('/meta/champions', async (request, reply) => {
     try {

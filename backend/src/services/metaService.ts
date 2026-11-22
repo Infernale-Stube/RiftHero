@@ -143,20 +143,68 @@ function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor: strin
   return { rarity: 'Regular', rarityColor: '#22c55e' };
 }
 
-interface LoldbSkinInfo {
+interface SkinMetaInfo {
   id: string;
   num?: number;
   name: string;
   rarity: string;
   officialRarity?: string;
   releaseYear: number;
-  releaseDate: string;
+  releaseDate: string; // YYYY-MM-DD
   cost: number | string;
 }
 
-// Global in-memory maps for LoLDB data
+// Global in-memory maps for Meraki Analytics and LoLDB
+const merakiCatalogMap = new Map<string, any>();
+const merakiSkinsCache = new Map<string, SkinMetaInfo>();
 const loldbCatalogMap = new Map<string, any>();
-const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
+const loldbSkinsCache = new Map<string, Map<string, SkinMetaInfo>>();
+
+async function syncMerakiCatalog(): Promise<void> {
+  if (merakiCatalogMap.size > 0) return;
+  try {
+    const res = await fetch(
+      'https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json'
+    );
+    if (res.ok) {
+      const data = (await res.json()) as Record<string, any>;
+      for (const [key, c] of Object.entries(data)) {
+        const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = (c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanId = String(c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        merakiCatalogMap.set(cleanKey, c);
+        merakiCatalogMap.set(cleanName, c);
+        if (cleanId) merakiCatalogMap.set(cleanId, c);
+
+        if (Array.isArray(c.skins)) {
+          for (const s of c.skins) {
+            const relDate =
+              s.release && s.release !== '0000-00-00'
+                ? s.release
+                : c.releaseDate || '2012-01-01';
+            const relYear = parseInt(relDate.slice(0, 4), 10) || 2012;
+            const skinInfo: SkinMetaInfo = {
+              id: String(s.id),
+              name: s.name,
+              rarity: s.rarity || 'Regular',
+              releaseDate: relDate,
+              releaseYear: relYear,
+              cost: s.cost ?? (s.isBase ? 0 : 975),
+            };
+            merakiSkinsCache.set(String(s.id), skinInfo);
+            const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (normName) {
+              merakiSkinsCache.set(`${cleanKey}_${normName}`, skinInfo);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[MetaService] Meraki catalog sync warning:', (err as Error).message);
+  }
+}
 
 async function syncLoldbCatalog(): Promise<void> {
   if (loldbCatalogMap.size > 0) return;
@@ -182,7 +230,7 @@ async function syncLoldbCatalog(): Promise<void> {
   }
 }
 
-async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbSkinInfo> | null> {
+async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, SkinMetaInfo> | null> {
   const cleanKey = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (loldbSkinsCache.has(cleanKey)) {
     return loldbSkinsCache.get(cleanKey)!;
@@ -223,7 +271,7 @@ async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbS
     }
     if (endIdx === -1) return null;
     const skins = JSON.parse(txt.slice(arrStart, endIdx));
-    const skinMap = new Map<string, LoldbSkinInfo>();
+    const skinMap = new Map<string, SkinMetaInfo>();
     const currentYear = new Date().getFullYear();
 
     for (const s of skins) {
@@ -245,7 +293,7 @@ async function fetchLoldbChampionSkins(slug: string): Promise<Map<string, LoldbS
         s.releaseYear || (s.releaseDate ? parseInt(s.releaseDate.slice(0, 4), 10) : currentYear);
       const releaseDate = s.releaseDate || `${releaseYear}-01-01`;
 
-      const info: LoldbSkinInfo = {
+      const info: SkinMetaInfo = {
         id: skinId,
         num: s.skinNum,
         name: s.name,
@@ -302,10 +350,13 @@ async function buildChampionRostersAndDetails(
     tierMap.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
   }
 
-  // 1. Ensure live LoLDB champions catalog is synced (with TFT/Jade filtered out)
+  // 1. Sync Meraki Analytics catalog for exact skin release dates, BE/RP costs, and store pricing
+  await syncMerakiCatalog();
+
+  // 1b. Ensure live LoLDB champions catalog is synced (with TFT/Jade filtered out)
   await syncLoldbCatalog();
 
-  // 1b. Pre-fetch all champion skins from LoLDB in parallel batches (concurrency 15)
+  // 1c. Pre-fetch all champion skins from LoLDB in parallel batches (concurrency 15) for any gaps
   const standardChamps = Array.from(new Set(Array.from(loldbCatalogMap.values())));
   const concurrency = 15;
   for (let i = 0; i < standardChamps.length; i += concurrency) {
@@ -320,38 +371,6 @@ async function buildChampionRostersAndDetails(
       })
     );
   }
-
-  // Seed in-memory skins cache from existing PostgreSQL snapshot if not already fetched
-  try {
-    const existing = await prisma.championSnapshot.findUnique({
-      where: { id: 'active' },
-      select: { championDetailsJson: true },
-    });
-    if (existing && existing.championDetailsJson) {
-      const detailsMap = existing.championDetailsJson as Record<string, Record<string, any>>;
-      const source = detailsMap['en'] || detailsMap['de'] || {};
-      for (const [champKey, champ] of Object.entries(source)) {
-        if (Array.isArray(champ.skins) && !loldbSkinsCache.has(champKey)) {
-          const skinMap = new Map<string, LoldbSkinInfo>();
-          for (const s of champ.skins) {
-            skinMap.set(String(s.id), {
-              id: String(s.id),
-              num: s.num,
-              name: s.name,
-              rarity: s.rarity || 'Regular',
-              releaseYear: s.releaseYear || 2026,
-              releaseDate: s.releaseDate || '2026-01-01',
-              cost: s.cost ?? 975,
-            });
-            if (s.num !== undefined) {
-              skinMap.set(String(s.num), skinMap.get(String(s.id))!);
-            }
-          }
-          loldbSkinsCache.set(champKey, skinMap);
-        }
-      }
-    }
-  } catch {}
 
   const langs = ['de_DE', 'en_US'] as const;
   const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
@@ -375,7 +394,14 @@ async function buildChampionRostersAndDetails(
             const posMeta = championPositionsMap[champ.id];
             const metaTier = tierMap.get(cleanName) || tierMap.get(cleanId) || null;
 
-            // Live LoLDB match for store pricing, release dates, and positions
+            // Exact Meraki Analytics metadata for release dates, BE/RP pricing & skins
+            const merakiChamp =
+              merakiCatalogMap.get(cleanId) ||
+              merakiCatalogMap.get(cleanName) ||
+              merakiCatalogMap.get(cleanKey) ||
+              null;
+
+            // Live LoLDB match for store pricing, release dates, and positions fallback
             const loldbChamp =
               loldbCatalogMap.get(cleanId) ||
               loldbCatalogMap.get(cleanName) ||
@@ -387,9 +413,9 @@ async function buildChampionRostersAndDetails(
               : null;
 
             const storePrice = {
-              ip: loldbChamp?.storeData?.ip ?? 4800,
-              rp: loldbChamp?.storeData?.rp ?? 880,
-              releaseDate: loldbIsoDate || '2012-01-01',
+              ip: merakiChamp?.price?.blueEssence ?? loldbChamp?.storeData?.ip ?? 4800,
+              rp: merakiChamp?.price?.rp ?? loldbChamp?.storeData?.rp ?? 880,
+              releaseDate: merakiChamp?.releaseDate || loldbIsoDate || '2012-01-01',
             };
 
             const metaBlock = metaTier
@@ -407,7 +433,7 @@ async function buildChampionRostersAndDetails(
                 }
               : null;
 
-            // Process skins: filter out chromas, match with LoLDB for timeline, rarities, and release years
+            // Process skins: filter out chromas, match with Meraki & LoLDB for exact release dates, rarities, and costs
             const rawSkins = Array.isArray(champ.skins) ? champ.skins : [];
             let skinsLookup = loldbSkinsCache.get(cleanId) || loldbSkinsCache.get(cleanName);
             if (!skinsLookup && loldbChamp?.slug) {
@@ -436,16 +462,30 @@ async function buildChampionRostersAndDetails(
                 }
 
                 const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                const skinInfo =
+
+                // 1. Primary Source: Exact Meraki skin info by ID or cleanId_normName
+                const merakiSkin =
+                  merakiSkinsCache.get(String(s.id)) ||
+                  merakiSkinsCache.get(`${cleanId}_${normName}`);
+
+                // 2. Secondary Source: LoLDB skin info
+                const loldbSkin =
                   skinsLookup?.get(String(s.id)) ||
                   skinsLookup?.get(String(s.num)) ||
                   skinsLookup?.get(normName);
-                const rarityRaw = skinInfo?.rarity || 'Regular';
+
+                const rarityRaw = merakiSkin?.rarity || loldbSkin?.rarity || 'Regular';
                 const rarityInfo = mapSkinRarity(rarityRaw);
+
+                const relDate =
+                  merakiSkin?.releaseDate ||
+                  loldbSkin?.releaseDate ||
+                  (loldbSkin?.releaseYear ? `${loldbSkin.releaseYear}-01-01` : `${baseYear}-01-01`);
                 const relYear =
-                  skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
-                const relDate = skinInfo?.releaseDate || `${relYear}-01-01`;
-                const cost = skinInfo?.cost ?? 975;
+                  merakiSkin?.releaseYear ||
+                  loldbSkin?.releaseYear ||
+                  (isNaN(baseYear) ? currentYear : baseYear);
+                const cost = merakiSkin?.cost ?? loldbSkin?.cost ?? 975;
 
                 return {
                   id: String(s.id),
@@ -884,6 +924,23 @@ export async function computeAndSaveMetaAnalysis(): Promise<ChampionSnapshotMemo
   }
 }
 
+function isSnapshotFresh(row: any): boolean {
+  if (!row || !row.championDetailsJson) return false;
+  try {
+    const details = row.championDetailsJson as any;
+    const aatrox = details?.de?.aatrox || details?.en?.aatrox;
+    if (!aatrox || !Array.isArray(aatrox.skins)) return false;
+    // Check if Mecha Aatrox (num: 2 or id: '266002') has exact release date 2014-07-23
+    const mecha = aatrox.skins.find((s: any) => s.num === 2 || s.id === '266002');
+    if (!mecha || mecha.releaseDate !== '2014-07-23' || mecha.releaseYear !== 2014) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Loads the active precomputed snapshot from memory or 'champion_snapshots' table.
  * Instant lookup (<1ms), zero query lag for the user!
@@ -901,7 +958,7 @@ async function loadActiveSnapshot(): Promise<ChampionSnapshotMemory> {
       where: { id: 'active' },
     });
 
-    if (row && row.championsJson) {
+    if (row && row.championsJson && isSnapshotFresh(row)) {
       memoryCache = {
         version: row.version,
         patch: row.patch,
@@ -915,11 +972,17 @@ async function loadActiveSnapshot(): Promise<ChampionSnapshotMemory> {
       };
       return memoryCache;
     }
+
+    if (row && !isSnapshotFresh(row)) {
+      console.log(
+        '🔄 [MetaService] Stored snapshot has outdated/placeholder skin release dates. Recomputing with exact Meraki dates...'
+      );
+    }
   } catch (err) {
     console.warn('[MetaService] Snapshot lookup error, computing on the fly:', (err as Error).message);
   }
 
-  // If table is empty or query failed, compute immediately
+  // If table is empty, query failed, or snapshot data is stale, compute immediately
   return await computeAndSaveMetaAnalysis();
 }
 
@@ -975,23 +1038,40 @@ export async function getChampionDetail(
   const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // 1. Direct hit in precomputed snapshot / memory cache (0ms, 0 external calls)
-  const cached = snapshot.championDetails?.[langKey]?.[cleanTarget];
+  let cached = snapshot.championDetails?.[langKey]?.[cleanTarget];
+  if (!cached) {
+    const altLangKey = langKey === 'de' ? 'en' : 'de';
+    cached = snapshot.championDetails?.[altLangKey]?.[cleanTarget];
+  }
+
   if (cached) {
+    // Self-healing check: if skins have placeholder or legacy -01-01 dates, enrich them from Meraki
+    if (
+      Array.isArray(cached.skins) &&
+      cached.skins.some(
+        (s: any) => s.num > 0 && (!s.releaseDate || s.releaseDate.endsWith('-01-01'))
+      )
+    ) {
+      await syncMerakiCatalog();
+      for (const s of cached.skins) {
+        if (s.num === 0) continue;
+        const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const ms =
+          merakiSkinsCache.get(String(s.id)) ||
+          merakiSkinsCache.get(`${cleanTarget}_${normName}`);
+        if (ms && ms.releaseDate && ms.releaseDate !== '0000-00-00') {
+          s.releaseDate = ms.releaseDate;
+          s.releaseYear = ms.releaseYear;
+          if (ms.cost !== undefined) s.cost = ms.cost;
+          if (ms.rarity) s.rarity = ms.rarity;
+        }
+      }
+    }
+
     return {
       version: snapshot.version || snapshot.championsRoster?.version || snapshot.patch,
       patch: snapshot.patch,
       champion: cached,
-    };
-  }
-
-  // Check alternative language in snapshot as fallback
-  const altLangKey = langKey === 'de' ? 'en' : 'de';
-  const altCached = snapshot.championDetails?.[altLangKey]?.[cleanTarget];
-  if (altCached) {
-    return {
-      version: snapshot.version || snapshot.championsRoster?.version || snapshot.patch,
-      patch: snapshot.patch,
-      champion: altCached,
     };
   }
 
@@ -1019,7 +1099,8 @@ export async function getChampionDetail(
             (s: any) => s.parentSkin === undefined || s.parentSkin === null
           );
 
-          // Enrich with dynamic LoLDB skin release dates, rarities, and store costs
+          // Enrich with dynamic Meraki & LoLDB skin release dates, rarities, and store costs
+          await syncMerakiCatalog();
           let skinsLookup = loldbSkinsCache.get(cleanTarget);
           if (!skinsLookup) {
             await syncLoldbCatalog();
@@ -1028,13 +1109,17 @@ export async function getChampionDetail(
             skinsLookup = (await fetchLoldbChampionSkins(actualSlug)) || undefined;
           }
 
-          const relDateFinal = champData.releaseDate || '2012-01-01';
+          const merakiEntry =
+            merakiCatalogMap.get(cleanTarget) ||
+            merakiCatalogMap.get(champId.toLowerCase().replace(/[^a-z0-9]/g, ''));
+          const relDateFinal =
+            merakiEntry?.releaseDate || champData.releaseDate || '2012-01-01';
           const relYearFinal = new Date(relDateFinal).getFullYear();
           const currentYear = new Date().getFullYear();
 
           champData.storeData = champData.storeData || {
-            ip: 4800,
-            rp: 880,
+            ip: merakiEntry?.price?.blueEssence ?? 4800,
+            rp: merakiEntry?.price?.rp ?? 880,
             releaseDate: relDateFinal,
           };
           champData.releaseDate = relDateFinal;
@@ -1051,16 +1136,24 @@ export async function getChampionDetail(
               };
             }
             const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const merakiSkin =
+              merakiSkinsCache.get(String(s.id)) ||
+              merakiSkinsCache.get(`${cleanTarget}_${normName}`);
             const skinInfo =
               skinsLookup?.get(String(s.id)) ||
               skinsLookup?.get(String(s.num)) ||
               skinsLookup?.get(normName);
-            const skinRarity = skinInfo?.rarity || 'Regular';
+            const skinRarity = merakiSkin?.rarity || skinInfo?.rarity || 'Regular';
             const rarityInfo = mapSkinRarity(skinRarity);
+            const relDate =
+              merakiSkin?.releaseDate ||
+              skinInfo?.releaseDate ||
+              (skinInfo?.releaseYear ? `${skinInfo.releaseYear}-01-01` : `${relYearFinal}-01-01`);
             const finalYear =
-              skinInfo?.releaseYear || (isNaN(relYearFinal) ? currentYear : relYearFinal);
-            const relDate = skinInfo?.releaseDate || `${finalYear}-01-01`;
-            const finalCost = skinInfo?.cost ?? 975;
+              merakiSkin?.releaseYear ||
+              skinInfo?.releaseYear ||
+              (isNaN(relYearFinal) ? currentYear : relYearFinal);
+            const finalCost = merakiSkin?.cost ?? skinInfo?.cost ?? 975;
 
             return {
               ...s,
@@ -1156,12 +1249,14 @@ export function initMetaAnalysisWorker(intervalMs = META_WORKER_INTERVAL_MS): vo
       await ensureMetaTableExists();
       const existing = await prisma.championSnapshot.findUnique({
         where: { id: 'active' },
-        select: { updatedAt: true, totalMatches: true },
+        select: { updatedAt: true, totalMatches: true, championDetailsJson: true },
       });
 
       const sixHoursAgo = Date.now() - intervalMs;
-      if (!existing || existing.updatedAt.getTime() < sixHoursAgo) {
-        console.log('🔄 [MetaWorker] Snapshot missing or older than 6h. Running background analysis...');
+      if (!existing || existing.updatedAt.getTime() < sixHoursAgo || !isSnapshotFresh(existing)) {
+        console.log(
+          '🔄 [MetaWorker] Snapshot missing, older than 6h, or has outdated skin dates. Running background analysis...'
+        );
         computeAndSaveMetaAnalysis().catch((err) => {
           console.warn('[MetaWorker] Initial background analysis failed:', err);
         });
