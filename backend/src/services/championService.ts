@@ -110,22 +110,30 @@ export function mapSkinRarity(rawRarity?: string): { rarity: string; rarityColor
 const loldbCatalogMap = new Map<string, any>();
 const loldbSkinsCache = new Map<string, Map<string, LoldbSkinInfo>>();
 const globalSkinMap = new Map<string, LoldbSkinInfo>();
-const skinDetailCache = new Map<string, { price?: number | string; cost?: number | string; currency?: string; mythicCost?: any }>();
+export interface LoldbSkinDetailResult {
+  slug: string;
+  name?: string;
+  tier?: string;
+  cost?: number | string;
+  price?: number | string;
+  currency?: string;
+  isLegacy?: boolean;
+  releaseDate?: string;
+  mythicCost?: any;
+}
+
+const skinDetailCache = new Map<string, LoldbSkinDetailResult>();
 
 /**
- * Fetches skin info exclusively from the single skin detail page (/skins/[slug]) from LoLDB.
+ * Fetches skin info directly from the single skin detail page (/skins/[slug]) from LoLDB.
  * If mythicCost has a cost, it takes the price and currency directly from mythicCost.
  */
-export async function fetchLoldbSkinDetail(skinName: string): Promise<{
-  price?: number | string;
-  cost?: number | string;
-  currency?: string;
-  mythicCost?: any;
-} | null> {
+export async function fetchLoldbSkinDetail(skinName: string): Promise<LoldbSkinDetailResult | null> {
   const clean = skinName
     .toLowerCase()
     .replace(/k\/da/gi, 'kda')
-    .replace(/['’]/g, '')
+    .replace(/['’.]/g, '')
+    .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
@@ -140,6 +148,7 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<{
     if (!res.ok) return null;
     const text = await res.text();
 
+    // 1. Check for mythicCost
     let mythicCost: any = null;
     const mIdx = text.indexOf('"mythicCost":');
     if (mIdx !== -1 && !text.slice(mIdx, mIdx + 20).includes('"mythicCost":null')) {
@@ -163,13 +172,75 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<{
       }
     }
 
-    const detail: any = {};
+    // 2. Parse main skin properties from RSC text
+    let rawPrice: string | null = null;
+    const pMatch = text.match(/"price":"([^"]+)"/);
+    if (pMatch) rawPrice = pMatch[1];
+
+    let tier: string | null = null;
+    const tMatch = text.match(/"tier":"([^"]+)"/);
+    if (tMatch) tier = tMatch[1];
+
+    let isLegacy = false;
+    const legMatch = text.match(/"isLegacy":(true|false)/);
+    if (legMatch) isLegacy = legMatch[1] === 'true';
+
+    let releaseDate: string | null = null;
+    const rMatch = text.match(/"releaseDate":"([^"]+)"/);
+    if (rMatch) releaseDate = rMatch[1];
+
+    let cost: number | string = 975;
+    let price: number | string = 975;
+    let currency = 'RP';
+
     if (mythicCost && typeof mythicCost.cost === 'number') {
-      detail.cost = mythicCost.cost;
-      detail.price = mythicCost.cost;
-      detail.currency = mythicCost.currency || 'ME';
-      detail.mythicCost = mythicCost;
+      cost = mythicCost.cost;
+      price = mythicCost.cost;
+      currency = mythicCost.currency || 'ME';
+    } else if (rawPrice) {
+      const pLower = rawPrice.toLowerCase();
+      if (pLower.includes('free')) {
+        cost = 0;
+        price = 0;
+        currency = 'RP';
+      } else if (pLower.includes('n/a')) {
+        cost = 'N/A';
+        price = 'N/A';
+        currency = 'RP';
+      } else if (rawPrice.includes('AS')) {
+        const num = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10);
+        cost = isNaN(num) ? rawPrice : num;
+        price = cost;
+        currency = 'AS';
+      } else if (rawPrice.includes('BE')) {
+        const num = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10);
+        cost = isNaN(num) ? rawPrice : num;
+        price = cost;
+        currency = 'BE';
+      } else {
+        const num = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(num)) {
+          cost = num;
+          price = num;
+        } else {
+          cost = rawPrice;
+          price = rawPrice;
+        }
+        currency = 'RP';
+      }
     }
+
+    const detail: LoldbSkinDetailResult = {
+      slug: clean,
+      name: skinName,
+      tier: tier || undefined,
+      cost,
+      price,
+      currency,
+      isLegacy,
+      releaseDate: releaseDate || undefined,
+      mythicCost,
+    };
 
     skinDetailCache.set(clean, detail);
     return detail;
@@ -530,30 +601,24 @@ export async function buildChampionRostersAndDetails(
                     skinsLookup?.get(String(s.num)) ||
                     skinsLookup?.get(normName);
 
-                  const rarityRaw = skinInfo?.rarity || 'Regular';
+                  // Query /skins/[slug] directly for this skin using canonical English name
+                  const englishSkinName = skinInfo?.name || s.name;
+                  const detail = await fetchLoldbSkinDetail(englishSkinName);
+
+                  const rarityRaw = detail?.tier || skinInfo?.rarity || 'Regular';
                   const rarityInfo = mapSkinRarity(rarityRaw);
 
-                  const relYear =
-                    skinInfo?.releaseYear || (isNaN(baseYear) ? currentYear : baseYear);
-                  const relDate = skinInfo?.releaseDate || `${relYear}`;
-                  let cost = skinInfo?.cost ?? 975;
-                  let price = skinInfo?.price ?? cost;
-                  let currency = skinInfo?.currency || (typeof cost === 'string' && cost.includes('AS') ? 'AS' : typeof cost === 'string' && cost.includes('ME') ? 'ME' : 'RP');
-                  const isLegacy = Boolean(skinInfo?.isLegacy);
-
-                  // Exclusively check /skins/[slug] if this is a Mythic skin
-                  if (
-                    (rarityInfo.rarity === 'Mythic' || (s.name && s.name.toLowerCase().includes('prestige'))) &&
-                    currency !== 'AS' &&
-                    currency !== 'ME'
-                  ) {
-                    const detail = await fetchLoldbSkinDetail(s.name);
-                    if (detail && detail.currency === 'ME' && detail.price) {
-                      cost = detail.cost!;
-                      price = detail.price!;
-                      currency = 'ME';
-                    }
+                  const relDate = detail?.releaseDate || skinInfo?.releaseDate || `${currentYear}`;
+                  let relYear = currentYear;
+                  if (relDate) {
+                    const dt = new Date(relDate);
+                    if (!isNaN(dt.getTime())) relYear = dt.getFullYear();
                   }
+
+                  const cost = detail?.cost ?? skinInfo?.cost ?? 975;
+                  const price = detail?.price ?? skinInfo?.price ?? cost;
+                  const currency = detail?.currency || skinInfo?.currency || 'RP';
+                  const isLegacy = detail?.isLegacy !== undefined ? detail.isLegacy : Boolean(skinInfo?.isLegacy);
 
                   return {
                     id: String(s.id),
@@ -964,6 +1029,33 @@ export async function getChampionDetail(
   }
 
   if (cached) {
+    if (globalSkinMap.size === 0) {
+      await syncLoldbSkins();
+    }
+    if (Array.isArray(cached.skins)) {
+      await Promise.all(
+        cached.skins.map(async (skin: any) => {
+          if (skin.num === 0) return;
+          const skinInfo = globalSkinMap.get(String(skin.id));
+          const lookupName = skinInfo?.name || skin.name;
+          const detail = await fetchLoldbSkinDetail(lookupName);
+          if (detail) {
+            if (detail.price !== undefined) skin.price = detail.price;
+            if (detail.cost !== undefined) skin.cost = detail.cost;
+            if (detail.currency) skin.currency = detail.currency;
+            if (detail.isLegacy !== undefined) skin.isLegacy = detail.isLegacy;
+            if (detail.tier) {
+              skin.rarity = detail.tier;
+              const rInfo = mapSkinRarity(detail.tier);
+              skin.rarityColor = rInfo.rarityColor;
+            }
+            if (detail.releaseDate) skin.releaseDate = detail.releaseDate;
+            if (detail.mythicCost) skin.mythicCost = detail.mythicCost;
+          }
+        })
+      );
+    }
+
     const cleanName = (cached.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const metaStats =
       metaSnapshot?.championStats?.[cleanName] || metaSnapshot?.championStats?.[cleanTarget] || null;
@@ -1022,21 +1114,18 @@ export async function getAllSkins(championSlug?: string): Promise<{
       }
     }
     const list = champMap ? Array.from(new Set(Array.from(champMap.values()))) : [];
-    // Enrich any Mythic / Prestige skins with exact ME pricing from /skins/[slug] if available
+    // Enrich all skins generally with exact pricing, currency, legacy status from /skins/[slug]
     await Promise.all(
       list.map(async (skin) => {
-        if (
-          (skin.rarity === 'Mythic' || skin.name.toLowerCase().includes('prestige')) &&
-          skin.currency !== 'ME' &&
-          skin.currency !== 'AS'
-        ) {
-          const detail = await fetchLoldbSkinDetail(skin.name);
-          if (detail && detail.currency === 'ME') {
-            skin.cost = detail.cost!;
-            skin.price = detail.price!;
-            skin.currency = 'ME';
-            skin.mythicCost = detail.mythicCost;
-          }
+        const detail = await fetchLoldbSkinDetail(skin.name);
+        if (detail) {
+          if (detail.price !== undefined) skin.price = detail.price;
+          if (detail.cost !== undefined) skin.cost = detail.cost;
+          if (detail.currency) skin.currency = detail.currency as any;
+          if (detail.isLegacy !== undefined) skin.isLegacy = detail.isLegacy;
+          if (detail.tier) skin.rarity = detail.tier;
+          if (detail.releaseDate) skin.releaseDate = detail.releaseDate;
+          if (detail.mythicCost) skin.mythicCost = detail.mythicCost;
         }
       })
     );
