@@ -26,6 +26,8 @@ import {
   RotateCcw,
   Award,
   Calendar,
+  Maximize2,
+  X,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -391,6 +393,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   const [selectedSpellIndex, setSelectedSpellIndex] = useState<number>(-1); // -1 = passive, 0 = Q, 1 = W, 2 = E, 3 = R
   const [selectedSkinIndex, setSelectedSkinIndex] = useState<number>(0);
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const [isSplashModalOpen, setIsSplashModalOpen] = useState(false);
 
   // LolDB Skin Timeline State
   const [hiddenRarities, setHiddenRarities] = useState<Set<string>>(() => new Set());
@@ -818,6 +821,42 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     setSelectedSkinIndex(next);
     scrollThumbnailIntoView(next);
   };
+
+  // Lightbox keyboard navigation (Escape to close, Left/Right arrow to navigate skins)
+  useEffect(() => {
+    if (!isSplashModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSplashModalOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        if (skins.length === 0) return;
+        setSelectedSkinIndex((prev) => {
+          const nextIdx = prev > 0 ? prev - 1 : skins.length - 1;
+          scrollThumbnailIntoView(nextIdx);
+          return nextIdx;
+        });
+      } else if (e.key === 'ArrowRight') {
+        if (skins.length === 0) return;
+        setSelectedSkinIndex((prev) => {
+          const nextIdx = prev < skins.length - 1 ? prev + 1 : 0;
+          scrollThumbnailIntoView(nextIdx);
+          return nextIdx;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSplashModalOpen, skins.length]);
+
+  // Lock body scroll when Lightbox Modal is open
+  useEffect(() => {
+    if (!isSplashModalOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isSplashModalOpen]);
 
   const rawRelDate = data?.releaseDate || data?.storeData?.releaseDate || '2012-01-01';
   const formattedReleaseDate = formatReleaseDate(rawRelDate, locale);
@@ -1270,12 +1309,178 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   );
 
   // =========================================================================
+  // SUB-RENDER: FULLSCREEN SPLASH LIGHTBOX MODAL
+  // =========================================================================
+  const renderSplashLightboxModal = () => {
+    if (!isMounted || !isSplashModalOpen || !data) return null;
+
+    return createPortal(
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={activeSkinDisplayName}
+        className="fixed inset-0 z-[9999] flex flex-col items-center justify-between bg-black/92 backdrop-blur-xl p-3 sm:p-6 animate-in fade-in duration-200"
+        onClick={() => setIsSplashModalOpen(false)}
+      >
+        {/* Top Header Bar */}
+        <div
+          className="w-full max-w-6xl flex items-center justify-between py-2.5 px-4 rounded-xl bg-zinc-950/80 border border-white/10 backdrop-blur-md z-10 shrink-0 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Left: Champion & Skin Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-amber-400 font-black text-sm sm:text-base tracking-wider uppercase truncate">
+              {activeSkinDisplayName}
+            </span>
+            <span className="text-xs text-zinc-400 font-semibold shrink-0">
+              ({selectedSkinIndex + 1} / {skins.length})
+            </span>
+          </div>
+
+          {/* Right: Badges & Close Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {activeSkin && (
+              <div className="hidden sm:flex items-center gap-2">
+                {/* Cost */}
+                <div className="flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-amber-300">
+                  {activeSkin.num === 0 ? (
+                    <span>{locale === 'de' ? 'Basis' : 'Base'}</span>
+                  ) : typeof activeSkin.cost === 'number' ? (
+                    `${activeSkin.cost} RP`
+                  ) : activeSkin.cost === 'Special' ? (
+                    locale === 'de' ? 'Spezial' : 'Special'
+                  ) : (
+                    activeSkin.cost || '975 RP'
+                  )}
+                </div>
+
+                {/* Rarity */}
+                <div
+                  className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold text-white"
+                  style={{
+                    backgroundColor: `${activeSkin.rarityColor || '#22c55e'}33`,
+                    borderColor: activeSkin.rarityColor || '#22c55e',
+                  }}
+                >
+                  <span>{activeSkin.rarity || 'Regular'}</span>
+                </div>
+
+                {/* Release Date */}
+                <div className="flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-medium text-zinc-300">
+                  <Calendar className="h-3 w-3 text-amber-400" />
+                  <span>
+                    {activeSkin.num === 0
+                      ? formattedReleaseDate
+                      : activeSkin.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                        ? formatReleaseDate(activeSkin.releaseDate, locale)
+                        : activeSkin.releaseYear || releaseYear}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsSplashModalOpen(false)}
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white/10 hover:bg-rose-600/80 text-white transition-colors cursor-pointer border border-white/10"
+              title={locale === 'de' ? 'Schließen (Esc)' : 'Close (Esc)'}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Center Image Container with Navigation Arrows */}
+        <div
+          className="relative flex-1 w-full max-w-7xl flex items-center justify-center my-2 sm:my-3 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Previous Button */}
+          <button
+            type="button"
+            onClick={handlePrevSkin}
+            className="absolute left-2 sm:left-4 z-20 flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-black/60 hover:bg-amber-500 hover:text-black text-white border border-white/20 transition-all cursor-pointer backdrop-blur-md shadow-2xl active:scale-95"
+            title={locale === 'de' ? 'Vorheriger Skin (Pfeil links)' : 'Previous Skin (Left Arrow)'}
+          >
+            <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
+          </button>
+
+          {/* Full Splash Art */}
+          <div className="relative w-full h-full flex items-center justify-center p-2">
+            <img
+              src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
+              alt={activeSkinDisplayName}
+              className="max-h-[82vh] max-w-full object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.9)] select-none border border-white/10"
+            />
+          </div>
+
+          {/* Next Button */}
+          <button
+            type="button"
+            onClick={handleNextSkin}
+            className="absolute right-2 sm:right-4 z-20 flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-black/60 hover:bg-amber-500 hover:text-black text-white border border-white/20 transition-all cursor-pointer backdrop-blur-md shadow-2xl active:scale-95"
+            title={locale === 'de' ? 'Nächster Skin (Pfeil rechts)' : 'Next Skin (Right Arrow)'}
+          >
+            <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
+          </button>
+        </div>
+
+        {/* Bottom Thumbnail Strip for fast switching */}
+        <div
+          className="w-full max-w-4xl flex items-center justify-center gap-1.5 sm:gap-2 overflow-x-auto py-1 px-2 shrink-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {skins.map((skin, idx) => {
+            const isSelected = idx === selectedSkinIndex;
+            return (
+              <button
+                key={`modal-skin-${skin.id}`}
+                type="button"
+                onClick={() => {
+                  setSelectedSkinIndex(idx);
+                  scrollThumbnailIntoView(idx);
+                }}
+                className={`relative h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-lg overflow-hidden border transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-amber-400 ring-2 ring-amber-400 scale-110 shadow-lg'
+                    : 'border-white/10 opacity-60 hover:opacity-100 hover:border-white/40'
+                }`}
+                title={skin.name === 'default' ? t('championWiki.defaultSkin') : skin.name}
+              >
+                <img
+                  src={getChampionLoadingUrl(data.id, skin.num)}
+                  alt={skin.name}
+                  className="h-full w-full object-cover object-top"
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  // =========================================================================
   // SUB-RENDER: SPOTLIGHT SPLASH CARD (SPLASH ART + CAROUSEL)
   // =========================================================================
   const renderSpotlightSplashCard = () => (
     <div className="flex flex-col gap-3">
-      {/* Main Spotlight Splash Art Card (Borderless) */}
-      <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-black shadow-2xl group">
+      {/* Main Spotlight Splash Art Card (Borderless & Click-to-enlarge) */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsSplashModalOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsSplashModalOpen(true);
+          }
+        }}
+        className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-black shadow-2xl group cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-amber-400"
+        title={locale === 'de' ? 'Klicken zum Vergrößern' : 'Click to enlarge'}
+      >
         <Image
           src={getChampionSkinSplashUrl(data.id, activeSkin?.num ?? 0)}
           alt={activeSkinDisplayName}
@@ -1285,7 +1490,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           unoptimized
         />
 
-        {/* Top-Left Badges on Splash: Cost, Rarity & Release Year */}
+        {/* Top-Left Badges on Splash: Cost & Rarity */}
         <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
           {/* Top Badge: Cost */}
           <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-black text-amber-300 backdrop-blur-md shadow-md">
@@ -1316,66 +1521,88 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             )}
           </div>
 
-          {/* Bottom Badges Row: Rarity + Release Year */}
-          <div className="flex items-center gap-1.5">
-            {/* Rarity Badge */}
-            <div
-              className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
-              style={{
-                backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
-                borderColor: activeSkin?.rarityColor || '#22c55e',
-              }}
-            >
-              {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
-                <Image
-                  src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
-                  alt={activeSkin?.rarity || 'Regular'}
-                  width={14}
-                  height={14}
-                  className="h-3.5 w-3.5 object-contain"
-                  unoptimized
-                />
-              ) : (
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
-                />
-              )}
-              <span>{activeSkin?.rarity || 'Regular'}</span>
-            </div>
-
-            {/* Release Date / Year Badge */}
-            <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-bold text-zinc-200 backdrop-blur-md shadow-md">
-              <Calendar className="h-3.5 w-3.5 text-amber-400" />
-              <span>
-                {activeSkin?.num === 0
-                  ? formattedReleaseDate
-                  : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
-                    ? formatReleaseDate(activeSkin.releaseDate, locale)
-                    : activeSkin?.releaseYear || releaseYear}
-              </span>
-            </div>
+          {/* Bottom Badge: Rarity */}
+          <div
+            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md"
+            style={{
+              backgroundColor: `${activeSkin?.rarityColor || '#22c55e'}33`,
+              borderColor: activeSkin?.rarityColor || '#22c55e',
+            }}
+          >
+            {getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier) ? (
+              <Image
+                src={getRarityGemIconUrl((activeSkin?.rarity || 'Regular') as RarityTier)!}
+                alt={activeSkin?.rarity || 'Regular'}
+                width={14}
+                height={14}
+                className="h-3.5 w-3.5 object-contain"
+                unoptimized
+              />
+            ) : (
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: activeSkin?.rarityColor || '#22c55e' }}
+              />
+            )}
+            <span>{activeSkin?.rarity || 'Regular'}</span>
           </div>
+        </div>
+
+        {/* Top-Right: Release Date Badge & Enlarge Button */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          {/* Release Date / Year Badge */}
+          <div className="flex items-center gap-1.5 rounded-lg bg-black/75 border border-white/15 px-2.5 py-1 text-xs font-bold text-zinc-200 backdrop-blur-md shadow-md pointer-events-none">
+            <Calendar className="h-3.5 w-3.5 text-amber-400" />
+            <span>
+              {activeSkin?.num === 0
+                ? formattedReleaseDate
+                : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.includes('-')
+                  ? formatReleaseDate(activeSkin.releaseDate, locale)
+                  : activeSkin?.releaseYear || releaseYear}
+            </span>
+          </div>
+
+          {/* Enlarge / Zoom button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSplashModalOpen(true);
+            }}
+            className="flex items-center justify-center h-7 w-7 rounded-lg bg-black/75 border border-white/15 text-zinc-300 hover:text-amber-400 hover:bg-black/90 backdrop-blur-md shadow-md transition-all cursor-pointer group/zoom"
+            title={locale === 'de' ? 'Bild vergrößern' : 'Enlarge image'}
+          >
+            <Maximize2 className="h-3.5 w-3.5 transition-transform group-hover/zoom:scale-110" />
+          </button>
         </div>
 
         {/* Prev / Next Chevrons on Splash hover */}
         <button
           type="button"
-          onClick={handlePrevSkin}
-          className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrevSkin();
+          }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg z-20"
           title="Vorheriger Skin"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           type="button"
-          onClick={handleNextSkin}
-          className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNextSkin();
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white hover:bg-amber-500 hover:text-black transition-all cursor-pointer backdrop-blur-sm opacity-0 group-hover:opacity-100 shadow-lg z-20"
           title="Nächster Skin"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Render Lightbox Portal when open */}
+      {renderSplashLightboxModal()}
 
       {/* Skin Name Header above Thumbnails */}
       <div className="flex items-center gap-3 my-1.5">
