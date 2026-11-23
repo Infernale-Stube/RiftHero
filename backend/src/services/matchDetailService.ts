@@ -297,7 +297,16 @@ export async function getMatchDetails(
       const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
       const damageShare = teamDmg > 0 ? Math.round((p.totalDamageDealtToChampions / teamDmg) * 100) : 0;
 
-      const lpChange: MatchLpChange | null = lpChangeMap.get(p.puuid) || null;
+      const fallbackLpChange: MatchLpChange | null = p.postGameTier
+        ? {
+            delta: p.lpDelta || 0,
+            tier: p.postGameTier,
+            rank: p.postGameRank || 'IV',
+            leaguePoints: p.postGameLp ?? 0,
+          }
+        : null;
+
+      const lpChange: MatchLpChange | null = lpChangeMap.get(p.puuid) || fallbackLpChange;
       const score = matchScores.get(p.puuid);
       const champName = await getChampionNameById(p.championId);
 
@@ -334,6 +343,11 @@ export async function getMatchDetails(
         primaryRune: p.primaryRune,
         primaryStyle: p.primaryStyle,
         secondaryStyle: p.secondaryStyle,
+        lpDelta: p.lpDelta,
+        postGameLp: p.postGameLp,
+        postGameTier: p.postGameTier,
+        postGameRank: p.postGameRank,
+        postGameTotalLp: p.postGameTotalLp,
         lpChange,
         heroScore: p.heroScore ?? score?.score ?? null,
         score,

@@ -527,19 +527,56 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                     </div>
                   ) : null}
 
-                  {/* Player Game Name & Champion Name */}
-                  <div className="flex flex-col justify-center min-w-[95px] max-w-[125px] shrink-0">
-                    <Link
-                      href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
-                      className={`truncate text-xs hover:text-white transition-colors ${
-                        isTarget ? 'text-white font-black' : 'text-zinc-200 font-bold'
-                      }`}
-                      title={`${p.riotIdGameName}#${p.riotIdTagline}`}
-                    >
-                      {p.riotIdGameName}
-                    </Link>
+                  {/* Player Game Name & Champion Name & LP */}
+                  <div className="flex flex-col justify-center min-w-[100px] max-w-[145px] shrink-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Link
+                        href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
+                        className={`truncate text-xs hover:text-white transition-colors ${
+                          isTarget ? 'text-white font-black' : 'text-zinc-200 font-bold'
+                        }`}
+                        title={`${p.riotIdGameName}#${p.riotIdTagline}`}
+                      >
+                        {p.riotIdGameName}
+                      </Link>
+                      {p.lpDelta !== null && p.lpDelta !== undefined ? (
+                        <span
+                          className={`text-[10px] font-black tracking-tight shrink-0 ${
+                            p.lpDelta > 0
+                              ? 'text-emerald-400'
+                              : p.lpDelta < 0
+                              ? 'text-rose-400'
+                              : 'text-zinc-400'
+                          }`}
+                        >
+                          {p.lpDelta > 0 ? `+${p.lpDelta}` : p.lpDelta} LP
+                        </span>
+                      ) : p.lpChange?.delta ? (
+                        <span
+                          className={`text-[10px] font-black tracking-tight shrink-0 ${
+                            p.lpChange.delta > 0
+                              ? 'text-emerald-400'
+                              : p.lpChange.delta < 0
+                              ? 'text-rose-400'
+                              : 'text-zinc-400'
+                          }`}
+                        >
+                          {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                        </span>
+                      ) : null}
+                    </div>
                     <span className="text-[10px] text-zinc-500 font-medium truncate">
                       {p.championName}
+                      {(p.postGameTier || p.lpChange?.tier) && (
+                        <span className="text-zinc-400 font-normal">
+                          {' · '}
+                          {p.postGameTier || p.lpChange?.tier}{' '}
+                          {p.postGameRank || p.lpChange?.rank || ''}
+                          {(p.postGameLp !== null && p.postGameLp !== undefined) || p.lpChange?.leaguePoints !== undefined
+                            ? ` (${p.postGameLp ?? p.lpChange?.leaguePoints} LP)`
+                            : ''}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>

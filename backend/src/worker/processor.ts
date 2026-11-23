@@ -14,6 +14,13 @@ import { config } from '../config';
 import { syncParticipantLpForQueue, computePeakRank } from '../services/lpService';
 import { calculateMatchScores } from '../services/scoreService';
 
+function withTimeout<T>(promise: Promise<T>, ms = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
+
 export async function processSummonerJob(job: Job<SummonerJobData>): Promise<void> {
   const { gameName, tagLine, region: rawRegion, matchCount, isSnowball } = job.data;
   const region = normalizeRegion(rawRegion);
@@ -294,6 +301,11 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
   job.log(`[Worker] Ingesting total of ${matchIds.length} matches for ${cleanGameName}#${cleanTagLine}...`);
 
   const snowballCandidates: Array<{ gameName: string; tagLine: string; region: string }> = [];
+  const newlyIngestedRankedMatches: Array<{
+    matchId: string;
+    queueId: number;
+    participants: Array<{ puuid: string; gameName: string; tagLine: string }>;
+  }> = [];
 
   for (let i = 0; i < matchIds.length; i++) {
     const matchId = matchIds[i];
@@ -471,6 +483,18 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             });
           }
         }
+
+        if ([420, 440, 710].includes(info.queueId)) {
+          newlyIngestedRankedMatches.push({
+            matchId,
+            queueId: info.queueId,
+            participants: info.participants.map((part: any) => ({
+              puuid: part.puuid,
+              gameName: part.riotIdName || (part as any).riotIdGameName || part.summonerName || 'Unknown',
+              tagLine: part.riotIdTagline || '',
+            })),
+          });
+        }
       }
 
       await job.updateProgress(Math.round(((i + 1) / matchIds.length) * 100));
@@ -534,6 +558,203 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     }
   } else {
     console.log(`[Worker] Skipping Ranked 5s LP sync: summoner is unranked in Ranked 5s`);
+  }
+
+  // 7b. Synchronize LP and post-game rank for all fellow participants in ranked matches
+  if (newlyIngestedRankedMatches.length === 0) {
+    const latestDbMatch = await prisma.match.findFirst({
+      where: {
+        queueId: { in: [420, 440, 710] },
+        participants: { some: { puuid } },
+      },
+      orderBy: { gameCreation: 'desc' },
+      include: {
+        participants: {
+          select: {
+            puuid: true,
+            riotIdGameName: true,
+            riotIdTagline: true,
+            postGameTier: true,
+          },
+        },
+      },
+    });
+
+    if (latestDbMatch && latestDbMatch.participants.some((p) => p.puuid !== puuid && !p.postGameTier)) {
+      newlyIngestedRankedMatches.push({
+        matchId: latestDbMatch.id,
+        queueId: latestDbMatch.queueId,
+        participants: latestDbMatch.participants.map((p) => ({
+          puuid: p.puuid,
+          gameName: p.riotIdGameName,
+          tagLine: p.riotIdTagline,
+        })),
+      });
+    }
+  }
+
+  const fellowParticipantMap = new Map<string, { puuid: string; gameName: string; tagLine: string; queueId: number }>();
+  for (const m of newlyIngestedRankedMatches) {
+    for (const p of m.participants) {
+      if (p.puuid && p.puuid !== puuid && !fellowParticipantMap.has(p.puuid)) {
+        fellowParticipantMap.set(p.puuid, {
+          puuid: p.puuid,
+          gameName: p.gameName,
+          tagLine: p.tagLine,
+          queueId: m.queueId,
+        });
+      }
+    }
+  }
+
+  if (fellowParticipantMap.size > 0) {
+    console.log(`[Worker] Step 7b: Syncing LP/rank for ${fellowParticipantMap.size} fellow participants in ranked matches...`);
+
+    const fellowPuuids = Array.from(fellowParticipantMap.keys());
+    const existingFellows = await prisma.summoner.findMany({
+      where: { puuid: { in: fellowPuuids } },
+      select: {
+        puuid: true,
+        soloTier: true,
+        soloRank: true,
+        soloLp: true,
+        flexTier: true,
+        flexRank: true,
+        flexLp: true,
+        ranked5sTier: true,
+        ranked5sRank: true,
+        ranked5sLp: true,
+      },
+    });
+
+    const fellowDbMap = new Map<string, any>();
+    for (const f of existingFellows) {
+      fellowDbMap.set(f.puuid, f);
+    }
+
+    const missingRankPuuids = fellowPuuids.filter((fPuuid) => {
+      const dbSummoner = fellowDbMap.get(fPuuid);
+      const queueId = fellowParticipantMap.get(fPuuid)!.queueId;
+      if (queueId === 420) return !dbSummoner?.soloTier;
+      if (queueId === 440) return !dbSummoner?.flexTier;
+      if (queueId === 710) return !dbSummoner?.ranked5sTier;
+      return true;
+    });
+
+    if (missingRankPuuids.length > 0) {
+      console.log(`[Worker] Fetching live ranks for ${missingRankPuuids.length} fellow participants from Riot League API...`);
+      await Promise.allSettled(
+        missingRankPuuids.map(async (fPuuid) => {
+          try {
+            const entries = await withTimeout(
+              rApi.league.getEntriesByPUUID({
+                region: platform as any,
+                puuid: fPuuid,
+              }),
+              3000
+            );
+
+            if (Array.isArray(entries)) {
+              const fSolo = entries.find((e: any) => e.queueType?.toUpperCase() === 'RANKED_SOLO_5X5');
+              const fFlex = entries.find((e: any) => e.queueType?.toUpperCase() === 'RANKED_FLEX_SR');
+              const f5s = entries.find((e: any) => {
+                const q = e.queueType?.toUpperCase();
+                return q === 'RANKED_PREMADE_5X5' || q === 'RANKED_TEAM_5X5' || q === 'RANKED_5S' || q === 'RANKED_5X5';
+              });
+
+              const info = fellowParticipantMap.get(fPuuid);
+              if (info) {
+                await prisma.summoner.upsert({
+                  where: { puuid: fPuuid },
+                  create: {
+                    puuid: fPuuid,
+                    gameName: info.gameName || 'Unknown',
+                    tagLine: info.tagLine || '',
+                    region,
+                    platform,
+                    profileIconId: 29,
+                    summonerLevel: BigInt(30),
+                    lastFetchedAt: new Date(),
+                    soloTier: fSolo?.tier || null,
+                    soloRank: fSolo?.rank || null,
+                    soloLp: fSolo?.leaguePoints ?? 0,
+                    soloWins: fSolo?.wins ?? 0,
+                    soloLosses: fSolo?.losses ?? 0,
+                    flexTier: fFlex?.tier || null,
+                    flexRank: fFlex?.rank || null,
+                    flexLp: fFlex?.leaguePoints ?? 0,
+                    flexWins: fFlex?.wins ?? 0,
+                    flexLosses: fFlex?.losses ?? 0,
+                    ranked5sTier: f5s?.tier || null,
+                    ranked5sRank: f5s?.rank || null,
+                    ranked5sLp: f5s?.leaguePoints ?? 0,
+                    ranked5sWins: f5s?.wins ?? 0,
+                    ranked5sLosses: f5s?.losses ?? 0,
+                  },
+                  update: {
+                    soloTier: fSolo?.tier,
+                    soloRank: fSolo?.rank,
+                    soloLp: fSolo?.leaguePoints,
+                    flexTier: fFlex?.tier,
+                    flexRank: fFlex?.rank,
+                    flexLp: fFlex?.leaguePoints,
+                    ranked5sTier: f5s?.tier,
+                    ranked5sRank: f5s?.rank,
+                    ranked5sLp: f5s?.leaguePoints,
+                  },
+                });
+
+                fellowDbMap.set(fPuuid, {
+                  puuid: fPuuid,
+                  soloTier: fSolo?.tier || null,
+                  soloRank: fSolo?.rank || null,
+                  soloLp: fSolo?.leaguePoints ?? 0,
+                  flexTier: fFlex?.tier || null,
+                  flexRank: fFlex?.rank || null,
+                  flexLp: fFlex?.leaguePoints ?? 0,
+                  ranked5sTier: f5s?.tier || null,
+                  ranked5sRank: f5s?.rank || null,
+                  ranked5sLp: f5s?.leaguePoints ?? 0,
+                });
+              }
+            }
+          } catch {
+            // Ignore rate limits or lookup errors for fellow participants
+          }
+        })
+      );
+    }
+
+    for (const [fPuuid, fellow] of fellowParticipantMap.entries()) {
+      try {
+        const dbSummoner = fellowDbMap.get(fPuuid);
+        if (!dbSummoner) continue;
+
+        let tier: string | null = null;
+        let rank: string | null = null;
+        let lp: number | null = null;
+
+        if (fellow.queueId === 420) {
+          tier = dbSummoner.soloTier;
+          rank = dbSummoner.soloRank;
+          lp = dbSummoner.soloLp;
+        } else if (fellow.queueId === 440) {
+          tier = dbSummoner.flexTier;
+          rank = dbSummoner.flexRank;
+          lp = dbSummoner.flexLp;
+        } else if (fellow.queueId === 710) {
+          tier = dbSummoner.ranked5sTier;
+          rank = dbSummoner.ranked5sRank;
+          lp = dbSummoner.ranked5sLp;
+        }
+
+        if (tier && tier.toUpperCase() !== 'UNRANKED') {
+          await syncParticipantLpForQueue(fPuuid, fellow.queueId, tier, rank, lp);
+        }
+      } catch (err: any) {
+        console.error(`[Worker] Failed fellow participant LP sync for ${fPuuid}:`, err?.message || err);
+      }
+    }
   }
 
   // 8. Trigger Snowball Background Crawling for fellow 9 players
