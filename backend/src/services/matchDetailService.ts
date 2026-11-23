@@ -4,7 +4,13 @@ import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../rio
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
-import { calculateMatchScores, calculateScoreTimeline, DeepLolScore, ScoreTimelinePoint } from './scoreService';
+import {
+  calculateMatchScores,
+  getOrCalculateMatchScores,
+  calculateScoreTimeline,
+  DeepLolScore,
+  ScoreTimelinePoint,
+} from './scoreService';
 
 // In-memory volatile cache for live match timelines (TTL: 5 minutes)
 // Keeps database size at 0 KB while preventing duplicate Riot API requests during active viewing
@@ -172,41 +178,46 @@ export async function getMatchDetails(
           redHordeKills: redObj.horde?.kills ?? 0,
 
           participants: {
-            create: info.participants.map((p) => {
-              return {
-                puuid: p.puuid,
-                riotIdGameName: p.riotIdName || (p as any).riotIdGameName || p.summonerName || 'Unknown',
-                riotIdTagline: p.riotIdTagline || '',
-                championId: p.championId,
-                champLevel: p.champLevel || 1,
-                teamId: p.teamId,
-                win: p.win,
-                individualPosition: p.individualPosition || p.lane || null,
-                kills: p.kills,
-                deaths: p.deaths,
-                assists: p.assists,
-                totalDamageDealtToChampions: p.totalDamageDealtToChampions,
-                totalDamageTaken: p.totalDamageTaken,
-                totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
-                visionScore: p.visionScore,
-                visionWardsBoughtInGame: p.visionWardsBoughtInGame,
-                wardsPlaced: p.wardsPlaced,
-                wardsKilled: p.wardsKilled,
-                goldEarned: p.goldEarned,
-                item0: p.item0,
-                item1: p.item1,
-                item2: p.item2,
-                item3: p.item3,
-                item4: p.item4,
-                item5: p.item5,
-                item6: p.item6,
-                summoner1Id: p.summoner1Id,
-                summoner2Id: p.summoner2Id,
-                primaryRune: p.perks?.styles?.[0]?.selections?.[0]?.perk || null,
-                primaryStyle: p.perks?.styles?.[0]?.style || null,
-                secondaryStyle: p.perks?.styles?.[1]?.style || null,
-              };
-            }),
+            create: (() => {
+              const precalculatedScores = calculateMatchScores(info.participants, info.gameDuration);
+              return info.participants.map((p) => {
+                const heroScore = precalculatedScores.get(p.puuid)?.score ?? null;
+                return {
+                  puuid: p.puuid,
+                  riotIdGameName: p.riotIdName || (p as any).riotIdGameName || p.summonerName || 'Unknown',
+                  riotIdTagline: p.riotIdTagline || '',
+                  championId: p.championId,
+                  champLevel: p.champLevel || 1,
+                  teamId: p.teamId,
+                  win: p.win,
+                  individualPosition: p.individualPosition || p.lane || null,
+                  kills: p.kills,
+                  deaths: p.deaths,
+                  assists: p.assists,
+                  totalDamageDealtToChampions: p.totalDamageDealtToChampions,
+                  totalDamageTaken: p.totalDamageTaken,
+                  totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
+                  visionScore: p.visionScore,
+                  visionWardsBoughtInGame: p.visionWardsBoughtInGame,
+                  wardsPlaced: p.wardsPlaced,
+                  wardsKilled: p.wardsKilled,
+                  goldEarned: p.goldEarned,
+                  heroScore,
+                  item0: p.item0,
+                  item1: p.item1,
+                  item2: p.item2,
+                  item3: p.item3,
+                  item4: p.item4,
+                  item5: p.item5,
+                  item6: p.item6,
+                  summoner1Id: p.summoner1Id,
+                  summoner2Id: p.summoner2Id,
+                  primaryRune: p.perks?.styles?.[0]?.selections?.[0]?.perk || null,
+                  primaryStyle: p.perks?.styles?.[0]?.style || null,
+                  secondaryStyle: p.perks?.styles?.[1]?.style || null,
+                };
+              });
+            })(),
           },
         },
         include: {
@@ -274,7 +285,7 @@ export async function getMatchDetails(
     );
   }
 
-  const matchScores = calculateMatchScores(participants, match.gameDuration);
+  const matchScores = getOrCalculateMatchScores(participants, match.gameDuration);
 
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
@@ -325,6 +336,7 @@ export async function getMatchDetails(
         primaryStyle: p.primaryStyle,
         secondaryStyle: p.secondaryStyle,
         lpChange,
+        heroScore: p.heroScore ?? score?.score ?? null,
         score,
       };
     })

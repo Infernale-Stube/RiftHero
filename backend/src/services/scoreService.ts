@@ -101,7 +101,7 @@ export function calculateMatchScores(
     }
 
     // 7. Objective / Turret Bonus
-    const turretTakedowns = (p as any).challengesJson?.turretTakedowns || 0;
+    const turretTakedowns = (p as any).challenges?.turretTakedowns || (p as any).challengesJson?.turretTakedowns || 0;
     score += Math.min(0.5, turretTakedowns * 0.1);
 
     // 8. Match Outcome
@@ -151,6 +151,69 @@ export function calculateMatchScores(
   });
 
   return resultMap;
+}
+
+/**
+ * Builds the complete DeepLolScore ranking map from precalculated heroScores stored in the database.
+ */
+export function buildScoresFromSavedHeroScores(
+  participants: Array<{ puuid: string; win: boolean; heroScore?: number | null }>
+): Map<string, DeepLolScore> {
+  const scoredList = participants.map((p) => ({
+    puuid: p.puuid,
+    win: p.win,
+    rawScore: p.heroScore ?? 0,
+  }));
+
+  // Sort by rawScore descending
+  scoredList.sort((a, b) => b.rawScore - a.rawScore);
+
+  const mvpItem = scoredList.find((s) => s.win);
+  const aceItem = scoredList.find((s) => !s.win);
+
+  const resultMap = new Map<string, DeepLolScore>();
+
+  scoredList.forEach((item, index) => {
+    const isMvp = item.puuid === mvpItem?.puuid;
+    const isAce = item.puuid === aceItem?.puuid;
+    const scoreVal = Math.round(item.rawScore <= 10 ? item.rawScore * 10 : item.rawScore);
+
+    let tierRating: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D' = 'C';
+    if (scoreVal >= 90) tierRating = 'S+';
+    else if (scoreVal >= 80) tierRating = 'S';
+    else if (scoreVal >= 70) tierRating = 'A';
+    else if (scoreVal >= 60) tierRating = 'B';
+    else if (scoreVal >= 50) tierRating = 'C';
+    else tierRating = 'D';
+
+    resultMap.set(item.puuid, {
+      score: scoreVal,
+      rank: index + 1,
+      isMvp,
+      isAce,
+      tierRating,
+    });
+  });
+
+  return resultMap;
+}
+
+/**
+ * Returns match scores from DB heroScore if available, or calculates them on the fly.
+ */
+export function getOrCalculateMatchScores(
+  participants: any[],
+  gameDurationSeconds: number
+): Map<string, DeepLolScore> {
+  const hasSavedScores =
+    participants.length > 0 &&
+    participants.every((p) => typeof p.heroScore === 'number' && p.heroScore > 0);
+
+  if (hasSavedScores) {
+    return buildScoresFromSavedHeroScores(participants);
+  }
+
+  return calculateMatchScores(participants, gameDurationSeconds);
 }
 
 /**

@@ -864,21 +864,21 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
         </div>
 
         {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
-        {participant.score && (
+        {(participant.score || (participant.heroScore !== undefined && participant.heroScore !== null)) && (
           <div className="flex flex-col items-center justify-center shrink-0 min-w-[85px]">
-            {participant.score.isMvp ? (
+            {participant.score?.isMvp ? (
               <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-3 py-1.5 text-sm font-black shadow-md tracking-tight">
                 <Trophy className="h-4 w-4 text-black fill-black" />
-                <span>MVP {formatScore(participant.score)}</span>
+                <span>MVP {formatScore(participant.heroScore ?? participant.score)}</span>
               </span>
-            ) : participant.score.isAce ? (
+            ) : participant.score?.isAce ? (
               <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 text-sm font-black text-emerald-300 shadow-md tracking-tight">
                 <Award className="h-4 w-4 text-emerald-400" />
-                <span>ACE {formatScore(participant.score)}</span>
+                <span>ACE {formatScore(participant.heroScore ?? participant.score)}</span>
               </span>
             ) : (
               <span className="rounded-lg bg-white/[0.08] border border-white/15 px-3 py-1.5 text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap">
-                Hero Score {formatScore(participant.score)}
+                Hero Score {formatScore(participant.heroScore ?? participant.score)}
               </span>
             )}
           </div>

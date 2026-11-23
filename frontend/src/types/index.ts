@@ -106,6 +106,7 @@ export interface MatchParticipant {
   damageShare?: number;
   totalHeal?: number;
   goldSpent?: number;
+  heroScore?: number | null;
   score?: DeepLolScore;
   lpChange?: MatchLpChange | null;
   largestMultiKill?: number;

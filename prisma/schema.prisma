@@ -145,6 +145,7 @@ model MatchParticipant {
   wardsPlaced                 Int       @default(0)
   wardsKilled                 Int       @default(0)
   goldEarned                  Int       @default(0)
+  heroScore                   Float?
 
   // Items (0-5 Inventory, 6 Trinket)
   item0                       Int       @default(0)
