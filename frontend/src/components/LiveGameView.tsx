@@ -12,7 +12,7 @@ import {
   getRuneIconUrl,
   getStyleIconUrl,
   getPositionIconUrl,
-  assignTeamPositions,
+  assignLiveGameTeamPositions,
   POSITION_KEYS_ORDER,
 } from '@/lib/ddragon';
 import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
@@ -476,8 +476,8 @@ export default function LiveGameView({
     );
   };
 
-  const sortedBlueSlots = assignTeamPositions(game.blueTeam);
-  const sortedRedSlots = assignTeamPositions(game.redTeam);
+  const sortedBlueSlots = assignLiveGameTeamPositions(game.blueTeam);
+  const sortedRedSlots = assignLiveGameTeamPositions(game.redTeam);
 
   return (
     <div className="flex flex-col gap-3">
