@@ -5,7 +5,6 @@ import {
   normalizeRegion,
   getPlatformForRegion,
   getClusterForRegion,
-  resolveParticipantPosition,
 } from '../riot/regions';
 import {
   SummonerJobData,
@@ -423,7 +422,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               champLevel: p.champLevel || 1,
               teamId: p.teamId,
               win: p.win,
-              individualPosition: resolveParticipantPosition(p),
+              individualPosition: p.individualPosition || p.lane || null,
               profileIcon: (p as any).profileIcon || 29,
               kills: p.kills,
               deaths: p.deaths,
@@ -453,7 +452,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             update: {
               championId: p.championId,
               win: p.win,
-              individualPosition: resolveParticipantPosition(p),
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,

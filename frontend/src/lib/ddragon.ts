@@ -730,7 +730,6 @@ export interface TeamMemberLike {
   championId?: number;
   spell1Id?: number;
   spell2Id?: number;
-  spells?: number[];
   items?: number[];
   teamPosition?: string | null;
   lane?: string | null;
@@ -741,18 +740,6 @@ export interface TeamMemberLike {
 export interface AssignedTeamSlot<T> {
   role: PositionKey;
   participant?: T;
-}
-
-function getPermutations<P>(arr: P[]): P[][] {
-  if (arr.length <= 1) return [arr];
-  const res: P[][] = [];
-  for (let i = 0; i < arr.length; i++) {
-    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-    for (const p of getPermutations(rest)) {
-      res.push([arr[i], ...p]);
-    }
-  }
-  return res;
 }
 
 export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): AssignedTeamSlot<T>[] {
@@ -773,100 +760,80 @@ export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): Assign
   }
 
   const assigned = new Map<T, PositionKey>();
-  const roleTaken = new Map<PositionKey, T>();
-  const unassignedPlayers: T[] = [];
+  const unassignedPlayers = [...team];
+  const unassignedRoles = new Set<PositionKey>(roles);
 
-  // Pass 1: Direct assignment from verified database / Riot position
-  for (const p of team) {
-    const directPos = getParticipantPosition(p);
-    if (directPos && !roleTaken.has(directPos)) {
-      assigned.set(p, directPos);
-      roleTaken.set(directPos, p);
-    } else {
-      unassignedPlayers.push(p);
-    }
-  }
-
-  // If all 5 players have distinct, valid positions from the game, return immediately!
-  if (unassignedPlayers.length === 0) {
-    return roles.map((role) => ({
-      role,
-      participant: roleTaken.get(role),
-    }));
-  }
-
-  // Pass 2: For any unassigned or colliding players, resolve remaining open roles
-  const unassignedRoles = new Set<PositionKey>(
-    roles.filter((r) => !roleTaken.has(r))
+  // 1. Jungler Filter: Smite (spell ID 11)
+  const smiteIdx = unassignedPlayers.findIndex(
+    (p) => p.spell1Id === 11 || p.spell2Id === 11
   );
-
-  // 2a. Jungler Filter: Smite (spell ID 11)
-  if (unassignedRoles.has('JUNGLE')) {
-    const smiteIdx = unassignedPlayers.findIndex((p) => {
-      const spells = (p as any).spells;
-      const hasSmiteInSpells = Array.isArray(spells) && spells.includes(11);
-      return p.spell1Id === 11 || p.spell2Id === 11 || hasSmiteInSpells;
-    });
-    if (smiteIdx !== -1) {
-      const jglPlayer = unassignedPlayers[smiteIdx];
-      assigned.set(jglPlayer, 'JUNGLE');
-      roleTaken.set('JUNGLE', jglPlayer);
-      unassignedRoles.delete('JUNGLE');
-      unassignedPlayers.splice(smiteIdx, 1);
-    }
+  if (smiteIdx !== -1) {
+    const jglPlayer = unassignedPlayers[smiteIdx];
+    assigned.set(jglPlayer, 'JUNGLE');
+    unassignedRoles.delete('JUNGLE');
+    unassignedPlayers.splice(smiteIdx, 1);
   }
 
-  // 2b. Support Filter: Support Item
-  if (unassignedRoles.has('SUPPORT')) {
-    const supIdx = unassignedPlayers.findIndex((p) =>
-      p.items?.some((id) => SUPPORT_ITEM_IDS.has(id))
-    );
-    if (supIdx !== -1) {
-      const supPlayer = unassignedPlayers[supIdx];
-      assigned.set(supPlayer, 'SUPPORT');
-      roleTaken.set('SUPPORT', supPlayer);
-      unassignedRoles.delete('SUPPORT');
-      unassignedPlayers.splice(supIdx, 1);
-    }
+  // 2. Support Filter: Support Item
+  const supIdx = unassignedPlayers.findIndex((p) =>
+    p.items?.some((id) => SUPPORT_ITEM_IDS.has(id))
+  );
+  if (supIdx !== -1 && unassignedRoles.has('SUPPORT')) {
+    const supPlayer = unassignedPlayers[supIdx];
+    assigned.set(supPlayer, 'SUPPORT');
+    unassignedRoles.delete('SUPPORT');
+    unassignedPlayers.splice(supIdx, 1);
   }
 
-  // 2c. Permutation matching for remaining open roles
+  // 3. Assign remaining roles according to champion main role from championPositions table
   const remRoles = Array.from(unassignedRoles);
-  if (remRoles.length > 0 && unassignedPlayers.length > 0) {
-    const rolePerms = getPermutations(remRoles);
-    let bestPerm = rolePerms[0] || remRoles;
-    let bestScore = -1;
 
-    for (const perm of rolePerms) {
-      let score = 0;
-      for (let i = 0; i < unassignedPlayers.length; i++) {
-        const p = unassignedPlayers[i];
-        const targetRole = perm[i];
-        const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cInfo = champPositionsMap.get(clean);
-        const mainPos = roleStringToPositionKey(cInfo?.role);
-        const recPos = (cInfo?.recommendedPositions || []).map(roleStringToPositionKey);
-
-        const apiPos = getParticipantPosition(p);
-        if (apiPos === targetRole) score += 50;
-        if (mainPos === targetRole) score += 20;
-        else if (recPos.includes(targetRole)) score += 10;
-      }
-      if (score > bestScore) {
-        bestScore = score;
-        bestPerm = perm;
+  function getPermutations<P>(arr: P[]): P[][] {
+    if (arr.length <= 1) return [arr];
+    const res: P[][] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+      for (const p of getPermutations(rest)) {
+        res.push([arr[i], ...p]);
       }
     }
+    return res;
+  }
 
+  const rolePerms = getPermutations(remRoles);
+  let bestPerm = rolePerms[0] || remRoles;
+  let bestScore = -1;
+
+  for (const perm of rolePerms) {
+    let score = 0;
     for (let i = 0; i < unassignedPlayers.length; i++) {
-      assigned.set(unassignedPlayers[i], bestPerm[i]);
-      roleTaken.set(bestPerm[i], unassignedPlayers[i]);
+      const p = unassignedPlayers[i];
+      const targetRole = perm[i];
+      const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cInfo = champPositionsMap.get(clean);
+      const mainPos = roleStringToPositionKey(cInfo?.role);
+      const recPos = (cInfo?.recommendedPositions || []).map(roleStringToPositionKey);
+
+      if (mainPos === targetRole) score += 20;
+      else if (recPos.includes(targetRole)) score += 10;
+
+      // Secondary hint from Riot API
+      const apiPos = normalizePosition(p.individualPosition || p.lane, p.role);
+      if (apiPos === targetRole) score += 5;
     }
+    if (score > bestScore) {
+      bestScore = score;
+      bestPerm = perm;
+    }
+  }
+
+  for (let i = 0; i < unassignedPlayers.length; i++) {
+    assigned.set(unassignedPlayers[i], bestPerm[i]);
   }
 
   return roles.map((role) => ({
     role,
-    participant: roleTaken.get(role) || team.find((member) => assigned.get(member) === role),
+    participant: team.find((member) => assigned.get(member) === role),
   }));
 }
 
@@ -878,7 +845,7 @@ export function normalizePosition(
   if (l === 'TOP') return 'TOP';
   if (l === 'JUNGLE') return 'JUNGLE';
   if (l === 'MIDDLE' || l === 'MID') return 'MID';
-  if (l === 'BOTTOM' || l === 'BOT' || l === 'ADC') return 'ADC';
+  if (l === 'BOTTOM' || l === 'BOT') return 'ADC';
   if (l === 'UTILITY' || l === 'SUPPORT') return 'SUPPORT';
 
   const r = (role || '').toUpperCase().trim();
@@ -898,7 +865,7 @@ export function getParticipantPosition(p: {
   role?: string | null;
   teamPosition?: string | null;
 }): PositionKey | null {
-  return normalizePosition(p.teamPosition || p.individualPosition || p.lane, p.role);
+  return normalizePosition(p.individualPosition || p.lane || p.teamPosition, p.role);
 }
 
 export function getParticipantPositionOrder(p: {
