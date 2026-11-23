@@ -421,20 +421,20 @@ export default function LiveGameView({
               </div>
 
               {/* Line 2: Champion Name & Plain Text Mastery Values */}
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-xs">
-                <span className="text-xs text-zinc-300 font-semibold truncate">
+              <div className="flex items-baseline gap-1.5 mt-0.5 text-xs truncate">
+                <span className="font-semibold text-zinc-300">
                   {p.championName}
                 </span>
 
                 {p.mastery && (
                   p.mastery.championPoints > 0 ? (
                     <span
-                      className="text-[11px] font-medium text-zinc-400"
+                      className="font-medium text-zinc-400 inline-flex items-baseline"
                       title={`${t('live.masteryLevel', { level: p.mastery.championLevel })} · ${p.mastery.championPoints.toLocaleString()} ${t('masteries.totalPoints')}`}
                     >
-                      <span className="text-zinc-600 font-normal">·</span>{' '}
-                      <span className="font-bold text-amber-400/90">M{p.mastery.championLevel}</span>{' '}
-                      <span className="font-mono text-zinc-400">
+                      <span className="text-zinc-600 font-normal mr-1.5">·</span>
+                      <span className="font-bold text-amber-400">M{p.mastery.championLevel}</span>
+                      <span className="text-zinc-400 ml-1">
                         ({p.mastery.championPoints >= 1000000
                           ? `${(p.mastery.championPoints / 1000000).toFixed(1)}M`
                           : p.mastery.championPoints >= 1000
@@ -443,8 +443,9 @@ export default function LiveGameView({
                       </span>
                     </span>
                   ) : (
-                    <span className="text-[11px] text-zinc-500 font-medium">
-                      <span className="text-zinc-600 font-normal">·</span> {t('live.firstTime')}
+                    <span className="text-zinc-500 font-medium inline-flex items-baseline">
+                      <span className="text-zinc-600 font-normal mr-1.5">·</span>
+                      <span>{t('live.firstTime')}</span>
                     </span>
                   )
                 )}
@@ -549,10 +550,6 @@ export default function LiveGameView({
               )}
             </span>
           )}
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{t('live.autoCheckInterval')}</span>
-          </span>
         </div>
 
         {fullMatchId ? (

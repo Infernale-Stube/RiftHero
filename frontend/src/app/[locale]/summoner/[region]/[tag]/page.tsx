@@ -50,6 +50,9 @@ export default function SummonerMatchesPage() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Track if matches are currently loaded in state to avoid skeleton flash during silent updates
+  const hasMatchesRef = useRef<boolean>(false);
+
   // Track newly loaded matches for the current session (shown once, then gone)
   const sessionNewIdsRef = useRef<Set<string>>(new Set());
   const storageKey = region && tag ? `rifthero_seen_matches_${region.toLowerCase()}_${tag.toLowerCase()}` : '';
@@ -57,7 +60,8 @@ export default function SummonerMatchesPage() {
   const loadMatchesAndStats = useCallback(
     async (queue: string, isSilent = false) => {
       if (!region || !tag) return;
-      if (!isSilent) setIsLoadingMatches(true);
+      const shouldShowSkeleton = !isSilent && !hasMatchesRef.current;
+      if (shouldShowSkeleton) setIsLoadingMatches(true);
       try {
         const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
           fetchSummonerMatches(region, tag, queue, 10, 0),
@@ -67,6 +71,7 @@ export default function SummonerMatchesPage() {
         ]);
 
         const fetchedMatches = matchesRes.matches || [];
+        hasMatchesRef.current = fetchedMatches.length > 0;
 
         // Check seen matches in localStorage
         let storedSeenSet: Set<string> | null = null;

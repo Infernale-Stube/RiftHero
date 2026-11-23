@@ -30,8 +30,9 @@ export default function SummonerLayout({
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (isSilent = false) => {
     if (!region || !tag) return;
+    if (!isSilent && !profileData) setIsLoadingProfile(true);
     try {
       const data = await fetchSummonerProfile(region, tag);
       setProfileData(data);
@@ -40,11 +41,11 @@ export default function SummonerLayout({
     } finally {
       setIsLoadingProfile(false);
     }
-  }, [region, tag]);
+  }, [region, tag, profileData]);
 
-  const loadLiveGame = useCallback(async () => {
+  const loadLiveGame = useCallback(async (isSilent = false) => {
     if (!region || !tag) return null;
-    setIsLoadingLive(true);
+    if (!isSilent && !liveData) setIsLoadingLive(true);
     try {
       const res = await fetchLiveGame(region, tag);
       setLiveData(res);
@@ -55,7 +56,7 @@ export default function SummonerLayout({
     } finally {
       setIsLoadingLive(false);
     }
-  }, [region, tag]);
+  }, [region, tag, liveData]);
 
   useEffect(() => {
     loadProfile();

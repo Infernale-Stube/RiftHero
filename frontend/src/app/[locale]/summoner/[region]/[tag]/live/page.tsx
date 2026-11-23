@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useSummonerContext } from '../SummonerContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { triggerSummonerRefresh } from '@/lib/api';
@@ -18,7 +17,7 @@ export default function SummonerLivePage() {
     reloadLiveGame,
     reloadProfile,
   } = useSummonerContext();
-  const { t, locale } = useTranslation();
+  const { locale } = useTranslation();
   const router = useRouter();
 
   const gameName = profileData?.summoner?.gameName || '';
@@ -26,7 +25,6 @@ export default function SummonerLivePage() {
 
   // Track if we ever saw an active live match during this session
   const wasInGameRef = useRef<boolean>(Boolean(liveData?.inGame));
-  const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
   const isRedirectingRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -38,33 +36,28 @@ export default function SummonerLivePage() {
   const handleMatchEnded = useCallback(async () => {
     if (isRedirectingRef.current) return;
     isRedirectingRef.current = true;
-    setIsRedirecting(true);
 
     try {
-      // Trigger automatic backend profile crawl for the newly finished match & updated LP
+      // Trigger background profile crawl silently
       await triggerSummonerRefresh(region, tag);
     } catch (err) {
       console.error('Auto-refresh after live game error:', err);
     }
 
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('rifthero_auto_refresh_after_live', 'true');
-      } catch {}
-    }
+    // Refresh profile in context silently in the background
+    reloadProfile(true);
 
-    // Refresh profile in context and navigate back to the overview page
-    await reloadProfile();
-    router.push(`/${locale}/summoner/${region}/${encodeURIComponent(tag)}`);
+    // Smoothly replace route without page reload or history clutter
+    router.replace(`/${locale}/summoner/${region}/${tag}`);
   }, [region, tag, reloadProfile, router, locale]);
 
-  // Poll every 3 minutes (180,000 ms) while on this page
+  // Poll every 3 minutes (180,000 ms) while on this page silently
   useEffect(() => {
     if (!region || !tag) return;
 
     const interval = setInterval(async () => {
       try {
-        const updated = await reloadLiveGame();
+        const updated = await reloadLiveGame(true);
         // If the player was in-game and now is no longer in-game: match ended!
         if (wasInGameRef.current && (!updated || updated.inGame === false)) {
           await handleMatchEnded();
@@ -78,7 +71,7 @@ export default function SummonerLivePage() {
   }, [region, tag, reloadLiveGame, handleMatchEnded]);
 
   const handleRefresh = async () => {
-    const updated = await reloadLiveGame();
+    const updated = await reloadLiveGame(false);
     if (wasInGameRef.current && (!updated || updated.inGame === false)) {
       await handleMatchEnded();
     }
@@ -86,15 +79,6 @@ export default function SummonerLivePage() {
 
   return (
     <div className="w-full relative">
-      {isRedirecting && (
-        <div className="mb-4 flex items-center justify-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300 backdrop-blur-md animate-pulse">
-          <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
-          <span className="text-sm font-bold">
-            {t('live.matchEndedRedirect')}
-          </span>
-        </div>
-      )}
-
       <LiveGameView
         region={region}
         gameName={gameName}
