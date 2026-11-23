@@ -548,12 +548,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                               : 'text-zinc-400'
                           }`}
                         >
-                          <SlotLpCounter
-                            value={p.lpDelta}
-                            showSign={true}
-                            suffix=" LP"
-                            reelDurationMs={600}
-                          />
+                          {p.lpDelta > 0 ? `+${p.lpDelta}` : p.lpDelta} LP
                         </span>
                       ) : p.lpChange?.delta ? (
                         <span
@@ -565,12 +560,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                               : 'text-zinc-400'
                           }`}
                         >
-                          <SlotLpCounter
-                            value={p.lpChange.delta}
-                            showSign={true}
-                            suffix=" LP"
-                            reelDurationMs={600}
-                          />
+                          {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
                         </span>
                       ) : null}
                     </div>
@@ -848,7 +838,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                     value={effectiveLpDelta}
                     showSign={true}
                     suffix=" LP"
-                    reelDurationMs={750}
+                    durationMs={750}
+                    animate={Boolean(isNewMatch)}
                   />
                 </span>
               )}
