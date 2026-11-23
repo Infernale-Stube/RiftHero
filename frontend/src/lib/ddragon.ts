@@ -733,6 +733,7 @@ export interface TeamMemberLike {
   items?: number[];
   teamPosition?: string | null;
   lane?: string | null;
+  individualPosition?: string | null;
   role?: string | null;
 }
 
@@ -817,7 +818,7 @@ export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): Assign
       else if (recPos.includes(targetRole)) score += 10;
 
       // Secondary hint from Riot API
-      const apiPos = normalizePosition(p.lane, p.role);
+      const apiPos = normalizePosition(p.individualPosition || p.lane, p.role);
       if (apiPos === targetRole) score += 5;
     }
     if (score > bestScore) {
@@ -859,14 +860,16 @@ export function getPositionIconUrl(positionKey: PositionKey): string {
 }
 
 export function getParticipantPosition(p: {
+  individualPosition?: string | null;
   lane?: string | null;
   role?: string | null;
   teamPosition?: string | null;
 }): PositionKey | null {
-  return normalizePosition(p.lane || p.teamPosition, p.role);
+  return normalizePosition(p.individualPosition || p.lane || p.teamPosition, p.role);
 }
 
 export function getParticipantPositionOrder(p: {
+  individualPosition?: string | null;
   lane?: string | null;
   role?: string | null;
   teamPosition?: string | null;

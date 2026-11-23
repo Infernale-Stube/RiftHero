@@ -76,16 +76,17 @@ export interface FormattedMatch {
 }
 
 export function getPositionSortOrder(p: {
+  individualPosition?: string | null;
   teamPosition?: string | null;
   lane?: string | null;
   role?: string | null;
 }): number {
-  const lane = (p.lane || p.teamPosition || '').toUpperCase();
-  if (lane === 'TOP') return 1;
-  if (lane === 'JUNGLE') return 2;
-  if (lane === 'MIDDLE' || lane === 'MID') return 3;
-  if (lane === 'BOTTOM' || lane === 'BOT') return 4;
-  if (lane === 'UTILITY' || lane === 'SUPPORT') return 5;
+  const pos = (p.individualPosition || p.lane || p.teamPosition || '').toUpperCase();
+  if (pos === 'TOP') return 1;
+  if (pos === 'JUNGLE') return 2;
+  if (pos === 'MIDDLE' || pos === 'MID') return 3;
+  if (pos === 'BOTTOM' || pos === 'BOT') return 4;
+  if (pos === 'UTILITY' || pos === 'SUPPORT') return 5;
   return 6;
 }
 
@@ -110,9 +111,9 @@ function formatParticipant(
     champLevel: p.champLevel || 1,
     teamId: p.teamId,
     win: p.win,
-    role: p.lane || null,
-    lane: p.lane || null,
-    teamPosition: p.lane || null,
+    role: p.individualPosition || null,
+    lane: p.individualPosition || null,
+    teamPosition: p.individualPosition || null,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
@@ -132,18 +133,13 @@ function formatParticipant(
     spells: [p.summoner1Id, p.summoner2Id],
     primaryRune: p.primaryRune,
     secondaryStyle: p.secondaryStyle,
-    largestMultiKill: (p.challengesJson as any)?.largestMultiKill ?? (
-      (p.challengesJson as any)?.pentaKills > 0 ? 5 :
-      (p.challengesJson as any)?.quadraKills > 0 ? 4 :
-      (p.challengesJson as any)?.tripleKills > 0 ? 3 :
-      (p.challengesJson as any)?.doubleKills > 0 ? 2 : undefined
-    ),
-    doubleKills: (p.challengesJson as any)?.doubleKills || 0,
-    tripleKills: (p.challengesJson as any)?.tripleKills || 0,
-    quadraKills: (p.challengesJson as any)?.quadraKills || 0,
-    pentaKills: (p.challengesJson as any)?.pentaKills || 0,
-    gameEndedInSurrender: Boolean((p.challengesJson as any)?.gameEndedInSurrender),
-    gameEndedInEarlySurrender: Boolean((p.challengesJson as any)?.gameEndedInEarlySurrender),
+    largestMultiKill: undefined,
+    doubleKills: 0,
+    tripleKills: 0,
+    quadraKills: 0,
+    pentaKills: 0,
+    gameEndedInSurrender: false,
+    gameEndedInEarlySurrender: false,
   };
 }
 
@@ -267,11 +263,8 @@ export async function getSummonerMatches(
     currentFormatted.lpChange = matchLpChange;
     currentFormatted.score = matchScores.get(up.puuid);
 
-    const isRemake = m.gameDuration < 300 || Boolean((up.challengesJson as any)?.gameEndedInEarlySurrender);
-    const isSurrender = Boolean(
-      (up.challengesJson as any)?.gameEndedInSurrender ||
-      (up.challengesJson as any)?.gameEndedInEarlySurrender
-    );
+    const isRemake = m.gameDuration < 300;
+    const isSurrender = false;
     const gameEndTimestamp = m.gameEndTimestamp
       ? Number(m.gameEndTimestamp)
       : Number(m.gameCreation) + m.gameDuration * 1000;
@@ -455,15 +448,8 @@ export async function getSummonerChampionStats(
     if (p.kills > existing.maxKills) existing.maxKills = p.kills;
     if (p.deaths > existing.maxDeaths) existing.maxDeaths = p.deaths;
 
-    // Multi-kills from challengesJson
-    const ch = (p.challengesJson as any) || {};
-    existing.doubleKills += Number(ch.doubleKills || 0);
-    existing.tripleKills += Number(ch.tripleKills || 0);
-    existing.quadraKills += Number(ch.quadraKills || 0);
-    existing.pentaKills += Number(ch.pentaKills || 0);
-
     // Track lane / role
-    const pos = p.lane || 'UNKNOWN';
+    const pos = p.individualPosition || 'UNKNOWN';
     if (pos && pos !== 'NONE' && pos !== 'UNKNOWN') {
       existing.roles[pos] = (existing.roles[pos] || 0) + 1;
     }

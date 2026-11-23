@@ -83,6 +83,7 @@ export interface MatchParticipant {
   win: boolean;
   role: string | null;
   lane: string | null;
+  individualPosition?: string | null;
   kills: number;
   deaths: number;
   assists: number;

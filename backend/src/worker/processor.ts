@@ -323,12 +323,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
         blueDragonKills: blueObj.dragon?.kills ?? 0,
         blueRiftHeraldKills: blueObj.riftHerald?.kills ?? 0,
         blueHordeKills: blueObj.horde?.kills ?? 0,
-        blueFirstTower: blueObj.tower?.first ?? false,
-        blueFirstInhibitor: blueObj.inhibitor?.first ?? false,
-        blueFirstBaron: blueObj.baron?.first ?? false,
-        blueFirstDragon: blueObj.dragon?.first ?? false,
-        blueFirstHorde: blueObj.horde?.first ?? false,
-        blueFirstRiftHerald: blueObj.riftHerald?.first ?? false,
 
         // Red Objectives
         redTowerKills: redObj.tower?.kills ?? 0,
@@ -337,12 +331,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
         redDragonKills: redObj.dragon?.kills ?? 0,
         redRiftHeraldKills: redObj.riftHerald?.kills ?? 0,
         redHordeKills: redObj.horde?.kills ?? 0,
-        redFirstTower: redObj.tower?.first ?? false,
-        redFirstInhibitor: redObj.inhibitor?.first ?? false,
-        redFirstBaron: redObj.baron?.first ?? false,
-        redFirstDragon: redObj.dragon?.first ?? false,
-        redFirstHorde: redObj.horde?.first ?? false,
-        redFirstRiftHerald: redObj.riftHerald?.first ?? false,
       };
 
       // Upsert Match
@@ -383,7 +371,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               champLevel: p.champLevel || 1,
               teamId: p.teamId,
               win: p.win,
-              lane: p.lane || null,
+              individualPosition: p.individualPosition || p.lane || null,
               profileIcon: (p as any).profileIcon || 29,
               kills: p.kills,
               deaths: p.deaths,
