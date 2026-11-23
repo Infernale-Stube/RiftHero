@@ -139,7 +139,7 @@ model MatchParticipant {
   champLevel                  Int       @default(1)
   teamId                      Int       // 100: Blue, 200: Red
   win                         Boolean
-  individualPosition          String?
+  teamPosition                String?
   profileIcon                 Int?      @default(29)
 
   // Combat Stats

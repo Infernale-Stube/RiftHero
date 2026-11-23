@@ -235,14 +235,14 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
     // 2. Query participant performance by position and champion for this patch
     const rawStats = await prisma.$queryRaw<
       Array<{
-        individualPosition: string;
+        teamPosition: string;
         championId: number;
         games: number;
         wins: number;
       }>
     >`
       SELECT
-        p."individualPosition",
+        p."teamPosition",
         p."championId",
         COUNT(*)::int as games,
         SUM(CASE WHEN p.win THEN 1 ELSE 0 END)::int as wins
@@ -250,10 +250,10 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       JOIN matches m ON p."matchId" = m.id
       WHERE m."queueId" IN (420, 440)
         AND m."gameVersion" LIKE ${patchFilter}
-        AND p."individualPosition" IS NOT NULL
-        AND p."individualPosition" != ''
-        AND p."individualPosition" != 'Invalid'
-      GROUP BY p."individualPosition", p."championId"
+        AND p."teamPosition" IS NOT NULL
+        AND p."teamPosition" != ''
+        AND p."teamPosition" != 'Invalid'
+      GROUP BY p."teamPosition", p."championId"
       ORDER BY games DESC;
     `;
 
@@ -279,7 +279,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       const totalGamesByRole = new Map<string, number>();
 
       for (const row of rawStats) {
-        const canonical = POSITION_MAP[(row.individualPosition || '').toUpperCase()] || 'MID';
+        const canonical = POSITION_MAP[(row.teamPosition || '').toUpperCase()] || 'MID';
         totalGamesByRole.set(canonical, (totalGamesByRole.get(canonical) || 0) + row.games);
         if (byRole[canonical]) {
           byRole[canonical].push(row);
@@ -331,7 +331,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       tierList = [];
       for (const item of rawStats) {
         const champName = await getChampionNameById(item.championId);
-        const role = (POSITION_MAP[(item.individualPosition || '').toUpperCase()] || 'MID') as 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+        const role = (POSITION_MAP[(item.teamPosition || '').toUpperCase()] || 'MID') as 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
         const wins = item.wins;
         const games = item.games;
         const losses = Math.max(0, games - wins);

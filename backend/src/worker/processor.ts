@@ -422,7 +422,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               champLevel: p.champLevel || 1,
               teamId: p.teamId,
               win: p.win,
-              individualPosition: p.individualPosition || p.lane || null,
+              teamPosition: p.teamPosition && p.teamPosition.trim() ? p.teamPosition.trim().toUpperCase() : null,
               profileIcon: (p as any).profileIcon || 29,
               kills: p.kills,
               deaths: p.deaths,
@@ -452,6 +452,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             update: {
               championId: p.championId,
               win: p.win,
+              teamPosition: p.teamPosition && p.teamPosition.trim() ? p.teamPosition.trim().toUpperCase() : null,
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,

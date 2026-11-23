@@ -77,16 +77,15 @@ export interface FormattedMatch {
 }
 
 export function getPositionSortOrder(p: {
-  individualPosition?: string | null;
   teamPosition?: string | null;
-  lane?: string | null;
   role?: string | null;
+  lane?: string | null;
 }): number {
-  const pos = (p.individualPosition || p.lane || p.teamPosition || '').toUpperCase();
+  const pos = (p.teamPosition || p.lane || '').toUpperCase();
   if (pos === 'TOP') return 1;
   if (pos === 'JUNGLE') return 2;
   if (pos === 'MIDDLE' || pos === 'MID') return 3;
-  if (pos === 'BOTTOM' || pos === 'BOT') return 4;
+  if (pos === 'BOTTOM' || pos === 'BOT' || pos === 'ADC') return 4;
   if (pos === 'UTILITY' || pos === 'SUPPORT') return 5;
   return 6;
 }
@@ -112,9 +111,9 @@ function formatParticipant(
     champLevel: p.champLevel || 1,
     teamId: p.teamId,
     win: p.win,
-    role: p.individualPosition || null,
-    lane: p.individualPosition || null,
-    teamPosition: p.individualPosition || null,
+    role: p.teamPosition || null,
+    lane: p.teamPosition || null,
+    teamPosition: p.teamPosition || null,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
@@ -451,7 +450,7 @@ export async function getSummonerChampionStats(
     if (p.deaths > existing.maxDeaths) existing.maxDeaths = p.deaths;
 
     // Track lane / role
-    const pos = p.individualPosition || 'UNKNOWN';
+    const pos = p.teamPosition || 'UNKNOWN';
     if (pos && pos !== 'NONE' && pos !== 'UNKNOWN') {
       existing.roles[pos] = (existing.roles[pos] || 0) + 1;
     }
