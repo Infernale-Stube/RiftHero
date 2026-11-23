@@ -47,9 +47,6 @@ export async function getSummonerProfile(
       gameName: { equals: gameName, mode: 'insensitive' },
       tagLine: { equals: tagLine, mode: 'insensitive' },
     },
-    include: {
-      ranks: true,
-    },
   });
 
   const now = Date.now();
@@ -81,20 +78,42 @@ export async function getSummonerProfile(
     }
   }
 
-  // 4. Format ranks with winrate
-  const formattedRanks = (summoner?.ranks || []).map((r) => {
-    const total = r.wins + r.losses;
-    const winrate = total > 0 ? Math.round((r.wins / total) * 100) : 0;
-    return {
-      queueType: r.queueType,
-      tier: r.tier,
-      rank: r.rank,
-      leaguePoints: r.leaguePoints,
-      wins: r.wins,
-      losses: r.losses,
-      winrate,
-    };
-  });
+  // 4. Format ranks directly from Summoner table
+  const formattedRanks: Array<{
+    queueType: string;
+    tier: string;
+    rank: string;
+    leaguePoints: number;
+    wins: number;
+    losses: number;
+    winrate: number;
+  }> = [];
+
+  if (summoner?.soloTier) {
+    const total = summoner.soloWins + summoner.soloLosses;
+    formattedRanks.push({
+      queueType: 'RANKED_SOLO_5x5',
+      tier: summoner.soloTier,
+      rank: summoner.soloRank || 'I',
+      leaguePoints: summoner.soloLp,
+      wins: summoner.soloWins,
+      losses: summoner.soloLosses,
+      winrate: total > 0 ? Math.round((summoner.soloWins / total) * 100) : 0,
+    });
+  }
+
+  if (summoner?.flexTier) {
+    const total = summoner.flexWins + summoner.flexLosses;
+    formattedRanks.push({
+      queueType: 'RANKED_FLEX_SR',
+      tier: summoner.flexTier,
+      rank: summoner.flexRank || 'I',
+      leaguePoints: summoner.flexLp,
+      wins: summoner.flexWins,
+      losses: summoner.flexLosses,
+      winrate: total > 0 ? Math.round((summoner.flexWins / total) * 100) : 0,
+    });
+  }
 
   if (!summoner) {
     return {
@@ -190,30 +209,24 @@ export async function getRecentSummoners(limit = 10) {
       lastFetchedAt: 'desc',
     },
     take: limit,
-    include: {
-      ranks: true,
-    },
   });
 
-  return summoners.map((s) => {
-    const soloRank = s.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
-    return {
-      id: s.id,
-      gameName: s.gameName,
-      tagLine: s.tagLine,
-      region: s.region,
-      profileIconId: s.profileIconId,
-      summonerLevel: Number(s.summonerLevel),
-      lastFetchedAt: s.lastFetchedAt?.toISOString(),
-      soloRank: soloRank
-        ? {
-            tier: soloRank.tier,
-            rank: soloRank.rank,
-            leaguePoints: soloRank.leaguePoints,
-          }
-        : null,
-    };
-  });
+  return summoners.map((s) => ({
+    id: s.id,
+    gameName: s.gameName,
+    tagLine: s.tagLine,
+    region: s.region,
+    profileIconId: s.profileIconId,
+    summonerLevel: Number(s.summonerLevel),
+    lastFetchedAt: s.lastFetchedAt?.toISOString(),
+    soloRank: s.soloTier
+      ? {
+          tier: s.soloTier,
+          rank: s.soloRank || 'I',
+          leaguePoints: s.soloLp,
+        }
+      : null,
+  }));
 }
 
 export async function searchSummoners(query: string, region?: string, limit = 6) {
@@ -259,22 +272,16 @@ export async function searchSummoners(query: string, region?: string, limit = 6)
     orderBy: {
       lastFetchedAt: 'desc',
     },
-    include: {
-      ranks: true,
-    },
   });
 
-  return matches.map((m) => {
-    const soloRank = m.ranks.find((r) => r.queueType === 'RANKED_SOLO_5x5');
-    return {
-      gameName: m.gameName,
-      tagLine: m.tagLine,
-      region: m.region,
-      profileIconId: m.profileIconId,
-      summonerLevel: Number(m.summonerLevel),
-      tier: soloRank?.tier || 'UNRANKED',
-      rank: soloRank?.rank || '',
-      leaguePoints: soloRank?.leaguePoints ?? 0,
-    };
-  });
+  return matches.map((m) => ({
+    gameName: m.gameName,
+    tagLine: m.tagLine,
+    region: m.region,
+    profileIconId: m.profileIconId,
+    summonerLevel: Number(m.summonerLevel),
+    tier: m.soloTier || 'UNRANKED',
+    rank: m.soloRank || '',
+    leaguePoints: m.soloLp ?? 0,
+  }));
 }

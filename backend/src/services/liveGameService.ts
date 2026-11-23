@@ -249,7 +249,6 @@ export async function getLiveGame(
 
   const dbSummoners = await prisma.summoner.findMany({
     where: { puuid: { in: participantPuuids } },
-    include: { ranks: true },
   });
 
   const summonerMap = new Map<string, any>();
@@ -277,7 +276,7 @@ export async function getLiveGame(
   // 3c. For participants missing soloRank in DB, fetch live from Riot League API (with timeout protection)
   const missingRankPuuids = participantPuuids.filter((pId) => {
     const dbEntry = summonerMap.get(pId);
-    return !dbEntry?.ranks?.some((r: any) => r.queueType === 'RANKED_SOLO_5x5');
+    return !dbEntry?.soloTier;
   });
 
   const liveRankMap = new Map<string, any>();
@@ -363,19 +362,19 @@ export async function getLiveGame(
   for (const p of currentGame.participants) {
     const champName = await getChampionNameById(p.championId);
     const dbEntry = summonerMap.get(p.puuid);
-    const soloRank = dbEntry?.ranks?.find((r: any) => r.queueType === 'RANKED_SOLO_5x5');
 
     let rankFormatted = null;
-    if (soloRank) {
-      const total = soloRank.wins + soloRank.losses;
-      const winrate = total > 0 ? Math.round((soloRank.wins / total) * 100) : 0;
+    if (dbEntry?.soloTier) {
+      const wins = dbEntry.soloWins || 0;
+      const losses = dbEntry.soloLosses || 0;
+      const total = wins + losses;
       rankFormatted = {
-        tier: soloRank.tier,
-        rank: soloRank.rank,
-        leaguePoints: soloRank.leaguePoints,
-        wins: soloRank.wins,
-        losses: soloRank.losses,
-        winrate,
+        tier: dbEntry.soloTier,
+        rank: dbEntry.soloRank || 'I',
+        leaguePoints: dbEntry.soloLp || 0,
+        wins,
+        losses,
+        winrate: total > 0 ? Math.round((wins / total) * 100) : 0,
       };
     } else if (liveRankMap.has(p.puuid)) {
       rankFormatted = liveRankMap.get(p.puuid);

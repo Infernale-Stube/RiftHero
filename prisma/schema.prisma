@@ -14,8 +14,6 @@ model Summoner {
   tagLine        String
   region         String    // UI Region: euw, eune, na, kr
   platform       String    // Platform ID: euw1, eun1, na1, kr
-  summonerId     String?   // Encrypted summoner ID
-  accountId      String?   // Encrypted account ID
   profileIconId  Int       @default(29)
   summonerLevel  BigInt    @default(1)
   revisionDate   BigInt?
@@ -23,36 +21,28 @@ model Summoner {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  ranks          SummonerRank[]
+  // Ranked Solo / Duo
+  soloTier       String?   // IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
+  soloRank       String?   // I, II, III, IV
+  soloLp         Int       @default(0)
+  soloWins       Int       @default(0)
+  soloLosses     Int       @default(0)
+
+  // Ranked Flex
+  flexTier       String?
+  flexRank       String?
+  flexLp         Int       @default(0)
+  flexWins       Int       @default(0)
+  flexLosses     Int       @default(0)
+
   lpSnapshots    SummonerLpSnapshot[]
   participants   MatchParticipant[]
 
   @@index([gameName, tagLine])
   @@index([region, gameName, tagLine])
   @@index([lastFetchedAt(sort: Desc)])
+  @@index([soloTier, soloLp])
   @@map("summoners")
-}
-
-model SummonerRank {
-  id           String   @id @default(cuid())
-  summonerId   String
-  queueType    String   // RANKED_SOLO_5x5, RANKED_FLEX_SR
-  tier         String   // IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
-  rank         String   // I, II, III, IV
-  leaguePoints Int      @default(0)
-  wins         Int      @default(0)
-  losses       Int      @default(0)
-  veteran      Boolean  @default(false)
-  inactive     Boolean  @default(false)
-  freshBlood   Boolean  @default(false)
-  hotStreak    Boolean  @default(false)
-  updatedAt    DateTime @updatedAt
-
-  summoner     Summoner @relation(fields: [summonerId], references: [id], onDelete: Cascade)
-
-  @@unique([summonerId, queueType])
-  @@index([tier, leaguePoints])
-  @@map("summoner_ranks")
 }
 
 model SummonerLpSnapshot {

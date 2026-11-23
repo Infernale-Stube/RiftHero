@@ -78,10 +78,15 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     }
   }
 
-  // 4. Upsert Summoner in PostgreSQL
-  const encryptedSummonerId = (summonerDto as any).id || null;
-  const encryptedAccountId = (summonerDto as any).accountId || null;
+  // 4. Parse league entries
+  const soloEntry = Array.isArray(leagueEntries)
+    ? leagueEntries.find((e: any) => e.queueType === 'RANKED_SOLO_5x5')
+    : undefined;
+  const flexEntry = Array.isArray(leagueEntries)
+    ? leagueEntries.find((e: any) => e.queueType === 'RANKED_FLEX_SR')
+    : undefined;
 
+  // 5. Upsert Summoner in PostgreSQL (Ranks integrated directly!)
   const savedSummoner = await prisma.summoner.upsert({
     where: { puuid },
     create: {
@@ -90,77 +95,73 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       tagLine: cleanTagLine,
       region,
       platform,
-      summonerId: encryptedSummonerId,
-      accountId: encryptedAccountId,
       profileIconId: summonerDto.profileIconId,
       summonerLevel: BigInt(summonerDto.summonerLevel),
       revisionDate: summonerDto.revisionDate ? BigInt(summonerDto.revisionDate) : null,
       lastFetchedAt: new Date(),
+      soloTier: soloEntry?.tier || null,
+      soloRank: soloEntry?.rank || null,
+      soloLp: soloEntry?.leaguePoints ?? 0,
+      soloWins: soloEntry?.wins ?? 0,
+      soloLosses: soloEntry?.losses ?? 0,
+      flexTier: flexEntry?.tier || null,
+      flexRank: flexEntry?.rank || null,
+      flexLp: flexEntry?.leaguePoints ?? 0,
+      flexWins: flexEntry?.wins ?? 0,
+      flexLosses: flexEntry?.losses ?? 0,
     },
     update: {
       gameName: cleanGameName,
       tagLine: cleanTagLine,
       region,
       platform,
-      summonerId: encryptedSummonerId,
-      accountId: encryptedAccountId,
       profileIconId: summonerDto.profileIconId,
       summonerLevel: BigInt(summonerDto.summonerLevel),
       revisionDate: summonerDto.revisionDate ? BigInt(summonerDto.revisionDate) : null,
       lastFetchedAt: new Date(),
+      soloTier: soloEntry?.tier || null,
+      soloRank: soloEntry?.rank || null,
+      soloLp: soloEntry?.leaguePoints ?? 0,
+      soloWins: soloEntry?.wins ?? 0,
+      soloLosses: soloEntry?.losses ?? 0,
+      flexTier: flexEntry?.tier || null,
+      flexRank: flexEntry?.rank || null,
+      flexLp: flexEntry?.leaguePoints ?? 0,
+      flexWins: flexEntry?.wins ?? 0,
+      flexLosses: flexEntry?.losses ?? 0,
     },
   });
 
-  // 5. Upsert Ranks
-  if (Array.isArray(leagueEntries)) {
-    for (const entry of leagueEntries) {
-      await prisma.summonerRank.upsert({
-        where: {
-          summonerId_queueType: {
-            summonerId: savedSummoner.id,
-            queueType: entry.queueType,
-          },
-        },
-        create: {
-          summonerId: savedSummoner.id,
-          queueType: entry.queueType,
-          tier: entry.tier,
-          rank: entry.rank,
-          leaguePoints: entry.leaguePoints,
-          wins: entry.wins,
-          losses: entry.losses,
-          veteran: entry.veteran || false,
-          inactive: entry.inactive || false,
-          freshBlood: entry.freshBlood || false,
-          hotStreak: entry.hotStreak || false,
-        },
-        update: {
-          tier: entry.tier,
-          rank: entry.rank,
-          leaguePoints: entry.leaguePoints,
-          wins: entry.wins,
-          losses: entry.losses,
-          veteran: entry.veteran || false,
-          inactive: entry.inactive || false,
-          freshBlood: entry.freshBlood || false,
-          hotStreak: entry.hotStreak || false,
-        },
-      });
+  // 6. Record LP Snapshots if ranks exist
+  if (soloEntry) {
+    try {
+      await recordLpSnapshot(
+        savedSummoner.id,
+        'RANKED_SOLO_5x5',
+        soloEntry.tier,
+        soloEntry.rank,
+        soloEntry.leaguePoints,
+        soloEntry.wins,
+        soloEntry.losses
+      );
+    } catch {
+      // Ignore snapshot errors
+    }
+  }
 
-      // Record LP Snapshot for tracking
-      try {
-        await recordLpSnapshot(
-          savedSummoner.id,
-          entry.queueType,
-          entry.tier,
-          entry.rank,
-          entry.leaguePoints,
-          entry.wins,
-          entry.losses
-        );
-      } catch (lpErr) {
-        // Ignore snapshot errors
-      }
+  if (flexEntry) {
+    try {
+      await recordLpSnapshot(
+        savedSummoner.id,
+        'RANKED_FLEX_SR',
+        flexEntry.tier,
+        flexEntry.rank,
+        flexEntry.leaguePoints,
+        flexEntry.wins,
+        flexEntry.losses
+      );
+    } catch {
+      // Ignore snapshot errors
     }
   }
 

@@ -130,19 +130,23 @@ export async function getSummonerLpHistory(
   puuid: string,
   queueType = 'RANKED_SOLO_5x5'
 ): Promise<LpHistorySummary | null> {
-  // 1. Get current rank
-  const rankEntry = await prisma.summonerRank.findUnique({
-    where: {
-      summonerId_queueType: {
-        summonerId,
-        queueType,
-      },
-    },
+  // 1. Get current rank directly from summoner
+  const summoner = await prisma.summoner.findUnique({
+    where: { id: summonerId },
   });
 
-  if (!rankEntry) return null;
+  if (!summoner) return null;
 
-  const currentTotalLp = calculateTotalLp(rankEntry.tier, rankEntry.rank, rankEntry.leaguePoints);
+  const isSolo = queueType === 'RANKED_SOLO_5x5';
+  const tier = isSolo ? summoner.soloTier : summoner.flexTier;
+  const rank = isSolo ? summoner.soloRank : summoner.flexRank;
+  const lp = isSolo ? summoner.soloLp : summoner.flexLp;
+  const wins = isSolo ? summoner.soloWins : summoner.flexWins;
+  const losses = isSolo ? summoner.soloLosses : summoner.flexLosses;
+
+  if (!tier) return null;
+
+  const currentTotalLp = calculateTotalLp(tier, rank || 'I', lp);
 
   // 2. Query stored snapshots
   const snapshots = await prisma.summonerLpSnapshot.findMany({
@@ -156,11 +160,11 @@ export async function getSummonerLpHistory(
     await recordLpSnapshot(
       summonerId,
       queueType,
-      rankEntry.tier,
-      rankEntry.rank,
-      rankEntry.leaguePoints,
-      rankEntry.wins,
-      rankEntry.losses
+      tier,
+      rank || 'I',
+      lp,
+      wins,
+      losses
     );
     return null;
   }
@@ -207,14 +211,14 @@ export async function getSummonerLpHistory(
 
   return {
     queueType,
-    currentTier: rankEntry.tier,
-    currentRank: rankEntry.rank,
-    currentLp: rankEntry.leaguePoints,
+    currentTier: tier,
+    currentRank: rank || 'I',
+    currentLp: lp,
     netDeltaLp,
     peakTier: peakInfo.tier,
     peakRank: peakInfo.rank,
     peakLp: peakInfo.lp,
-    longestWinStreak: Math.max(maxWinStreak, rankEntry.hotStreak ? 3 : 1),
+    longestWinStreak: Math.max(maxWinStreak, 1),
     points,
   };
 }
@@ -388,7 +392,6 @@ export async function getMatchesLpChanges(
       lpSnapshots: {
         orderBy: { recordedAt: 'asc' },
       },
-      ranks: true,
     },
   });
 
@@ -529,14 +532,16 @@ export async function getMatchesLpChanges(
   // Fallback / historical reconstruction for ranked matches without snapshot match
   for (const m of rankedMatches) {
     if (map.has(m.id)) continue;
-    const queueType = m.queueId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
-    const rankInfo = summoner.ranks?.find((r) => r.queueType === queueType);
+    const isSolo = m.queueId === 420;
+    const tier = isSolo ? (summoner.soloTier || 'EMERALD') : (summoner.flexTier || 'EMERALD');
+    const rank = isSolo ? (summoner.soloRank || 'IV') : (summoner.flexRank || 'IV');
+    const leaguePoints = isSolo ? (summoner.soloLp ?? 50) : (summoner.flexLp ?? 50);
     const delta = m.win ? 21 : -19;
     map.set(m.id, {
       delta,
-      tier: rankInfo?.tier || 'EMERALD',
-      rank: rankInfo?.rank || 'IV',
-      leaguePoints: rankInfo?.leaguePoints ?? 50,
+      tier,
+      rank,
+      leaguePoints,
     });
   }
 
