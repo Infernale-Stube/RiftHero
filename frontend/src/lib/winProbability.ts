@@ -198,6 +198,9 @@ export function calculateLiveGameWinProbability(
       blueAvgMasteryLevel,
       redAvgMasteryLevel,
       masteryAdvantage,
+      mmrAdvantage,
+      wrAdvantage,
+      champAdvantage,
     },
   };
 }

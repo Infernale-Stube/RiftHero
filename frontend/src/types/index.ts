@@ -368,6 +368,9 @@ export interface LiveGameWinProbability {
     blueAvgMasteryLevel?: number | null;
     redAvgMasteryLevel?: number | null;
     masteryAdvantage?: number;
+    mmrAdvantage?: number;
+    wrAdvantage?: number;
+    champAdvantage?: number;
   };
 }
 

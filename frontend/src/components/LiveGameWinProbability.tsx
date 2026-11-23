@@ -70,26 +70,61 @@ export default function LiveGameWinProbability({
     masteryAdvantage = 0,
   } = factors;
 
-  // Determine leaders for each factor
-  const rankLeader =
-    rankDiffLp > 30 ? 'blue' : rankDiffLp < -30 ? 'red' : 'even';
+  const mmrAdvantage =
+    typeof factors.mmrAdvantage === 'number'
+      ? factors.mmrAdvantage
+      : Math.max(-18, Math.min(18, Math.round((rankDiffLp / 40) * 10) / 10));
 
-  const winrateDiff =
-    blueAvgWinrate !== null && redAvgWinrate !== null
-      ? blueAvgWinrate - redAvgWinrate
+  const wrAdvantage =
+    typeof factors.wrAdvantage === 'number'
+      ? factors.wrAdvantage
+      : blueAvgWinrate !== null && redAvgWinrate !== null
+      ? Math.max(-8, Math.min(8, Math.round((blueAvgWinrate - redAvgWinrate) * 0.35 * 10) / 10))
       : 0;
-  const winrateLeader =
-    winrateDiff > 1.5 ? 'blue' : winrateDiff < -1.5 ? 'red' : 'even';
 
-  const champDiff =
-    blueChampWinrate !== null && redChampWinrate !== null
-      ? blueChampWinrate - redChampWinrate
+  const champAdvantage =
+    typeof factors.champAdvantage === 'number'
+      ? factors.champAdvantage
+      : blueChampWinrate !== null && redChampWinrate !== null
+      ? Math.max(-6, Math.min(6, Math.round((blueChampWinrate - redChampWinrate) * 0.25 * 10) / 10))
       : 0;
-  const champLeader =
-    champDiff > 2 ? 'blue' : champDiff < -2 ? 'red' : 'even';
 
-  const masteryLeader =
-    masteryAdvantage > 0.5 ? 'blue' : masteryAdvantage < -0.5 ? 'red' : 'even';
+  const renderAdvantageBadge = (adv: number) => {
+    const rounded = Math.round(adv * 10) / 10;
+    if (rounded > 0) {
+      return (
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-blue-500/30">
+          +{rounded.toFixed(1)}% {t('live.bluePrefix')}
+        </span>
+      );
+    }
+    if (rounded < 0) {
+      return (
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+          +{Math.abs(rounded).toFixed(1)}% {t('live.redPrefix')}
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-500/20 text-zinc-400 border border-zinc-500/30">
+        {t('live.balanced')}
+      </span>
+    );
+  };
+
+  const renderAdvantageDelta = (adv: number) => {
+    const rounded = Math.round(adv * 10) / 10;
+    if (rounded === 0) return null;
+    return (
+      <span
+        className={`font-semibold ml-1 ${
+          rounded > 0 ? 'text-cyan-400' : 'text-rose-400'
+        }`}
+      >
+        ({rounded > 0 ? `+${rounded.toFixed(1)}%` : `${rounded.toFixed(1)}%`})
+      </span>
+    );
+  };
 
   const formatMasteryPoints = (pts: number | null | undefined) => {
     if (pts == null) return null;
@@ -288,21 +323,7 @@ export default function LiveGameWinProbability({
                     <Trophy className="h-3.5 w-3.5 text-amber-400" />
                     <span>{t('live.rankFactor')}</span>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      rankLeader === 'blue'
-                        ? 'bg-blue-500/20 text-cyan-300'
-                        : rankLeader === 'red'
-                        ? 'bg-rose-500/20 text-rose-300'
-                        : 'bg-zinc-500/20 text-zinc-400'
-                    }`}
-                  >
-                    {rankLeader === 'blue'
-                      ? t('live.blueLead')
-                      : rankLeader === 'red'
-                      ? t('live.redLead')
-                      : t('live.balanced')}
-                  </span>
+                  {renderAdvantageBadge(mmrAdvantage)}
                 </div>
                 <div className="text-xs font-bold text-slate-200">
                   {rankDiffLp !== 0 ? (
@@ -316,6 +337,7 @@ export default function LiveGameWinProbability({
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
                   {t('live.mmrComparison', { blue: blueAvgMmr, red: redAvgMmr })}
+                  {renderAdvantageDelta(mmrAdvantage)}
                 </div>
               </div>
 
@@ -326,21 +348,7 @@ export default function LiveGameWinProbability({
                     <Percent className="h-3.5 w-3.5 text-emerald-400" />
                     <span>{t('live.winrateFactor')}</span>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      winrateLeader === 'blue'
-                        ? 'bg-blue-500/20 text-cyan-300'
-                        : winrateLeader === 'red'
-                        ? 'bg-rose-500/20 text-rose-300'
-                        : 'bg-zinc-500/20 text-zinc-400'
-                    }`}
-                  >
-                    {winrateLeader === 'blue'
-                      ? t('live.blueLead')
-                      : winrateLeader === 'red'
-                      ? t('live.redLead')
-                      : t('live.balanced')}
-                  </span>
+                  {renderAdvantageBadge(wrAdvantage)}
                 </div>
                 <div className="text-xs font-bold text-slate-200">
                   {blueAvgWinrate !== null && redAvgWinrate !== null ? (
@@ -353,6 +361,7 @@ export default function LiveGameWinProbability({
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
                   {t('live.avgSeasonWinrates')}
+                  {renderAdvantageDelta(wrAdvantage)}
                 </div>
               </div>
 
@@ -363,21 +372,7 @@ export default function LiveGameWinProbability({
                     <Swords className="h-3.5 w-3.5 text-purple-400" />
                     <span>{t('live.champFactor')}</span>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      champLeader === 'blue'
-                        ? 'bg-blue-500/20 text-cyan-300'
-                        : champLeader === 'red'
-                        ? 'bg-rose-500/20 text-rose-300'
-                        : 'bg-zinc-500/20 text-zinc-400'
-                    }`}
-                  >
-                    {champLeader === 'blue'
-                      ? t('live.blueLead')
-                      : champLeader === 'red'
-                      ? t('live.redLead')
-                      : t('live.balanced')}
-                  </span>
+                  {renderAdvantageBadge(champAdvantage)}
                 </div>
                 <div className="text-xs font-bold text-slate-200">
                   {blueChampWinrate !== null && redChampWinrate !== null ? (
@@ -394,6 +389,7 @@ export default function LiveGameWinProbability({
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
                   {t('live.champExpSubtitle')}
+                  {renderAdvantageDelta(champAdvantage)}
                 </div>
               </div>
 
@@ -404,21 +400,7 @@ export default function LiveGameWinProbability({
                     <Flame className="h-3.5 w-3.5 text-amber-400" />
                     <span>{t('live.masteryFactor')}</span>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      masteryLeader === 'blue'
-                        ? 'bg-blue-500/20 text-cyan-300'
-                        : masteryLeader === 'red'
-                        ? 'bg-rose-500/20 text-rose-300'
-                        : 'bg-zinc-500/20 text-zinc-400'
-                    }`}
-                  >
-                    {masteryLeader === 'blue'
-                      ? t('live.blueLead')
-                      : masteryLeader === 'red'
-                      ? t('live.redLead')
-                      : t('live.balanced')}
-                  </span>
+                  {renderAdvantageBadge(masteryAdvantage)}
                 </div>
                 <div className="text-xs font-bold text-slate-200">
                   {blueAvgMasteryPts !== null && redAvgMasteryPts !== null ? (
@@ -437,11 +419,7 @@ export default function LiveGameWinProbability({
                   {blueAvgMasteryLevel !== null && redAvgMasteryLevel !== null
                     ? t('live.masterySubtitle', { bLvl: blueAvgMasteryLevel, rLvl: redAvgMasteryLevel })
                     : t('masteries.totalPoints')}
-                  {masteryAdvantage !== 0 && (
-                    <span className={masteryAdvantage > 0 ? ' text-cyan-400 font-semibold' : ' text-rose-400 font-semibold'}>
-                      {' '}({masteryAdvantage > 0 ? '+' : ''}{masteryAdvantage.toFixed(1)}%)
-                    </span>
-                  )}
+                  {renderAdvantageDelta(masteryAdvantage)}
                 </div>
               </div>
 
@@ -452,15 +430,14 @@ export default function LiveGameWinProbability({
                     <Shield className="h-3.5 w-3.5 text-sky-400" />
                     <span>{t('live.mapFactor')}</span>
                   </div>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-cyan-300">
-                    {sideAdvantage > 0 ? t('live.sideAdvantageBlue') : t('live.sideAdvantageNeutral')}
-                  </span>
+                  {renderAdvantageBadge(sideAdvantage)}
                 </div>
                 <div className="text-xs font-bold text-slate-200">
                   {sideAdvantage > 0 ? t('live.sideAdvantageBlueDesc') : t('live.sideAdvantageSymmetric')}
                 </div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">
                   {t('live.mapBiasSubtitle')}
+                  {renderAdvantageDelta(sideAdvantage)}
                 </div>
               </div>
             </div>
