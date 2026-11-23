@@ -1,6 +1,6 @@
 import { prisma } from '../db/prisma';
 import { getRiotClient } from '../riot/client';
-import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../riot/regions';
+import { getQueueName, getClusterForPlatform, getClusterForRegion, resolveParticipantPosition } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
@@ -190,7 +190,7 @@ export async function getMatchDetails(
                   champLevel: p.champLevel || 1,
                   teamId: p.teamId,
                   win: p.win,
-                  individualPosition: p.individualPosition || p.lane || null,
+                  individualPosition: resolveParticipantPosition(p),
                   kills: p.kills,
                   deaths: p.deaths,
                   assists: p.assists,

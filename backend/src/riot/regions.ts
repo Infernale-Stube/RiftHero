@@ -216,3 +216,22 @@ export function mapQueueFilterToId(filter?: string): number[] | undefined {
       return undefined;
   }
 }
+
+export function resolveParticipantPosition(p: any): string | null {
+  const teamPos = (p.teamPosition || '').trim().toUpperCase();
+  if (teamPos && teamPos !== 'INVALID' && teamPos !== 'NONE') {
+    return teamPos;
+  }
+  const indPos = (p.individualPosition || '').trim().toUpperCase();
+  if (indPos && indPos !== 'INVALID' && indPos !== 'NONE') {
+    return indPos;
+  }
+  const lane = (p.lane || '').trim().toUpperCase();
+  const role = (p.role || '').trim().toUpperCase();
+  if (lane === 'BOTTOM' || lane === 'BOT') {
+    if (role === 'DUO_SUPPORT' || role === 'SUPPORT') return 'UTILITY';
+    if (role === 'DUO_CARRY' || role === 'CARRY') return 'BOTTOM';
+  }
+  if (lane && lane !== 'NONE') return lane;
+  return null;
+}

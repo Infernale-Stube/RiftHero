@@ -61,7 +61,7 @@ export function calculateMatchScores(
     score += kpBonus;
 
     // 4. Role & Damage Output
-    const rolePos = (p.individualPosition || p.lane || '').toUpperCase();
+    const rolePos = (p.teamPosition || p.individualPosition || p.lane || '').toUpperCase();
     const isSupport = rolePos === 'UTILITY' || rolePos === 'SUPPORT';
     const isJungle = rolePos === 'JUNGLE';
     const isCarry = !isSupport && !isJungle;
@@ -354,7 +354,7 @@ export function calculateScoreTimeline(
         if (pf) {
           const totalCs = (pf.minionsKilled || 0) + (pf.jungleMinionsKilled || 0);
           const csPerMin = totalCs / currentMinute;
-          const rolePos = (p.individualPosition || p.lane || '').toUpperCase();
+          const rolePos = (p.teamPosition || p.individualPosition || p.lane || '').toUpperCase();
           if (rolePos !== 'UTILITY' && rolePos !== 'SUPPORT') {
             score += Math.min(10, Math.max(-10, (csPerMin - 6.0) * 2.5));
           }

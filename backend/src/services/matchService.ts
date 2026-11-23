@@ -82,11 +82,11 @@ export function getPositionSortOrder(p: {
   lane?: string | null;
   role?: string | null;
 }): number {
-  const pos = (p.individualPosition || p.lane || p.teamPosition || '').toUpperCase();
+  const pos = (p.teamPosition || p.individualPosition || p.lane || '').toUpperCase();
   if (pos === 'TOP') return 1;
   if (pos === 'JUNGLE') return 2;
   if (pos === 'MIDDLE' || pos === 'MID') return 3;
-  if (pos === 'BOTTOM' || pos === 'BOT') return 4;
+  if (pos === 'BOTTOM' || pos === 'BOT' || pos === 'ADC') return 4;
   if (pos === 'UTILITY' || pos === 'SUPPORT') return 5;
   return 6;
 }
