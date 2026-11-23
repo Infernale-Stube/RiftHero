@@ -173,9 +173,6 @@ export async function getMatchDetails(
 
           participants: {
             create: info.participants.map((p) => {
-              const kdaValue = p.deaths === 0
-                ? p.kills + p.assists
-                : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
               return {
                 puuid: p.puuid,
                 riotIdGameName: p.riotIdName || (p as any).riotIdGameName || p.summonerName || 'Unknown',
@@ -188,7 +185,6 @@ export async function getMatchDetails(
                 kills: p.kills,
                 deaths: p.deaths,
                 assists: p.assists,
-                kda: kdaValue,
                 totalDamageDealtToChampions: p.totalDamageDealtToChampions,
                 totalDamageTaken: p.totalDamageTaken,
                 totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),

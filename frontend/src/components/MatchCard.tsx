@@ -29,6 +29,7 @@ import {
   getParticipantPosition,
   getParticipantPositionOrder,
   assignTeamPositions,
+  calculateKda,
   POSITION_KEYS_ORDER,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
@@ -554,7 +555,9 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                       <span className="text-zinc-600">/</span>
                       <span>{p.assists}</span>
                     </div>
-                    <span className="text-[10px] text-zinc-400 font-medium">{p.kda}:1 KDA</span>
+                    <span className="text-[10px] text-zinc-400 font-medium">
+                      {calculateKda(p.kills, p.deaths, p.assists)}:1 KDA
+                    </span>
                   </div>
 
                   {/* KP */}
@@ -830,7 +833,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               <span>{participant.assists}</span>
             </div>
             <span className="text-xs font-bold text-zinc-400 ml-1">
-              {(Math.round(participant.kda * 100) / 100).toFixed(2)} KDA
+              {calculateKda(participant.kills, participant.deaths, participant.assists)} KDA
             </span>
           </div>
 

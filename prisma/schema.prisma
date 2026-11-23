@@ -137,7 +137,6 @@ model MatchParticipant {
   kills                       Int       @default(0)
   deaths                      Int       @default(0)
   assists                     Int       @default(0)
-  kda                         Float?    @default(0.0)
   totalDamageDealtToChampions Int       @default(0)
   totalDamageTaken            Int       @default(0)
   totalMinionsKilled          Int       @default(0)

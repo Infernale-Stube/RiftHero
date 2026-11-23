@@ -87,7 +87,7 @@ export interface MatchParticipant {
   kills: number;
   deaths: number;
   assists: number;
-  kda: number;
+  kda?: number;
   totalDamageDealtToChampions: number;
   totalDamageTaken: number;
   cs: number;

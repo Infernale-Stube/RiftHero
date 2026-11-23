@@ -37,6 +37,7 @@ import {
   getParticipantPosition,
   getParticipantPositionOrder,
   assignTeamPositions,
+  calculateKda,
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
@@ -428,8 +429,8 @@ export default function MatchDetailPage() {
                       <span>{p.assists}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
-                      <span className={`font-bold ${getKdaColor(p.kda)}`}>
-                        {p.kda}:1 KDA
+                      <span className={`font-bold ${getKdaColor(Number(calculateKda(p.kills, p.deaths, p.assists)))}`}>
+                        {calculateKda(p.kills, p.deaths, p.assists)}:1 KDA
                       </span>
                       <span className="text-slate-500">•</span>
                       <span className="text-amber-300 font-semibold">{kpPct}% KP</span>

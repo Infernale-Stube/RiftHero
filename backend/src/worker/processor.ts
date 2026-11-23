@@ -348,9 +348,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       if (Array.isArray(info.participants)) {
         for (const p of info.participants) {
           const isMainPlayer = p.puuid === puuid;
-          const kdaValue = p.deaths === 0
-            ? p.kills + p.assists
-            : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
 
           const participantGameName = p.riotIdName || (p as any).riotIdGameName || p.summonerName || 'Unknown';
           const participantTagline = p.riotIdTagline || '';
@@ -376,7 +373,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,
-              kda: kdaValue,
               totalDamageDealtToChampions: p.totalDamageDealtToChampions,
               totalDamageTaken: p.totalDamageTaken,
               totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
@@ -404,7 +400,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,
-              kda: kdaValue,
               item0: p.item0,
               item1: p.item1,
               item2: p.item2,

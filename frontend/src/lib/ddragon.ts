@@ -878,3 +878,9 @@ export function getParticipantPositionOrder(p: {
   return pos ? POSITION_ORDER_MAP[pos] : 6;
 }
 
+export function calculateKda(kills: number = 0, deaths: number = 0, assists: number = 0): string {
+  if (deaths === 0) return (kills + assists).toFixed(2);
+  return ((kills + assists) / deaths).toFixed(2);
+}
+
+
