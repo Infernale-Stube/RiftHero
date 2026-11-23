@@ -175,8 +175,7 @@ model MatchParticipant {
 }
 
 model Champion {
-  id                  String   @id // e.g. "Aatrox"
-  key                 Int      @unique // e.g. 266 (champion numeric key)
+  id                  Int      @id // champion numeric ID, e.g. 266
   nameDe              String
   nameEn              String
   titleDe             String
@@ -199,7 +198,6 @@ model Champion {
 
   @@index([nameDe])
   @@index([nameEn])
-  @@index([key])
   @@map("champions")
 }
 

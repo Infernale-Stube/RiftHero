@@ -782,11 +782,12 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
           const loreDe = dataDe?.lore || dataDe?.blurb || null;
           const loreEn = dataEn?.lore || dataEn?.blurb || null;
 
+          const champId = Number(c.key);
+
           return prisma.champion.upsert({
-            where: { id: c.id },
+            where: { id: champId },
             create: {
-              id: c.id,
-              key: Number(c.key),
+              id: champId,
               nameDe,
               nameEn,
               titleDe,
@@ -808,7 +809,6 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               updatedAt: now,
             },
             update: {
-              key: Number(c.key),
               nameDe,
               nameEn,
               titleDe,
@@ -878,12 +878,14 @@ export async function loadActiveChampionSnapshot(
       const details: { de: Record<string, any>; en: Record<string, any> } = { de: {}, en: {} };
 
       for (const row of rows) {
-        const cleanId = row.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanKey = String(row.key);
+        const champKey = String(row.id);
+        const cleanNameDe = row.nameDe.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanNameEn = row.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '');
 
         const champDe = {
-          id: row.id,
-          key: String(row.key),
+          id: row.nameEn,
+          key: champKey,
+          championId: row.id,
           name: row.nameDe,
           title: row.titleDe,
           blurb: row.blurbDe || '',
@@ -899,8 +901,9 @@ export async function loadActiveChampionSnapshot(
         };
 
         const champEn = {
-          id: row.id,
-          key: String(row.key),
+          id: row.nameEn,
+          key: champKey,
+          championId: row.id,
           name: row.nameEn,
           title: row.titleEn,
           blurb: row.blurbEn || '',
@@ -918,13 +921,13 @@ export async function loadActiveChampionSnapshot(
         rosters.de.push(champDe);
         rosters.en.push(champEn);
 
-        details.de[cleanId] = champDe;
-        details.de[row.nameDe.toLowerCase().replace(/[^a-z0-9]/g, '')] = champDe;
-        details.de[cleanKey] = champDe;
+        details.de[champKey] = champDe;
+        details.de[cleanNameDe] = champDe;
+        details.de[cleanNameEn] = champDe;
 
-        details.en[cleanId] = champEn;
-        details.en[row.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '')] = champEn;
-        details.en[cleanKey] = champEn;
+        details.en[champKey] = champEn;
+        details.en[cleanNameDe] = champEn;
+        details.en[cleanNameEn] = champEn;
       }
 
       rosters.de.sort((a, b) => a.name.localeCompare(b.name));
