@@ -81,48 +81,71 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
 
   // 4. Parse league entries
   const soloEntry = Array.isArray(leagueEntries)
-    ? leagueEntries.find((e: any) => e.queueType === 'RANKED_SOLO_5x5')
+    ? leagueEntries.find((e: any) => e.queueType?.toUpperCase() === 'RANKED_SOLO_5X5')
     : undefined;
   const flexEntry = Array.isArray(leagueEntries)
-    ? leagueEntries.find((e: any) => e.queueType === 'RANKED_FLEX_SR')
+    ? leagueEntries.find((e: any) => e.queueType?.toUpperCase() === 'RANKED_FLEX_SR')
     : undefined;
   const ranked5sEntry = Array.isArray(leagueEntries)
-    ? leagueEntries.find((e: any) =>
-        e.queueType === 'RANKED_PREMADE_5x5' ||
-        e.queueType === 'RANKED_TEAM_5x5' ||
-        e.queueType === 'RANKED_5s' ||
-        e.queueType === 'RANKED_5X5' ||
-        e.queueType === 'CHERRY'
-      )
+    ? leagueEntries.find((e: any) => {
+        const q = e.queueType?.toUpperCase();
+        return (
+          q === 'RANKED_PREMADE_5X5' ||
+          q === 'RANKED_TEAM_5X5' ||
+          q === 'RANKED_5S' ||
+          q === 'RANKED_5X5' ||
+          q === 'CHERRY'
+        );
+      })
     : undefined;
 
-  // 5. Query existing summoner to preserve or update peak ranks
+  console.log(`[Worker] League entries parsed for ${cleanGameName}#${cleanTagLine}: Solo=${soloEntry?.tier} ${soloEntry?.rank} (${soloEntry?.leaguePoints} LP), Flex=${flexEntry?.tier} ${flexEntry?.rank} (${flexEntry?.leaguePoints} LP), Ranked5s=${ranked5sEntry?.tier} ${ranked5sEntry?.rank} (${ranked5sEntry?.leaguePoints} LP)`);
+
+  // 5. Query existing summoner to preserve or update peak ranks and rank fallbacks
   const existingSummoner = await prisma.summoner.findUnique({
     where: { puuid },
   });
 
+  const effectiveSoloTier = soloEntry?.tier || existingSummoner?.soloTier || null;
+  const effectiveSoloRank = soloEntry?.rank || existingSummoner?.soloRank || null;
+  const effectiveSoloLp = soloEntry?.leaguePoints ?? existingSummoner?.soloLp ?? 0;
+  const effectiveSoloWins = soloEntry?.wins ?? existingSummoner?.soloWins ?? 0;
+  const effectiveSoloLosses = soloEntry?.losses ?? existingSummoner?.soloLosses ?? 0;
+
+  const effectiveFlexTier = flexEntry?.tier || existingSummoner?.flexTier || null;
+  const effectiveFlexRank = flexEntry?.rank || existingSummoner?.flexRank || null;
+  const effectiveFlexLp = flexEntry?.leaguePoints ?? existingSummoner?.flexLp ?? 0;
+  const effectiveFlexWins = flexEntry?.wins ?? existingSummoner?.flexWins ?? 0;
+  const effectiveFlexLosses = flexEntry?.losses ?? existingSummoner?.flexLosses ?? 0;
+
+  const effectiveRanked5sTier = ranked5sEntry?.tier || existingSummoner?.ranked5sTier || null;
+  const effectiveRanked5sRank = ranked5sEntry?.rank || existingSummoner?.ranked5sRank || null;
+  const effectiveRanked5sLp = ranked5sEntry?.leaguePoints ?? existingSummoner?.ranked5sLp ?? 0;
+  const effectiveRanked5sWins = ranked5sEntry?.wins ?? existingSummoner?.ranked5sWins ?? 0;
+  const effectiveRanked5sLosses = ranked5sEntry?.losses ?? existingSummoner?.ranked5sLosses ?? 0;
+
   const soloPeak = computePeakRank(
-    soloEntry?.tier,
-    soloEntry?.rank,
-    soloEntry?.leaguePoints,
+    effectiveSoloTier,
+    effectiveSoloRank,
+    effectiveSoloLp,
     existingSummoner?.soloPeakTier,
     existingSummoner?.soloPeakRank,
     existingSummoner?.soloPeakLp
   );
 
   const flexPeak = computePeakRank(
-    flexEntry?.tier,
-    flexEntry?.rank,
-    flexEntry?.leaguePoints,
+    effectiveFlexTier,
+    effectiveFlexRank,
+    effectiveFlexLp,
     existingSummoner?.flexPeakTier,
     existingSummoner?.flexPeakRank,
     existingSummoner?.flexPeakLp
   );
 
   const ranked5sPeak = computePeakRank(
-    ranked5sEntry?.tier,
-    ranked5sEntry?.rank,
-    ranked5sEntry?.leaguePoints,
+    effectiveRanked5sTier,
+    effectiveRanked5sRank,
+    effectiveRanked5sLp,
     existingSummoner?.ranked5sPeakTier,
     existingSummoner?.ranked5sPeakRank,
     existingSummoner?.ranked5sPeakLp
@@ -141,27 +164,27 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       summonerLevel: BigInt(summonerDto.summonerLevel),
       revisionDate: summonerDto.revisionDate ? BigInt(summonerDto.revisionDate) : null,
       lastFetchedAt: new Date(),
-      soloTier: soloEntry?.tier || null,
-      soloRank: soloEntry?.rank || null,
-      soloLp: soloEntry?.leaguePoints ?? 0,
-      soloWins: soloEntry?.wins ?? 0,
-      soloLosses: soloEntry?.losses ?? 0,
+      soloTier: effectiveSoloTier,
+      soloRank: effectiveSoloRank,
+      soloLp: effectiveSoloLp,
+      soloWins: effectiveSoloWins,
+      soloLosses: effectiveSoloLosses,
       soloPeakTier: soloPeak.peakTier,
       soloPeakRank: soloPeak.peakRank,
       soloPeakLp: soloPeak.peakLp,
-      flexTier: flexEntry?.tier || null,
-      flexRank: flexEntry?.rank || null,
-      flexLp: flexEntry?.leaguePoints ?? 0,
-      flexWins: flexEntry?.wins ?? 0,
-      flexLosses: flexEntry?.losses ?? 0,
+      flexTier: effectiveFlexTier,
+      flexRank: effectiveFlexRank,
+      flexLp: effectiveFlexLp,
+      flexWins: effectiveFlexWins,
+      flexLosses: effectiveFlexLosses,
       flexPeakTier: flexPeak.peakTier,
       flexPeakRank: flexPeak.peakRank,
       flexPeakLp: flexPeak.peakLp,
-      ranked5sTier: ranked5sEntry?.tier || null,
-      ranked5sRank: ranked5sEntry?.rank || null,
-      ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
-      ranked5sWins: ranked5sEntry?.wins ?? 0,
-      ranked5sLosses: ranked5sEntry?.losses ?? 0,
+      ranked5sTier: effectiveRanked5sTier,
+      ranked5sRank: effectiveRanked5sRank,
+      ranked5sLp: effectiveRanked5sLp,
+      ranked5sWins: effectiveRanked5sWins,
+      ranked5sLosses: effectiveRanked5sLosses,
       ranked5sPeakTier: ranked5sPeak.peakTier,
       ranked5sPeakRank: ranked5sPeak.peakRank,
       ranked5sPeakLp: ranked5sPeak.peakLp,
@@ -175,27 +198,27 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       summonerLevel: BigInt(summonerDto.summonerLevel),
       revisionDate: summonerDto.revisionDate ? BigInt(summonerDto.revisionDate) : null,
       lastFetchedAt: new Date(),
-      soloTier: soloEntry?.tier || null,
-      soloRank: soloEntry?.rank || null,
-      soloLp: soloEntry?.leaguePoints ?? 0,
-      soloWins: soloEntry?.wins ?? 0,
-      soloLosses: soloEntry?.losses ?? 0,
+      soloTier: effectiveSoloTier,
+      soloRank: effectiveSoloRank,
+      soloLp: effectiveSoloLp,
+      soloWins: effectiveSoloWins,
+      soloLosses: effectiveSoloLosses,
       soloPeakTier: soloPeak.peakTier,
       soloPeakRank: soloPeak.peakRank,
       soloPeakLp: soloPeak.peakLp,
-      flexTier: flexEntry?.tier || null,
-      flexRank: flexEntry?.rank || null,
-      flexLp: flexEntry?.leaguePoints ?? 0,
-      flexWins: flexEntry?.wins ?? 0,
-      flexLosses: flexEntry?.losses ?? 0,
+      flexTier: effectiveFlexTier,
+      flexRank: effectiveFlexRank,
+      flexLp: effectiveFlexLp,
+      flexWins: effectiveFlexWins,
+      flexLosses: effectiveFlexLosses,
       flexPeakTier: flexPeak.peakTier,
       flexPeakRank: flexPeak.peakRank,
       flexPeakLp: flexPeak.peakLp,
-      ranked5sTier: ranked5sEntry?.tier || null,
-      ranked5sRank: ranked5sEntry?.rank || null,
-      ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
-      ranked5sWins: ranked5sEntry?.wins ?? 0,
-      ranked5sLosses: ranked5sEntry?.losses ?? 0,
+      ranked5sTier: effectiveRanked5sTier,
+      ranked5sRank: effectiveRanked5sRank,
+      ranked5sLp: effectiveRanked5sLp,
+      ranked5sWins: effectiveRanked5sWins,
+      ranked5sLosses: effectiveRanked5sLosses,
       ranked5sPeakTier: ranked5sPeak.peakTier,
       ranked5sPeakRank: ranked5sPeak.peakRank,
       ranked5sPeakLp: ranked5sPeak.peakLp,
@@ -442,46 +465,60 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
   }
 
   // 7. Synchronize LP deltas and post-game rank onto match participants for the 3 ranked queues (Solo, Flex, 5s)
-  if (soloEntry) {
+  console.log(`[Worker] Step 7: Checking LP sync for ${cleanGameName}#${cleanTagLine} (puuid=${puuid})...`);
+
+  if (effectiveSoloTier && effectiveSoloTier.toUpperCase() !== 'UNRANKED') {
     try {
+      console.log(`[Worker] Syncing Solo/Duo LP (queue 420): ${effectiveSoloTier} ${effectiveSoloRank} ${effectiveSoloLp} LP`);
       await syncParticipantLpForQueue(
         puuid,
         420,
-        soloEntry.tier,
-        soloEntry.rank,
-        soloEntry.leaguePoints
+        effectiveSoloTier,
+        effectiveSoloRank,
+        effectiveSoloLp
       );
     } catch (err: any) {
+      console.error(`[Worker] Failed to sync Solo LP for ${puuid}:`, err);
       job.log(`[Worker] Failed to sync Solo LP: ${err.message}`);
     }
+  } else {
+    console.log(`[Worker] Skipping Solo/Duo LP sync: summoner is unranked in Solo/Duo`);
   }
 
-  if (flexEntry) {
+  if (effectiveFlexTier && effectiveFlexTier.toUpperCase() !== 'UNRANKED') {
     try {
+      console.log(`[Worker] Syncing Flex LP (queue 440): ${effectiveFlexTier} ${effectiveFlexRank} ${effectiveFlexLp} LP`);
       await syncParticipantLpForQueue(
         puuid,
         440,
-        flexEntry.tier,
-        flexEntry.rank,
-        flexEntry.leaguePoints
+        effectiveFlexTier,
+        effectiveFlexRank,
+        effectiveFlexLp
       );
     } catch (err: any) {
+      console.error(`[Worker] Failed to sync Flex LP for ${puuid}:`, err);
       job.log(`[Worker] Failed to sync Flex LP: ${err.message}`);
     }
+  } else {
+    console.log(`[Worker] Skipping Flex LP sync: summoner is unranked in Flex`);
   }
 
-  if (ranked5sEntry) {
+  if (effectiveRanked5sTier && effectiveRanked5sTier.toUpperCase() !== 'UNRANKED') {
     try {
+      console.log(`[Worker] Syncing Ranked 5s LP (queue 710): ${effectiveRanked5sTier} ${effectiveRanked5sRank} ${effectiveRanked5sLp} LP`);
       await syncParticipantLpForQueue(
         puuid,
         710, // Ranked 5s queue ID
-        ranked5sEntry.tier,
-        ranked5sEntry.rank,
-        ranked5sEntry.leaguePoints
+        effectiveRanked5sTier,
+        effectiveRanked5sRank,
+        effectiveRanked5sLp
       );
     } catch (err: any) {
+      console.error(`[Worker] Failed to sync Ranked 5s LP for ${puuid}:`, err);
       job.log(`[Worker] Failed to sync Ranked 5s LP: ${err.message}`);
     }
+  } else {
+    console.log(`[Worker] Skipping Ranked 5s LP sync: summoner is unranked in Ranked 5s`);
   }
 
   // 8. Trigger Snowball Background Crawling for fellow 9 players

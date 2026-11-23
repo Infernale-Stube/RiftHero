@@ -141,18 +141,24 @@ export async function syncParticipantLpForQueue(
   newRank: string | null | undefined,
   newLp: number | null | undefined
 ): Promise<void> {
+  console.log(
+    `[LP-Sync] syncParticipantLpForQueue invoked: puuid=${puuid}, queueId=${queueId}, tier=${newTier}, rank=${newRank}, lp=${newLp}`
+  );
+
   // STRICT: Only the 3 ranked queues track LP! Other game modes have nothing to do with LP!
   if (!VALID_RANKED_QUEUE_IDS.includes(queueId as any)) {
+    console.log(`[LP-Sync] Queue ${queueId} is not in VALID_RANKED_QUEUE_IDS (${VALID_RANKED_QUEUE_IDS.join(',')}). Skipping.`);
     return;
   }
 
   if (!newTier || newTier.toUpperCase() === 'UNRANKED') {
+    console.log(`[LP-Sync] Tier is null or UNRANKED (${newTier}). Skipping.`);
     return;
   }
 
   const newTotalLp = calculateTotalLp(newTier, newRank || 'IV', newLp ?? 0);
 
-  // Fetch all matches for this summoner STRICTLY in this specific queue, ordered chronologically (oldest to newest)
+  // Fetch all matches for this summoner STRICTLY in this specific queue
   // Non-ranked game modes (ARAM, Normals, Arena, etc.) or matches from other queues are completely excluded!
   const participants = await prisma.matchParticipant.findMany({
     where: {
@@ -170,19 +176,21 @@ export async function syncParticipantLpForQueue(
         },
       },
     },
-    orderBy: {
-      match: {
-        gameCreation: 'asc',
-      },
-    },
   });
 
   if (participants.length === 0) {
+    console.log(`[LP-Sync] No matches in DB for puuid=${puuid} in queueId=${queueId}. Skipping.`);
     return;
   }
 
+  // Strictly sort chronological: oldest first, newest last
+  participants.sort((a, b) => Number(a.match.gameCreation) - Number(b.match.gameCreation));
+
   // Find participants that already have postGameTotalLp tracked (within this queue)
   const tracked = participants.filter((p) => p.postGameTotalLp !== null);
+  console.log(
+    `[LP-Sync] Queue ${queueId}: Total matches=${participants.length}, tracked matches=${tracked.length}`
+  );
 
   if (tracked.length === 0) {
     // Cold start: No previous LP was tracked for this specific ranked queue.
@@ -190,12 +198,13 @@ export async function syncParticipantLpForQueue(
     // lpDelta is strictly NULL because there was no prior match in this queue to compute a delta from.
     const latestParticipant = participants[participants.length - 1];
 
+    console.log(
+      `[LP-Sync] Cold start: Setting baseline on latest match ${latestParticipant.matchId} (id=${latestParticipant.id}): tier=${newTier}, rank=${newRank}, lp=${newLp}, totalLp=${newTotalLp}`
+    );
+
     await prisma.matchParticipant.update({
       where: {
-        matchId_puuid: {
-          matchId: latestParticipant.matchId,
-          puuid,
-        },
+        id: latestParticipant.id,
       },
       data: {
         lpDelta: null,
@@ -206,6 +215,7 @@ export async function syncParticipantLpForQueue(
       },
     });
 
+    console.log(`[LP-Sync] Cold start baseline saved successfully for match ${latestParticipant.matchId}`);
     return;
   }
 
@@ -221,15 +231,19 @@ export async function syncParticipantLpForQueue(
       Number(p.match.gameCreation) > Number(lastTracked.match.gameCreation)
   );
 
+  console.log(
+    `[LP-Sync] Queue ${queueId}: lastTracked match is ${lastTracked.matchId} (totalLp=${baselineTotalLp}, gameCreation=${lastTracked.match.gameCreation}). Newer untracked matches count: ${untracked.length}`
+  );
+
   if (untracked.length === 0) {
     // If no new matches were played in this queue, but LP changed (e.g. decay or adjustment), update the latest tracked
     if (baselineTotalLp !== newTotalLp) {
+      console.log(
+        `[LP-Sync] Queue ${queueId}: 0 untracked matches, but LP changed from ${baselineTotalLp} to ${newTotalLp}. Updating lastTracked match ${lastTracked.matchId}`
+      );
       await prisma.matchParticipant.update({
         where: {
-          matchId_puuid: {
-            matchId: lastTracked.matchId,
-            puuid,
-          },
+          id: lastTracked.id,
         },
         data: {
           postGameLp: newLp ?? 0,
@@ -248,12 +262,13 @@ export async function syncParticipantLpForQueue(
     const singleMatch = untracked[0];
     const delta = newTotalLp - baselineTotalLp;
 
+    console.log(
+      `[LP-Sync] Queue ${queueId}: Exactly 1 untracked match (${singleMatch.matchId}). Delta=${delta} (${newTotalLp} - ${baselineTotalLp}). Updating participant ${singleMatch.id}`
+    );
+
     await prisma.matchParticipant.update({
       where: {
-        matchId_puuid: {
-          matchId: singleMatch.matchId,
-          puuid,
-        },
+        id: singleMatch.id,
       },
       data: {
         lpDelta: delta,
@@ -263,6 +278,8 @@ export async function syncParticipantLpForQueue(
         postGameTotalLp: newTotalLp,
       },
     });
+
+    console.log(`[LP-Sync] Successfully updated match ${singleMatch.matchId} with delta=${delta}`);
     return;
   }
 
@@ -271,12 +288,13 @@ export async function syncParticipantLpForQueue(
   // Therefore, lpDelta stays null for all of them.
   // We only set postGameTotalLp on the chronologically latest match in this queue to establish the new baseline.
   const latestMatch = untracked[untracked.length - 1];
+  console.log(
+    `[LP-Sync] Queue ${queueId}: Multiple untracked matches (${untracked.length}). Setting baseline on latest match ${latestMatch.matchId} with lpDelta=null`
+  );
+
   await prisma.matchParticipant.update({
     where: {
-      matchId_puuid: {
-        matchId: latestMatch.matchId,
-        puuid,
-      },
+      id: latestMatch.id,
     },
     data: {
       lpDelta: null,
@@ -286,6 +304,8 @@ export async function syncParticipantLpForQueue(
       postGameTotalLp: newTotalLp,
     },
   });
+
+  console.log(`[LP-Sync] Successfully set new baseline on latest match ${latestMatch.matchId}`);
 }
 
 /**
@@ -405,6 +425,9 @@ export async function getSummonerLpHistory(
     },
     take: 100,
   });
+
+  // Explicit JavaScript chronological sorting
+  participants.sort((a, b) => Number(a.match.gameCreation) - Number(b.match.gameCreation));
 
   // Without at least 2 real tracked games over time, do not show a curve
   if (participants.length < 2) {
