@@ -385,63 +385,71 @@ export async function computeAndSaveItemSnapshot(force = false): Promise<ItemMem
     const now = new Date();
 
     // Save every item as its own row in the items table
-    for (const item of rosters.de) {
-      const dataDe = details.de[item.id] || null;
-      const dataEn = details.en[item.id] || null;
+    const chunkSize = 25;
+    for (let i = 0; i < rosters.de.length; i += chunkSize) {
+      const chunk = rosters.de.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((item) => {
+          const dataDe = details.de[item.id] || null;
+          const dataEn = details.en[item.id] || null;
 
-      await prisma.item.upsert({
-        where: { id: item.id },
-        create: {
-          id: item.id,
-          name: item.name,
-          plaintext: item.plaintext || '',
-          description: item.description || '',
-          goldTotal: item.gold?.total ?? 0,
-          goldBase: item.gold?.base ?? 0,
-          goldSell: item.gold?.sell ?? 0,
-          purchasable: item.gold?.purchasable ?? true,
-          tags: item.tags || [],
-          categories: item.categories || [],
-          tier: item.tier || 'basic',
-          depth: item.depth ?? 1,
-          icon: item.icon,
-          from: item.from || [],
-          into: item.into || [],
-          inStore: item.inStore !== false,
-          requiredChampion: item.requiredChampion || null,
-          requiredAlly: item.requiredAlly || null,
-          patch,
-          version: latestVersion,
-          dataDe: dataDe as any,
-          dataEn: dataEn as any,
-          createdAt: now,
-          updatedAt: now,
-        },
-        update: {
-          name: item.name,
-          plaintext: item.plaintext || '',
-          description: item.description || '',
-          goldTotal: item.gold?.total ?? 0,
-          goldBase: item.gold?.base ?? 0,
-          goldSell: item.gold?.sell ?? 0,
-          purchasable: item.gold?.purchasable ?? true,
-          tags: item.tags || [],
-          categories: item.categories || [],
-          tier: item.tier || 'basic',
-          depth: item.depth ?? 1,
-          icon: item.icon,
-          from: item.from || [],
-          into: item.into || [],
-          inStore: item.inStore !== false,
-          requiredChampion: item.requiredChampion || null,
-          requiredAlly: item.requiredAlly || null,
-          patch,
-          version: latestVersion,
-          dataDe: dataDe as any,
-          dataEn: dataEn as any,
-          updatedAt: now,
-        },
-      });
+          return prisma.item.upsert({
+            where: { id: item.id },
+            create: {
+              id: item.id,
+              nameDe: dataDe?.name || item.name,
+              nameEn: dataEn?.name || item.name,
+              plaintextDe: dataDe?.plaintext || '',
+              plaintextEn: dataEn?.plaintext || '',
+              descriptionDe: dataDe?.description || '',
+              descriptionEn: dataEn?.description || '',
+              goldTotal: item.gold?.total ?? 0,
+              goldBase: item.gold?.base ?? 0,
+              goldSell: item.gold?.sell ?? 0,
+              purchasable: item.gold?.purchasable ?? true,
+              tags: item.tags || [],
+              categories: item.categories || [],
+              tier: item.tier || 'basic',
+              depth: item.depth ?? 1,
+              icon: item.icon,
+              from: item.from || [],
+              into: item.into || [],
+              inStore: item.inStore !== false,
+              requiredChampion: item.requiredChampion || null,
+              requiredAlly: item.requiredAlly || null,
+              patch,
+              version: latestVersion,
+              createdAt: now,
+              updatedAt: now,
+            },
+            update: {
+              nameDe: dataDe?.name || item.name,
+              nameEn: dataEn?.name || item.name,
+              plaintextDe: dataDe?.plaintext || '',
+              plaintextEn: dataEn?.plaintext || '',
+              descriptionDe: dataDe?.description || '',
+              descriptionEn: dataEn?.description || '',
+              goldTotal: item.gold?.total ?? 0,
+              goldBase: item.gold?.base ?? 0,
+              goldSell: item.gold?.sell ?? 0,
+              purchasable: item.gold?.purchasable ?? true,
+              tags: item.tags || [],
+              categories: item.categories || [],
+              tier: item.tier || 'basic',
+              depth: item.depth ?? 1,
+              icon: item.icon,
+              from: item.from || [],
+              into: item.into || [],
+              inStore: item.inStore !== false,
+              requiredChampion: item.requiredChampion || null,
+              requiredAlly: item.requiredAlly || null,
+              patch,
+              version: latestVersion,
+              updatedAt: now,
+            },
+          });
+        })
+      );
     }
 
     itemMemoryCache = {
@@ -495,17 +503,64 @@ export async function loadActiveItemSnapshot(skipCacheCheck = false): Promise<It
       const details: { de: Record<string, ItemRecord>; en: Record<string, ItemRecord> } = { de: {}, en: {} };
 
       for (const row of rows) {
-        const dataDe = row.dataDe as any;
-        const dataEn = (row.dataEn as any) || dataDe;
+        const itemDe: ItemRecord = {
+          id: row.id,
+          name: row.nameDe,
+          plaintext: row.plaintextDe || '',
+          description: row.descriptionDe || '',
+          colloq: '',
+          gold: {
+            base: row.goldBase,
+            total: row.goldTotal,
+            sell: row.goldSell,
+            purchasable: row.purchasable,
+          },
+          tags: row.tags,
+          categories: row.categories,
+          tier: row.tier as any,
+          depth: row.depth,
+          maps: {},
+          stats: {},
+          formattedStats: [],
+          icon: row.icon,
+          from: row.from,
+          into: row.into,
+          inStore: row.inStore,
+          requiredChampion: row.requiredChampion || undefined,
+          requiredAlly: row.requiredAlly || undefined,
+        };
 
-        if (dataDe) {
-          rosters.de.push(dataDe);
-          details.de[row.id] = dataDe;
-        }
-        if (dataEn) {
-          rosters.en.push(dataEn);
-          details.en[row.id] = dataEn;
-        }
+        const itemEn: ItemRecord = {
+          id: row.id,
+          name: row.nameEn,
+          plaintext: row.plaintextEn || '',
+          description: row.descriptionEn || '',
+          colloq: '',
+          gold: {
+            base: row.goldBase,
+            total: row.goldTotal,
+            sell: row.goldSell,
+            purchasable: row.purchasable,
+          },
+          tags: row.tags,
+          categories: row.categories,
+          tier: row.tier as any,
+          depth: row.depth,
+          maps: {},
+          stats: {},
+          formattedStats: [],
+          icon: row.icon,
+          from: row.from,
+          into: row.into,
+          inStore: row.inStore,
+          requiredChampion: row.requiredChampion || undefined,
+          requiredAlly: row.requiredAlly || undefined,
+        };
+
+        rosters.de.push(itemDe);
+        details.de[row.id] = itemDe;
+        rosters.en.push(itemEn);
+        details.en[row.id] = itemEn;
       }
 
       // Sort by tier and gold

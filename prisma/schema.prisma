@@ -177,8 +177,14 @@ model MatchParticipant {
 model Champion {
   id                  String   @id // e.g. "Aatrox"
   key                 Int      @unique // e.g. 266 (champion numeric key)
-  name                String
-  title               String
+  nameDe              String
+  nameEn              String
+  titleDe             String
+  titleEn             String
+  blurbDe             String?
+  blurbEn             String?
+  loreDe              String?
+  loreEn              String?
   image               String
   role                String?
   positions           String[]
@@ -188,12 +194,11 @@ model Champion {
   releaseDate         String?
   patch               String   @default("")
   version             String   @default("")
-  dataDe              Json?    // Detailed data (spells, passives, skins, lore, storeData) in German
-  dataEn              Json?    // Detailed data (spells, passives, skins, lore, storeData) in English
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@index([name])
+  @@index([nameDe])
+  @@index([nameEn])
   @@index([key])
   @@map("champions")
 }
@@ -214,9 +219,12 @@ model MetaSnapshot {
 
 model Item {
   id                  String   @id // e.g. "3031"
-  name                String
-  plaintext           String?
-  description         String?
+  nameDe              String
+  nameEn              String
+  plaintextDe         String?
+  plaintextEn         String?
+  descriptionDe       String?
+  descriptionEn       String?
   goldTotal           Int      @default(0)
   goldBase            Int      @default(0)
   goldSell            Int      @default(0)
@@ -233,12 +241,11 @@ model Item {
   requiredAlly        String?
   patch               String   @default("")
   version             String   @default("")
-  dataDe              Json?    // Localized item record in German
-  dataEn              Json?    // Localized item record in English
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@index([name])
+  @@index([nameDe])
+  @@index([nameEn])
   @@index([tier])
   @@map("items")
 }

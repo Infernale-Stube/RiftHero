@@ -726,13 +726,7 @@ export async function buildChampionRostersAndDetails(
 
 export function isSnapshotFresh(row: any): boolean {
   if (!row) return false;
-  try {
-    const dataDe = row.dataDe as any;
-    const skins = dataDe?.skins || [];
-    return Array.isArray(skins) && skins.length > 0;
-  } catch {
-    return false;
-  }
+  return Boolean(row.nameDe && row.nameEn);
 }
 
 // In-memory cache for fast (<1ms) reads: slot -> memory object
@@ -779,13 +773,28 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
           const dataDe = details.de[cleanId] || null;
           const dataEn = details.en[cleanId] || null;
 
+          const nameDe = dataDe?.name || c.name;
+          const nameEn = dataEn?.name || c.name;
+          const titleDe = dataDe?.title || c.title;
+          const titleEn = dataEn?.title || c.title;
+          const blurbDe = dataDe?.blurb || dataDe?.lore || null;
+          const blurbEn = dataEn?.blurb || dataEn?.lore || null;
+          const loreDe = dataDe?.lore || dataDe?.blurb || null;
+          const loreEn = dataEn?.lore || dataEn?.blurb || null;
+
           return prisma.champion.upsert({
             where: { id: c.id },
             create: {
               id: c.id,
               key: Number(c.key),
-              name: c.name,
-              title: c.title,
+              nameDe,
+              nameEn,
+              titleDe,
+              titleEn,
+              blurbDe,
+              blurbEn,
+              loreDe,
+              loreEn,
               image: c.image,
               role: c.role || null,
               positions: c.positions || [],
@@ -795,15 +804,19 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               releaseDate: c.releaseDate || null,
               patch,
               version: ddragonVersion,
-              dataDe: dataDe as any,
-              dataEn: dataEn as any,
               createdAt: now,
               updatedAt: now,
             },
             update: {
               key: Number(c.key),
-              name: c.name,
-              title: c.title,
+              nameDe,
+              nameEn,
+              titleDe,
+              titleEn,
+              blurbDe,
+              blurbEn,
+              loreDe,
+              loreEn,
               image: c.image,
               role: c.role || null,
               positions: c.positions || [],
@@ -813,8 +826,6 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               releaseDate: c.releaseDate || null,
               patch,
               version: ddragonVersion,
-              dataDe: dataDe as any,
-              dataEn: dataEn as any,
               updatedAt: now,
             },
           });
@@ -868,14 +879,15 @@ export async function loadActiveChampionSnapshot(
 
       for (const row of rows) {
         const cleanId = row.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanName = row.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanKey = String(row.key);
 
-        const dataDe = (row.dataDe as any) || {
+        const champDe = {
           id: row.id,
           key: String(row.key),
-          name: row.name,
-          title: row.title,
+          name: row.nameDe,
+          title: row.titleDe,
+          blurb: row.blurbDe || '',
+          lore: row.loreDe || '',
           image: row.image,
           role: row.role || 'Mid',
           positions: row.positions,
@@ -883,15 +895,16 @@ export async function loadActiveChampionSnapshot(
           difficulty: row.difficulty,
           classes: row.classes,
           releaseDate: row.releaseDate,
+          meta: null,
         };
 
-        const dataEn = (row.dataEn as any) || dataDe;
-
-        rosters.de.push({
+        const champEn = {
           id: row.id,
           key: String(row.key),
-          name: dataDe.name || row.name,
-          title: dataDe.title || row.title,
+          name: row.nameEn,
+          title: row.titleEn,
+          blurb: row.blurbEn || '',
+          lore: row.loreEn || '',
           image: row.image,
           role: row.role || 'Mid',
           positions: row.positions,
@@ -899,33 +912,19 @@ export async function loadActiveChampionSnapshot(
           difficulty: row.difficulty,
           classes: row.classes,
           releaseDate: row.releaseDate,
-          storeData: dataDe.storeData,
           meta: null,
-        });
+        };
 
-        rosters.en.push({
-          id: row.id,
-          key: String(row.key),
-          name: dataEn.name || row.name,
-          title: dataEn.title || row.title,
-          image: row.image,
-          role: row.role || 'Mid',
-          positions: row.positions,
-          tags: row.tags,
-          difficulty: row.difficulty,
-          classes: row.classes,
-          releaseDate: row.releaseDate,
-          storeData: dataEn.storeData,
-          meta: null,
-        });
+        rosters.de.push(champDe);
+        rosters.en.push(champEn);
 
-        details.de[cleanId] = dataDe;
-        details.de[cleanName] = dataDe;
-        details.de[cleanKey] = dataDe;
+        details.de[cleanId] = champDe;
+        details.de[row.nameDe.toLowerCase().replace(/[^a-z0-9]/g, '')] = champDe;
+        details.de[cleanKey] = champDe;
 
-        details.en[cleanId] = dataEn;
-        details.en[cleanName] = dataEn;
-        details.en[cleanKey] = dataEn;
+        details.en[cleanId] = champEn;
+        details.en[row.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '')] = champEn;
+        details.en[cleanKey] = champEn;
       }
 
       rosters.de.sort((a, b) => a.name.localeCompare(b.name));
