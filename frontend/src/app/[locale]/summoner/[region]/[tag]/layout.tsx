@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { fetchSummonerProfile, fetchLiveGame } from '@/lib/api';
@@ -30,9 +30,15 @@ export default function SummonerLayout({
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
+  const profileDataRef = useRef(profileData);
+  profileDataRef.current = profileData;
+
+  const liveDataRef = useRef(liveData);
+  liveDataRef.current = liveData;
+
   const loadProfile = useCallback(async (isSilent = false) => {
     if (!region || !tag) return;
-    if (!isSilent && !profileData) setIsLoadingProfile(true);
+    if (!isSilent && !profileDataRef.current) setIsLoadingProfile(true);
     try {
       const data = await fetchSummonerProfile(region, tag);
       setProfileData(data);
@@ -41,11 +47,11 @@ export default function SummonerLayout({
     } finally {
       setIsLoadingProfile(false);
     }
-  }, [region, tag, profileData]);
+  }, [region, tag]);
 
   const loadLiveGame = useCallback(async (isSilent = false) => {
     if (!region || !tag) return null;
-    if (!isSilent && !liveData) setIsLoadingLive(true);
+    if (!isSilent && !liveDataRef.current) setIsLoadingLive(true);
     try {
       const res = await fetchLiveGame(region, tag);
       setLiveData(res);
@@ -56,7 +62,7 @@ export default function SummonerLayout({
     } finally {
       setIsLoadingLive(false);
     }
-  }, [region, tag, liveData]);
+  }, [region, tag]);
 
   useEffect(() => {
     loadProfile();
