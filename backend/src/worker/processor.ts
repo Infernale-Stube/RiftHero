@@ -441,7 +441,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     }
   }
 
-  // 7. Synchronize LP deltas and post-game rank onto match participants for Solo and Flex queues
+  // 7. Synchronize LP deltas and post-game rank onto match participants for the 3 ranked queues (Solo, Flex, 5s)
   if (soloEntry) {
     try {
       await syncParticipantLpForQueue(
@@ -467,6 +467,20 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       );
     } catch (err: any) {
       job.log(`[Worker] Failed to sync Flex LP: ${err.message}`);
+    }
+  }
+
+  if (ranked5sEntry) {
+    try {
+      await syncParticipantLpForQueue(
+        puuid,
+        4,
+        ranked5sEntry.tier,
+        ranked5sEntry.rank,
+        ranked5sEntry.leaguePoints
+      );
+    } catch (err: any) {
+      job.log(`[Worker] Failed to sync Ranked 5s LP: ${err.message}`);
     }
   }
 

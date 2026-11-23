@@ -118,32 +118,42 @@ export interface LpHistorySummary {
   points: LpPoint[];
 }
 
+export const VALID_RANKED_QUEUE_IDS = [420, 440, 4, 42, 470] as const;
+
 /**
  * Synchronize LP gains/losses and post-game rank onto MatchParticipant records.
  * Rules:
- * 1. LP delta is ONLY recorded if a previous baseline LP was already tracked in this queue.
- * 2. On first crawl (cold start / no previous tracked match), the latest match in this queue
- *    is saved as the baseline (lpDelta: null, postGameTotalLp: currentTotalLp).
- * 3. On subsequent syncs, lpDelta is ONLY recorded if EXACTLY ONE new match was downloaded/played.
- *    If multiple matches were downloaded at once, no delta may be assigned because we cannot know
+ * 1. LP delta is ONLY recorded within the 3 ranked queues (Solo/Duo 420, Flex 440, 5s 4/42/470).
+ *    Matches from other game modes (ARAM, Normals, Arena, etc.) played in between have nothing to do
+ *    with LP and are completely ignored (they do not count towards untracked matches).
+ * 2. On first crawl (cold start / no previous tracked match in this queue), the latest match in this
+ *    queue is saved as the baseline (lpDelta: null, postGameTotalLp: currentTotalLp).
+ * 3. On subsequent syncs, lpDelta is ONLY recorded if EXACTLY ONE new match was downloaded/played in this queue.
+ *    If multiple matches were downloaded at once in this queue, no delta may be assigned because we cannot know
  *    the individual game gains/losses, avoiding bundling multiple games' deltas into one game.
- *    Only the chronologically latest match updates postGameTotalLp as the new baseline (with lpDelta: null).
+ *    Only the chronologically latest match in this queue updates postGameTotalLp as the new baseline (with lpDelta: null).
  * 4. Older untracked historical matches remain null (no synthetic data fabricated).
  */
 export async function syncParticipantLpForQueue(
   puuid: string,
-  queueId: number, // 420 (Solo) or 440 (Flex)
+  queueId: number, // 420 (Solo), 440 (Flex), or 4/42/470 (Ranked 5s/3s)
   newTier: string | null | undefined,
   newRank: string | null | undefined,
   newLp: number | null | undefined
 ): Promise<void> {
+  // STRICT: Only the 3 ranked queues track LP! Other game modes have nothing to do with LP!
+  if (!VALID_RANKED_QUEUE_IDS.includes(queueId as any)) {
+    return;
+  }
+
   if (!newTier || newTier.toUpperCase() === 'UNRANKED') {
     return;
   }
 
   const newTotalLp = calculateTotalLp(newTier, newRank || 'IV', newLp ?? 0);
 
-  // Fetch all matches for this summoner in this queue, ordered chronologically (oldest to newest)
+  // Fetch all matches for this summoner STRICTLY in this specific queue, ordered chronologically (oldest to newest)
+  // Non-ranked game modes (ARAM, Normals, Arena, etc.) or matches from other queues are completely excluded!
   const participants = await prisma.matchParticipant.findMany({
     where: {
       puuid,
@@ -171,13 +181,13 @@ export async function syncParticipantLpForQueue(
     return;
   }
 
-  // Find participants that already have postGameTotalLp tracked
+  // Find participants that already have postGameTotalLp tracked (within this queue)
   const tracked = participants.filter((p) => p.postGameTotalLp !== null);
 
   if (tracked.length === 0) {
-    // Cold start: No previous LP was tracked for this queue.
+    // Cold start: No previous LP was tracked for this specific ranked queue.
     // Record the player's MOST RECENT match in this queue as the official starting baseline!
-    // lpDelta is strictly NULL because there was no prior match to compute a delta from.
+    // lpDelta is strictly NULL because there was no prior match in this queue to compute a delta from.
     const latestParticipant = participants[participants.length - 1];
 
     await prisma.matchParticipant.update({
@@ -199,12 +209,12 @@ export async function syncParticipantLpForQueue(
     return;
   }
 
-  // Subsequent sync: We already have tracked matches!
-  // Find the chronologically latest tracked match
+  // Subsequent sync: We already have tracked matches in this queue!
+  // Find the chronologically latest tracked match in this queue
   const lastTracked = tracked[tracked.length - 1];
   const baselineTotalLp = lastTracked.postGameTotalLp!;
 
-  // Find all untracked matches played AFTER the last tracked match
+  // Find all untracked matches in this queue played AFTER the last tracked match in this queue
   const untracked = participants.filter(
     (p) =>
       p.postGameTotalLp === null &&
@@ -212,7 +222,7 @@ export async function syncParticipantLpForQueue(
   );
 
   if (untracked.length === 0) {
-    // If no new matches were played, but LP changed (e.g. decay or adjustment), update the latest tracked
+    // If no new matches were played in this queue, but LP changed (e.g. decay or adjustment), update the latest tracked
     if (baselineTotalLp !== newTotalLp) {
       await prisma.matchParticipant.update({
         where: {
@@ -233,8 +243,8 @@ export async function syncParticipantLpForQueue(
   }
 
   if (untracked.length === 1) {
-    // Exactly ONE match was played since the last tracked state!
-    // The entire LP delta was caused by this specific match.
+    // Exactly ONE match was played in this queue since the last tracked state!
+    // The entire LP delta was caused by this specific match (even if the user played ARAM/Normals in between!).
     const singleMatch = untracked[0];
     const delta = newTotalLp - baselineTotalLp;
 
@@ -256,10 +266,10 @@ export async function syncParticipantLpForQueue(
     return;
   }
 
-  // If untracked.length > 1 (multiple matches downloaded at once):
+  // If untracked.length > 1 (multiple matches in THIS queue downloaded at once):
   // We CANNOT know individual game deltas. Bundling multi-game delta into a match would be wrong!
   // Therefore, lpDelta stays null for all of them.
-  // We only set postGameTotalLp on the chronologically latest match to establish the new baseline.
+  // We only set postGameTotalLp on the chronologically latest match in this queue to establish the new baseline.
   const latestMatch = untracked[untracked.length - 1];
   await prisma.matchParticipant.update({
     where: {
@@ -354,15 +364,22 @@ export async function getSummonerLpHistory(
 
   if (!summoner) return null;
 
-  const isSolo = queueType === 'RANKED_SOLO_5x5';
-  const tier = isSolo ? summoner.soloTier : summoner.flexTier;
-  const rank = isSolo ? summoner.soloRank : summoner.flexRank;
-  const lp = isSolo ? summoner.soloLp : summoner.flexLp;
+  const normQueue = queueType.toUpperCase();
+  const isSolo = normQueue === 'RANKED_SOLO_5X5' || normQueue === 'SOLO' || normQueue === 'RANKED_SOLO';
+  const isFlex = normQueue === 'RANKED_FLEX_SR' || normQueue === 'FLEX' || normQueue === 'RANKED_FLEX';
+  const is5s = normQueue === 'RANKED_PREMADE_5X5' || normQueue === 'RANKED_5S' || normQueue === '5S' || normQueue === 'RANKED5S';
+
+  // Strictly only the 3 ranked queues have an LP history!
+  if (!isSolo && !isFlex && !is5s) return null;
+
+  const tier = isSolo ? summoner.soloTier : isFlex ? summoner.flexTier : summoner.ranked5sTier;
+  const rank = isSolo ? summoner.soloRank : isFlex ? summoner.flexRank : summoner.ranked5sRank;
+  const lp = isSolo ? summoner.soloLp : isFlex ? summoner.flexLp : summoner.ranked5sLp;
 
   if (!tier) return null;
 
   const currentTotalLp = calculateTotalLp(tier, rank || 'I', lp);
-  const qId = isSolo ? 420 : 440;
+  const qId = isSolo ? 420 : isFlex ? 440 : 4;
 
   // Query match participants that have verified post-game LP tracked
   const participants = await prisma.matchParticipant.findMany({
@@ -426,9 +443,9 @@ export async function getSummonerLpHistory(
   });
 
   const peakInfo = getTierAndRankFromTotalLp(peakTotalLp);
-  const storedPeakTier = isSolo ? summoner.soloPeakTier : summoner.flexPeakTier;
-  const storedPeakRank = isSolo ? summoner.soloPeakRank : summoner.flexPeakRank;
-  const storedPeakLp = isSolo ? summoner.soloPeakLp : summoner.flexPeakLp;
+  const storedPeakTier = isSolo ? summoner.soloPeakTier : isFlex ? summoner.flexPeakTier : summoner.ranked5sPeakTier;
+  const storedPeakRank = isSolo ? summoner.soloPeakRank : isFlex ? summoner.flexPeakRank : summoner.ranked5sPeakRank;
+  const storedPeakLp = isSolo ? summoner.soloPeakLp : isFlex ? summoner.flexPeakLp : summoner.ranked5sPeakLp;
 
   const startLp = points[0]?.totalLp ?? currentTotalLp;
   const netDeltaLp = currentTotalLp - startLp;
@@ -599,9 +616,9 @@ export async function getMatchesLpChanges(
 ): Promise<Map<string, MatchLpChange>> {
   const map = new Map<string, MatchLpChange>();
 
-  // Only ranked matches receive LP
+  // Only ranked matches receive LP (strictly within the 3 ranked queues)
   const rankedMatchIds = matches
-    .filter((m) => m.queueId === 420 || m.queueId === 440)
+    .filter((m) => VALID_RANKED_QUEUE_IDS.includes(m.queueId as any))
     .map((m) => m.id);
 
   if (rankedMatchIds.length === 0) return map;

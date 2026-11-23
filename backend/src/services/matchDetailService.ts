@@ -260,9 +260,9 @@ export async function getMatchDetails(
   const blueTotalDamage = participants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
   const redTotalDamage = participants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
-  // Resolve genuine match-to-match LP changes for participants if ranked
+  // Resolve genuine match-to-match LP changes for participants if ranked (strictly the 3 ranked queues)
   const lpChangeMap = new Map<string, MatchLpChange>();
-  if (match.queueId === 420 || match.queueId === 440) {
+  if ([420, 440, 4, 42, 470].includes(match.queueId)) {
     await Promise.all(
       participants.map(async (p) => {
         try {

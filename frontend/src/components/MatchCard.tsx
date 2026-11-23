@@ -171,10 +171,12 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const isRemake = Boolean(match.isRemake || gameDuration < 300 || participant.gameEndedInEarlySurrender);
   const isSurrender = Boolean(match.isSurrender || participant.gameEndedInSurrender || participant.gameEndedInEarlySurrender);
 
-  // Check if ranked queue (Ranked Solo/Duo = 420, Ranked Flex = 440, etc.)
+  // Check if ranked queue (Ranked Solo/Duo = 420, Ranked Flex = 440, Ranked 5s = 4/42, etc.)
   const isRankedMatch =
     match.queueId === 420 ||
     match.queueId === 440 ||
+    match.queueId === 4 ||
+    match.queueId === 42 ||
     match.queueId === 470 ||
     Boolean(
       match.queueName &&
