@@ -306,6 +306,8 @@ export interface TranslationDictionary {
     sideAdvantageSymmetric: string;
     mapBiasSubtitle: string;
     winProbDisclaimer: string;
+    autoCheckInterval: string;
+    matchEndedRedirect: string;
   };
   footer: {
     copyright: string;
@@ -796,6 +798,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       sideAdvantageSymmetric: 'Symmetrische Karte',
       mapBiasSubtitle: 'Statistischer Summoner\'s-Rift-Vorteil',
       winProbDisclaimer: 'Die Siegwahrscheinlichkeit wird vor Spielstart anhand von Team-MMR, saisonaler Siegrate, Champion-Beherrschung und Kartenseite prognostiziert.',
+      autoCheckInterval: 'Auto-Check alle 3 Min.',
+      matchEndedRedirect: 'Match beendet! Leite zur Übersicht weiter und aktualisiere Profil...',
     },
     footer: {
       copyright: '© {year} RiftHero. Nicht affiliiert mit Riot Games. League of Legends und Riot Games sind Warenzeichen von Riot Games, Inc.',
@@ -1284,6 +1288,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       sideAdvantageSymmetric: 'Symmetric Map',
       mapBiasSubtitle: 'Statistical Summoner\'s Rift bias',
       winProbDisclaimer: 'Win probability is predicted prior to game start based on team MMR, seasonal win rate, champion mastery, and map side.',
+      autoCheckInterval: 'Auto-check every 3 min',
+      matchEndedRedirect: 'Match ended! Redirecting to overview and refreshing profile...',
     },
     footer: {
       copyright: '© {year} RiftHero. Not affiliated with Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.',

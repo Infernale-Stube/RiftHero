@@ -12,7 +12,7 @@ export interface SummonerContextValue {
   liveData: LiveGameResponse | null;
   isLoadingLive: boolean;
   reloadProfile: () => Promise<void>;
-  reloadLiveGame: () => Promise<void>;
+  reloadLiveGame: () => Promise<LiveGameResponse | null>;
   refreshTimestamp: number;
 }
 

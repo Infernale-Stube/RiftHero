@@ -136,6 +136,19 @@ export default function SummonerMatchesPage() {
     }
   }, [profileData?.summoner?.id, activeQueue, loadMatchesAndStats]);
 
+  // Check if returning from a finished live game redirect to refresh matches immediately
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const flag = sessionStorage.getItem('rifthero_auto_refresh_after_live');
+        if (flag === 'true') {
+          sessionStorage.removeItem('rifthero_auto_refresh_after_live');
+          loadMatchesAndStats(activeQueue, true);
+        }
+      } catch {}
+    }
+  }, [activeQueue, loadMatchesAndStats]);
+
   // Silent in-place refresh when background sync finishes (zero layout jump or flash!)
   const isFirstRender = useRef(true);
   useEffect(() => {

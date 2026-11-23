@@ -7,6 +7,7 @@ import { SummonerRank, LpHistorySummary } from '@/types';
 import RankBadge, { TIER_COLORS, getRankEmblemUrl } from './RankBadge';
 import LpHistoryChart from './LpHistoryChart';
 import { useTranslation } from '@/i18n/LanguageContext';
+import SlotLpCounter from './SlotLpCounter';
 
 export type RankMode = 'solo' | 'flex' | '5s';
 
@@ -103,7 +104,7 @@ export default function RankCard({
               </span>
               <span className="text-zinc-500 font-bold">-</span>
               <span className="text-xs font-black text-amber-400">
-                {currentRank.leaguePoints} LP
+                <SlotLpCounter value={currentRank.leaguePoints} suffix=" LP" reelDurationMs={800} />
               </span>
             </div>
 
@@ -157,7 +158,7 @@ export default function RankCard({
             </span>
             <span className="text-zinc-600 font-normal">·</span>
             <span className="text-amber-400 font-mono">
-              {currentRank.peakLp ?? 0} LP
+              <SlotLpCounter value={currentRank.peakLp ?? 0} suffix=" LP" reelDurationMs={800} />
             </span>
           </div>
         </div>

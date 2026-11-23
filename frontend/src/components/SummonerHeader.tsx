@@ -10,6 +10,7 @@ import { getProfileIconUrl, getChampionSplashUrl } from '@/lib/ddragon';
 import RankBadge, { TIER_COLORS } from './RankBadge';
 import { formatTimeAgo } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import SlotLpCounter from './SlotLpCounter';
 
 interface SummonerHeaderProps {
   summoner: SummonerData;
@@ -326,7 +327,7 @@ export default function SummonerHeader({
                         </span>
                         <span className="text-zinc-500 font-bold text-xs">·</span>
                         <span className="text-xs sm:text-sm font-black text-amber-400 shrink-0">
-                          {rc.rank!.leaguePoints} LP
+                          <SlotLpCounter value={rc.rank!.leaguePoints} suffix=" LP" reelDurationMs={800} />
                         </span>
                       </div>
                       <div className="mt-1 sm:mt-1.5 flex items-center gap-2 text-[11px] sm:text-xs text-zinc-400 font-medium">

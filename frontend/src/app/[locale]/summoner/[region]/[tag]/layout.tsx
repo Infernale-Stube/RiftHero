@@ -43,13 +43,15 @@ export default function SummonerLayout({
   }, [region, tag]);
 
   const loadLiveGame = useCallback(async () => {
-    if (!region || !tag) return;
+    if (!region || !tag) return null;
     setIsLoadingLive(true);
     try {
       const res = await fetchLiveGame(region, tag);
       setLiveData(res);
+      return res;
     } catch (err) {
       console.error('Failed to load live game:', err);
+      return null;
     } finally {
       setIsLoadingLive(false);
     }

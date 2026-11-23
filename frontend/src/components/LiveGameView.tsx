@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Radio, RefreshCw, Ban, Copy, Check, Flame } from 'lucide-react';
+import { Radio, RefreshCw, Ban, Copy, Check } from 'lucide-react';
 import { LiveGameResponse, LiveGameParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -420,53 +420,65 @@ export default function LiveGameView({
                 )}
               </div>
 
-              {/* Line 2: Champion Name & Mastery Badge */}
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {/* Line 2: Champion Name & Plain Text Mastery Values */}
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-xs">
                 <span className="text-xs text-zinc-300 font-semibold truncate">
                   {p.championName}
                 </span>
 
-                {/* Champion Mastery Badge */}
-                {p.mastery ? (
+                {p.mastery && (
                   p.mastery.championPoints > 0 ? (
-                    <div
-                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shadow-sm ${
-                        p.mastery.championLevel >= 10
-                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                          : p.mastery.championLevel >= 7
-                          ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
-                          : p.mastery.championLevel >= 5
-                          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                          : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
-                      }`}
+                    <span
+                      className="text-[11px] font-medium text-zinc-400"
                       title={`${t('live.masteryLevel', { level: p.mastery.championLevel })} · ${p.mastery.championPoints.toLocaleString()} ${t('masteries.totalPoints')}`}
                     >
-                      <Flame className="h-2.5 w-2.5" />
-                      <span>M{p.mastery.championLevel}</span>
-                      <span className="opacity-80">·</span>
-                      <span className="font-mono">
-                        {p.mastery.championPoints >= 1000000
+                      <span className="text-zinc-600 font-normal">·</span>{' '}
+                      <span className="font-bold text-amber-400/90">M{p.mastery.championLevel}</span>{' '}
+                      <span className="font-mono text-zinc-400">
+                        ({p.mastery.championPoints >= 1000000
                           ? `${(p.mastery.championPoints / 1000000).toFixed(1)}M`
                           : p.mastery.championPoints >= 1000
                           ? `${Math.round(p.mastery.championPoints / 1000)}k`
-                          : p.mastery.championPoints}
+                          : p.mastery.championPoints})
                       </span>
-                    </div>
+                    </span>
                   ) : (
-                    <div
-                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"
-                      title={t('live.firstTime')}
-                    >
-                      <span>{t('live.firstTime')}</span>
-                    </div>
+                    <span className="text-[11px] text-zinc-500 font-medium">
+                      <span className="text-zinc-600 font-normal">·</span> {t('live.firstTime')}
+                    </span>
                   )
-                ) : null}
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right Section: Ranked Winrate & Rank */}
-          <div className="flex items-center justify-end shrink-0 pt-1 sm:pt-0">
+          {/* Right Section: Champion Winrate & Ranked Winrate */}
+          <div className="flex items-center justify-between sm:justify-end gap-5 sm:gap-6 shrink-0 border-t sm:border-t-0 border-white/[0.04] pt-2 sm:pt-0">
+            {/* Champion Winrate */}
+            <div className="flex flex-col items-start sm:items-end min-w-[75px]">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                {t('live.championWinrate')}
+              </span>
+              {p.championStats && p.championStats.games > 0 ? (
+                <div className="flex flex-col items-start sm:items-end">
+                  <span
+                    className={`text-xs sm:text-sm font-black ${getWinrateColor(
+                      p.championStats.winrate
+                    )}`}
+                  >
+                    {p.championStats.winrate}%
+                  </span>
+                  <span className="text-[10px] text-zinc-400 font-medium">
+                    {p.championStats.games}G ({p.championStats.wins}W {p.championStats.losses}L)
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-zinc-500 font-semibold mt-0.5">
+                  {t('live.noData')}
+                </span>
+              )}
+            </div>
+
             {/* Ranked Winrate & Rank */}
             <div className="flex items-center gap-2.5 min-w-[130px] sm:min-w-[145px] justify-end">
               {p.rank ? (
@@ -537,6 +549,10 @@ export default function LiveGameView({
               )}
             </span>
           )}
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{t('live.autoCheckInterval')}</span>
+          </span>
         </div>
 
         {fullMatchId ? (

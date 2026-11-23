@@ -31,6 +31,7 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import SlotLpCounter from './SlotLpCounter';
 
 interface MatchCardProps {
   match: FormattedMatch;
@@ -547,7 +548,12 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                               : 'text-zinc-400'
                           }`}
                         >
-                          {p.lpDelta > 0 ? `+${p.lpDelta}` : p.lpDelta} LP
+                          <SlotLpCounter
+                            value={p.lpDelta}
+                            showSign={true}
+                            suffix=" LP"
+                            reelDurationMs={600}
+                          />
                         </span>
                       ) : p.lpChange?.delta ? (
                         <span
@@ -559,7 +565,12 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                               : 'text-zinc-400'
                           }`}
                         >
-                          {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
+                          <SlotLpCounter
+                            value={p.lpChange.delta}
+                            showSign={true}
+                            suffix=" LP"
+                            reelDurationMs={600}
+                          />
                         </span>
                       ) : null}
                     </div>
@@ -722,7 +733,9 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
   return (
     <div
-      className={`group relative flex flex-col rounded-2xl border transition-all overflow-hidden shadow-lg ${cardBgClass}`}
+      className={`group relative flex flex-col rounded-2xl border transition-all overflow-hidden shadow-lg ${cardBgClass} ${
+        isNewMatch ? 'animate-slideDownFade ring-1 ring-amber-400/30 shadow-[0_0_24px_rgba(245,158,11,0.18)]' : ''
+      }`}
     >
       {/* Main LoLDB Match Row (~30% taller container with larger icons and texts) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 sm:p-5 gap-4 min-h-[110px]">
@@ -831,7 +844,12 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                       : 'text-zinc-400'
                   }`}
                 >
-                  {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
+                  <SlotLpCounter
+                    value={effectiveLpDelta}
+                    showSign={true}
+                    suffix=" LP"
+                    reelDurationMs={750}
+                  />
                 </span>
               )}
               {showNewBadge && (
