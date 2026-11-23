@@ -783,6 +783,27 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
           const loreEn = dataEn?.lore || dataEn?.blurb || null;
 
           const champId = Number(c.key);
+          const stats = dataEn?.stats || dataDe?.stats || c.stats || {};
+          const hp = stats.hp ?? 0;
+          const hpPerLevel = stats.hpperlevel ?? 0;
+          const mp = stats.mp ?? 0;
+          const mpPerLevel = stats.mpperlevel ?? 0;
+          const moveSpeed = stats.movespeed ?? 0;
+          const armor = stats.armor ?? 0;
+          const armorPerLevel = stats.armorperlevel ?? 0;
+          const spellBlock = stats.spellblock ?? 0;
+          const spellBlockPerLevel = stats.spellblockperlevel ?? 0;
+          const attackRange = stats.attackrange ?? 0;
+          const hpRegen = stats.hpregen ?? 0;
+          const hpRegenPerLevel = stats.hpregenperlevel ?? 0;
+          const mpRegen = stats.mpregen ?? 0;
+          const mpRegenPerLevel = stats.mpregenperlevel ?? 0;
+          const crit = stats.crit ?? 0;
+          const critPerLevel = stats.critperlevel ?? 0;
+          const attackDamage = stats.attackdamage ?? 0;
+          const attackDamagePerLevel = stats.attackdamageperlevel ?? 0;
+          const attackSpeed = stats.attackspeed ?? 0;
+          const attackSpeedPerLevel = stats.attackspeedperlevel ?? 0;
 
           return prisma.champion.upsert({
             where: { id: champId },
@@ -805,6 +826,26 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               releaseDate: c.releaseDate || null,
               patch,
               version: ddragonVersion,
+              hp,
+              hpPerLevel,
+              mp,
+              mpPerLevel,
+              moveSpeed,
+              armor,
+              armorPerLevel,
+              spellBlock,
+              spellBlockPerLevel,
+              attackRange,
+              hpRegen,
+              hpRegenPerLevel,
+              mpRegen,
+              mpRegenPerLevel,
+              crit,
+              critPerLevel,
+              attackDamage,
+              attackDamagePerLevel,
+              attackSpeed,
+              attackSpeedPerLevel,
               createdAt: now,
               updatedAt: now,
             },
@@ -826,6 +867,26 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               releaseDate: c.releaseDate || null,
               patch,
               version: ddragonVersion,
+              hp,
+              hpPerLevel,
+              mp,
+              mpPerLevel,
+              moveSpeed,
+              armor,
+              armorPerLevel,
+              spellBlock,
+              spellBlockPerLevel,
+              attackRange,
+              hpRegen,
+              hpRegenPerLevel,
+              mpRegen,
+              mpRegenPerLevel,
+              crit,
+              critPerLevel,
+              attackDamage,
+              attackDamagePerLevel,
+              attackSpeed,
+              attackSpeedPerLevel,
               updatedAt: now,
             },
           });
@@ -882,6 +943,29 @@ export async function loadActiveChampionSnapshot(
         const cleanNameDe = row.nameDe.toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanNameEn = row.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+        const stats = {
+          hp: row.hp,
+          hpperlevel: row.hpPerLevel,
+          mp: row.mp,
+          mpperlevel: row.mpPerLevel,
+          movespeed: row.moveSpeed,
+          armor: row.armor,
+          armorperlevel: row.armorPerLevel,
+          spellblock: row.spellBlock,
+          spellblockperlevel: row.spellBlockPerLevel,
+          attackrange: row.attackRange,
+          hpregen: row.hpRegen,
+          hpregenperlevel: row.hpRegenPerLevel,
+          mpregen: row.mpRegen,
+          mpregenperlevel: row.mpRegenPerLevel,
+          crit: row.crit,
+          critperlevel: row.critPerLevel,
+          attackdamage: row.attackDamage,
+          attackdamageperlevel: row.attackDamagePerLevel,
+          attackspeed: row.attackSpeed,
+          attackspeedperlevel: row.attackSpeedPerLevel,
+        };
+
         const champDe = {
           id: row.nameEn,
           key: champKey,
@@ -897,6 +981,7 @@ export async function loadActiveChampionSnapshot(
           difficulty: row.difficulty,
           classes: row.classes,
           releaseDate: row.releaseDate,
+          stats,
           meta: null,
         };
 
@@ -915,6 +1000,7 @@ export async function loadActiveChampionSnapshot(
           difficulty: row.difficulty,
           classes: row.classes,
           releaseDate: row.releaseDate,
+          stats,
           meta: null,
         };
 
@@ -947,11 +1033,19 @@ export async function loadActiveChampionSnapshot(
       return memoryObj;
     }
   } catch (err) {
-    console.warn('[ChampionService] Champions table read error, computing on the fly:', (err as Error).message);
+    console.warn('[ChampionService] Champions table read error:', (err as Error).message);
   }
 
-  // If table is empty, sync champions immediately
-  return await syncChampionSnapshot();
+  // If table is empty or error occurs, return empty roster (do NOT fetch external DDragon on client request!)
+  return {
+    id: slot,
+    version: '',
+    patch: '',
+    championsCount: 0,
+    championsRoster: { de: [], en: [] },
+    championDetails: { de: {}, en: {} },
+    timestamp: now,
+  };
 }
 
 /**

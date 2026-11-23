@@ -34,7 +34,6 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import {
   getDDragonVersion,
   getItemIconUrl,
-  fetchDDragonItemsList,
 } from '@/lib/ddragon';
 import { fetchItemsRosterApi } from '@/lib/api';
 import { ItemRosterItem } from '@/types';
@@ -758,18 +757,13 @@ export default function ItemsListView() {
         if (res && res.items && res.items.length > 0) {
           setItems(res.items);
           if (res.version) setVersion(res.version);
-          return;
+        } else {
+          setItems([]);
         }
-        return fetchDDragonItemsList(locale).then((fb) => {
-          setItems(fb.items);
-          if (fb.version) setVersion(fb.version);
-        });
       })
-      .catch(() => {
-        return fetchDDragonItemsList(locale).then((fb) => {
-          setItems(fb.items);
-          if (fb.version) setVersion(fb.version);
-        });
+      .catch((err) => {
+        console.warn('[ItemsListView] Failed to load items from database API:', err);
+        setItems([]);
       })
       .finally(() => {
         setIsLoading(false);

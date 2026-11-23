@@ -210,6 +210,29 @@ model Champion {
   releaseDate         String?
   patch               String   @default("")
   version             String   @default("")
+
+  // Base Stats (discrete numeric columns in database)
+  hp                  Float    @default(0)
+  hpPerLevel          Float    @default(0)
+  mp                  Float    @default(0)
+  mpPerLevel          Float    @default(0)
+  moveSpeed           Float    @default(0)
+  armor               Float    @default(0)
+  armorPerLevel       Float    @default(0)
+  spellBlock          Float    @default(0)
+  spellBlockPerLevel  Float    @default(0)
+  attackRange         Float    @default(0)
+  hpRegen             Float    @default(0)
+  hpRegenPerLevel     Float    @default(0)
+  mpRegen             Float    @default(0)
+  mpRegenPerLevel     Float    @default(0)
+  crit                Float    @default(0)
+  critPerLevel        Float    @default(0)
+  attackDamage        Float    @default(0)
+  attackDamagePerLevel Float   @default(0)
+  attackSpeed         Float    @default(0)
+  attackSpeedPerLevel Float    @default(0)
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

@@ -594,10 +594,19 @@ export async function loadActiveItemSnapshot(skipCacheCheck = false): Promise<It
       return itemMemoryCache;
     }
   } catch (err) {
-    console.warn('[ItemService] Items table DB read failed, synchronizing immediately:', (err as Error).message);
+    console.warn('[ItemService] Items table DB read failed:', (err as Error).message);
   }
 
-  return await computeAndSaveItemSnapshot();
+  // If table is empty or error occurs, return empty list (do NOT fetch external DDragon on client request!)
+  return {
+    version: '',
+    patch: '',
+    totalItems: 0,
+    items: { de: [], en: [] },
+    details: { de: {}, en: {} },
+    tree: [],
+    timestamp: now,
+  };
 }
 
 export function toDDragonLocale(locale = 'de'): 'de_DE' | 'en_US' {

@@ -42,7 +42,6 @@ import {
   getMajorMinorPatch,
   getDDragonVersion,
   PositionKey,
-  mapSkinRarityClient,
 } from '@/lib/ddragon';
 import {
   fetchChampionDetailApi,
@@ -608,40 +607,6 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       })
       .catch(() => {});
   }, [slug, locale]);
-
-  // Live Dynamic Official Skin Rarities from CommunityDragon
-  useEffect(() => {
-    if (data?.key) {
-      fetch(
-        `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champions/${data.key}.json`
-      )
-        .then((r) => (r.ok ? r.json() : null))
-        .then((cdData) => {
-          if (cdData && Array.isArray(cdData.skins)) {
-            const cdMap = new Map(cdData.skins.map((s: any) => [String(s.id), s]));
-            setData((prev) => {
-              if (!prev || !prev.skins) return prev;
-              return {
-                ...prev,
-                skins: prev.skins.map((s) => {
-                  const cd = cdMap.get(String(s.id)) as any;
-                  if (cd) {
-                    const mapped = cd.rarity ? mapSkinRarityClient(cd.rarity) : null;
-                    return {
-                      ...s,
-                      ...(mapped ? { rarity: mapped.rarity, rarityColor: mapped.rarityColor } : {}),
-                      isLegacy: typeof s.isLegacy === 'boolean' ? s.isLegacy : Boolean(cd.isLegacy),
-                    };
-                  }
-                  return s;
-                }),
-              };
-            });
-          }
-        })
-        .catch((err) => console.warn('[CDragon] Live skins enrichment error:', err));
-    }
-  }, [data?.key]);
 
   const patchString = getMajorMinorPatch(version);
 
