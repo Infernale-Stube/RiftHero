@@ -41,9 +41,14 @@ export default function SummonerLayout({
     if (!isSilent && !profileDataRef.current) setIsLoadingProfile(true);
     try {
       const data = await fetchSummonerProfile(region, tag);
+      setError(null);
       setProfileData(data);
     } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden des Profils');
+      if (!profileDataRef.current) {
+        setError(err.message || 'Fehler beim Laden des Profils');
+      } else {
+        console.warn('Background profile refresh failed:', err);
+      }
     } finally {
       setIsLoadingProfile(false);
     }

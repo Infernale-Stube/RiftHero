@@ -40,7 +40,8 @@ export async function fetchSummonerProfile(
         status: 'not_found',
       };
     }
-    throw new Error(`Failed to fetch summoner: ${res.statusText}`);
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Fehler beim Laden des Profils (Status ${res.status})`);
   }
 
   return await res.json();

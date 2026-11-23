@@ -427,19 +427,19 @@ export default function LiveGameView({
                 </span>
 
                 {p.mastery && (
-                  p.mastery.championPoints > 0 ? (
+                  (p.mastery.championPoints ?? 0) > 0 ? (
                     <span
                       className="font-medium text-zinc-400 inline-flex items-baseline"
-                      title={`${t('live.masteryLevel', { level: p.mastery.championLevel })} · ${p.mastery.championPoints.toLocaleString()} ${t('masteries.totalPoints')}`}
+                      title={`${t('live.masteryLevel', { level: p.mastery.championLevel || 0 })} · ${(p.mastery.championPoints ?? 0).toLocaleString()} ${t('masteries.totalPoints')}`}
                     >
                       <span className="text-zinc-600 font-normal mr-1.5">·</span>
-                      <span className="font-bold text-amber-400">M{p.mastery.championLevel}</span>
+                      <span className="font-bold text-amber-400">M{p.mastery.championLevel || 0}</span>
                       <span className="text-zinc-400 ml-1">
-                        ({p.mastery.championPoints >= 1000000
-                          ? `${(p.mastery.championPoints / 1000000).toFixed(1)}M`
-                          : p.mastery.championPoints >= 1000
-                          ? `${Math.round(p.mastery.championPoints / 1000)}k`
-                          : p.mastery.championPoints})
+                        ({(p.mastery.championPoints || 0) >= 1000000
+                          ? `${((p.mastery.championPoints || 0) / 1000000).toFixed(1)}M`
+                          : (p.mastery.championPoints || 0) >= 1000
+                          ? `${Math.round((p.mastery.championPoints || 0) / 1000)}k`
+                          : (p.mastery.championPoints || 0)})
                       </span>
                     </span>
                   ) : (
