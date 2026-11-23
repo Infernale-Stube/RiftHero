@@ -12,9 +12,6 @@ import {
   Trophy,
   Award,
   Ban,
-  Copy,
-  Check,
-  ExternalLink,
 } from 'lucide-react';
 import { FormattedMatch, MatchParticipant, DeepLolScore } from '@/types';
 import {
@@ -139,7 +136,6 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const { t, locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
-  const [copiedMatchId, setCopiedMatchId] = useState(false);
 
   const isNewMatch = isNew ?? match.isNew;
   const [isDismissed, setIsDismissed] = useState(false);
@@ -994,35 +990,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             })}
           </div>
 
-          {/* Right Actions Column: Match Details Icon (top) + Expand Arrow Button (bottom) */}
-          <div className="flex flex-col items-center justify-between self-stretch shrink-0 py-0.5 border-l border-white/[0.06] pl-2.5 ml-1 min-h-[92px]">
-            {/* Match Details Icon Link (in top right corner above the expand arrow) */}
-            <Link
-              href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
-              className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
-              title="Match Details"
-              aria-label="Match Details"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-amber-400 group-hover/detail:text-amber-300 transition-colors"
-              >
-                <path
-                  d="M2.5 3V17H18"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <rect x="5" y="11" width="2" height="6" rx="0.5" fill="currentColor" />
-                <rect x="8.5" y="6" width="2" height="11" rx="0.5" fill="currentColor" />
-                <rect x="12" y="8.5" width="2" height="8.5" rx="0.5" fill="currentColor" />
-                <rect x="15.5" y="4" width="2" height="13" rx="0.5" fill="currentColor" />
-              </svg>
-            </Link>
-
+          {/* Right Actions Column: Expand Arrow Button */}
+          <div className="flex flex-col items-center justify-center self-stretch shrink-0 py-0.5 border-l border-white/[0.06] pl-2.5 ml-1">
             {/* Expand Details Arrow Button */}
             <button
               type="button"
@@ -1060,34 +1029,12 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             redTeamData
           )}
 
-          {/* Match Footer Info: Match ID & Details Link */}
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-3 px-1 border-t border-white/[0.04]">
+          {/* Match Footer Info: Match ID */}
+          <div className="flex items-center text-[11px] text-zinc-500 pt-3 px-1 border-t border-white/[0.04]">
             <div className="flex items-center gap-1.5 font-mono">
               <span className="text-zinc-500 font-sans">Match ID:</span>
               <span className="text-zinc-400 font-semibold select-all">{match.matchId}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    navigator.clipboard.writeText(match.matchId);
-                    setCopiedMatchId(true);
-                    setTimeout(() => setCopiedMatchId(false), 2000);
-                  }
-                }}
-                className="p-1 hover:text-amber-400 text-zinc-500 transition-colors"
-                title="Match ID kopieren"
-                aria-label="Match ID kopieren"
-              >
-                {copiedMatchId ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-              </button>
             </div>
-            <Link
-              href={`/${locale}/match/${region}/${match.matchId}`}
-              className="hover:text-amber-400 text-zinc-400 transition-colors flex items-center gap-1 font-medium font-sans"
-            >
-              <span>Match Details</span>
-              <ExternalLink className="h-3 w-3" />
-            </Link>
           </div>
         </div>
       )}
