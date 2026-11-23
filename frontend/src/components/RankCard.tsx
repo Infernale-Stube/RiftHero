@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
+import { Trophy } from 'lucide-react';
 import { SummonerRank, LpHistorySummary } from '@/types';
-import RankBadge, { TIER_COLORS } from './RankBadge';
+import RankBadge, { TIER_COLORS, getRankEmblemUrl } from './RankBadge';
 import LpHistoryChart from './LpHistoryChart';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -129,6 +131,37 @@ export default function RankCard({
         lpHistory.points.length >= 2 && (
           <LpHistoryChart lpHistory={lpHistory} />
         )}
+
+      {/* Peak Rank for Current Selected Queue */}
+      {currentRank?.peakTier && currentRank.peakTier.toUpperCase() !== 'UNRANKED' && (
+        <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 text-zinc-400">
+            <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+            <span className="font-semibold text-zinc-500 uppercase tracking-wide text-[10px]">
+              {t('summoner.peakRank') || 'Peak'}:
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 font-bold">
+            <div className="relative h-3.5 w-3.5 shrink-0 opacity-90">
+              <Image
+                src={getRankEmblemUrl(currentRank.peakTier)}
+                alt={currentRank.peakTier}
+                width={14}
+                height={14}
+                className="object-contain"
+                unoptimized
+              />
+            </div>
+            <span className={TIER_COLORS[currentRank.peakTier.toUpperCase()]?.text || 'text-zinc-200'}>
+              {currentRank.peakTier} {currentRank.peakRank}
+            </span>
+            <span className="text-zinc-600 font-normal">·</span>
+            <span className="text-amber-400 font-mono">
+              {currentRank.peakLp ?? 0} LP
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

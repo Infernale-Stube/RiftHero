@@ -67,13 +67,7 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
   const {
     points,
     currentTier,
-    currentRank,
-    currentLp,
     netDeltaLp,
-    peakTier,
-    peakRank,
-    peakLp,
-    longestWinStreak,
   } = lpHistory;
 
   if (!points || points.length < 2) {
@@ -307,26 +301,6 @@ export default function LpHistoryChart({ lpHistory }: LpHistoryChartProps) {
           )}
           <span>
             {formatDate(points[points.length - 1]?.timestamp, points[points.length - 1]?.date)}
-          </span>
-        </div>
-      </div>
-
-      {/* Bottom Peak & Streak Stats */}
-      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-white/[0.04] text-[10px] text-zinc-400">
-        <div className="flex items-center gap-1.5">
-          <div className="relative h-3.5 w-3.5 shrink-0 opacity-80">
-            <Image
-              src={getRankEmblemUrl(peakTier)}
-              alt={peakTier}
-              width={14}
-              height={14}
-              className="object-contain"
-              unoptimized
-            />
-          </div>
-          <span className="font-semibold text-zinc-500 uppercase tracking-wide">{t('summoner.peakRank')}:</span>
-          <span className="font-bold text-zinc-200">
-            {peakTier} {peakRank} · {peakLp} LP
           </span>
         </div>
       </div>

@@ -11,7 +11,7 @@ import {
   enqueueLowPrioritySummoner,
 } from '../queue/bullmq';
 import { config } from '../config';
-import { recordLpSnapshot } from '../services/lpService';
+import { recordLpSnapshot, computePeakRank } from '../services/lpService';
 import { calculateMatchScores } from '../services/scoreService';
 
 export async function processSummonerJob(job: Job<SummonerJobData>): Promise<void> {
@@ -96,7 +96,39 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       )
     : undefined;
 
-  // 5. Upsert Summoner in PostgreSQL (Ranks integrated directly!)
+  // 5. Query existing summoner to preserve or update peak ranks
+  const existingSummoner = await prisma.summoner.findUnique({
+    where: { puuid },
+  });
+
+  const soloPeak = computePeakRank(
+    soloEntry?.tier,
+    soloEntry?.rank,
+    soloEntry?.leaguePoints,
+    existingSummoner?.soloPeakTier,
+    existingSummoner?.soloPeakRank,
+    existingSummoner?.soloPeakLp
+  );
+
+  const flexPeak = computePeakRank(
+    flexEntry?.tier,
+    flexEntry?.rank,
+    flexEntry?.leaguePoints,
+    existingSummoner?.flexPeakTier,
+    existingSummoner?.flexPeakRank,
+    existingSummoner?.flexPeakLp
+  );
+
+  const ranked5sPeak = computePeakRank(
+    ranked5sEntry?.tier,
+    ranked5sEntry?.rank,
+    ranked5sEntry?.leaguePoints,
+    existingSummoner?.ranked5sPeakTier,
+    existingSummoner?.ranked5sPeakRank,
+    existingSummoner?.ranked5sPeakLp
+  );
+
+  // Upsert Summoner in PostgreSQL (Ranks & Peaks integrated directly!)
   const savedSummoner = await prisma.summoner.upsert({
     where: { puuid },
     create: {
@@ -114,16 +146,25 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       soloLp: soloEntry?.leaguePoints ?? 0,
       soloWins: soloEntry?.wins ?? 0,
       soloLosses: soloEntry?.losses ?? 0,
+      soloPeakTier: soloPeak.peakTier,
+      soloPeakRank: soloPeak.peakRank,
+      soloPeakLp: soloPeak.peakLp,
       flexTier: flexEntry?.tier || null,
       flexRank: flexEntry?.rank || null,
       flexLp: flexEntry?.leaguePoints ?? 0,
       flexWins: flexEntry?.wins ?? 0,
       flexLosses: flexEntry?.losses ?? 0,
+      flexPeakTier: flexPeak.peakTier,
+      flexPeakRank: flexPeak.peakRank,
+      flexPeakLp: flexPeak.peakLp,
       ranked5sTier: ranked5sEntry?.tier || null,
       ranked5sRank: ranked5sEntry?.rank || null,
       ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
       ranked5sWins: ranked5sEntry?.wins ?? 0,
       ranked5sLosses: ranked5sEntry?.losses ?? 0,
+      ranked5sPeakTier: ranked5sPeak.peakTier,
+      ranked5sPeakRank: ranked5sPeak.peakRank,
+      ranked5sPeakLp: ranked5sPeak.peakLp,
     },
     update: {
       gameName: cleanGameName,
@@ -139,16 +180,25 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       soloLp: soloEntry?.leaguePoints ?? 0,
       soloWins: soloEntry?.wins ?? 0,
       soloLosses: soloEntry?.losses ?? 0,
+      soloPeakTier: soloPeak.peakTier,
+      soloPeakRank: soloPeak.peakRank,
+      soloPeakLp: soloPeak.peakLp,
       flexTier: flexEntry?.tier || null,
       flexRank: flexEntry?.rank || null,
       flexLp: flexEntry?.leaguePoints ?? 0,
       flexWins: flexEntry?.wins ?? 0,
       flexLosses: flexEntry?.losses ?? 0,
+      flexPeakTier: flexPeak.peakTier,
+      flexPeakRank: flexPeak.peakRank,
+      flexPeakLp: flexPeak.peakLp,
       ranked5sTier: ranked5sEntry?.tier || null,
       ranked5sRank: ranked5sEntry?.rank || null,
       ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
       ranked5sWins: ranked5sEntry?.wins ?? 0,
       ranked5sLosses: ranked5sEntry?.losses ?? 0,
+      ranked5sPeakTier: ranked5sPeak.peakTier,
+      ranked5sPeakRank: ranked5sPeak.peakRank,
+      ranked5sPeakLp: ranked5sPeak.peakLp,
     },
   });
 

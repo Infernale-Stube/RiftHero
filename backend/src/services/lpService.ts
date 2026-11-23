@@ -32,6 +32,49 @@ export function calculateTotalLp(tier: string, rank: string, leaguePoints: numbe
   return base + divOffset + (leaguePoints || 0);
 }
 
+export function computePeakRank(
+  currentTier?: string | null,
+  currentRank?: string | null,
+  currentLp?: number | null,
+  existingPeakTier?: string | null,
+  existingPeakRank?: string | null,
+  existingPeakLp?: number | null
+): { peakTier: string | null; peakRank: string | null; peakLp: number | null } {
+  if (!currentTier || currentTier.toUpperCase() === 'UNRANKED') {
+    return {
+      peakTier: existingPeakTier || null,
+      peakRank: existingPeakRank || null,
+      peakLp: existingPeakLp ?? null,
+    };
+  }
+
+  const curTotal = calculateTotalLp(currentTier, currentRank || 'I', currentLp || 0);
+
+  if (!existingPeakTier || existingPeakTier.toUpperCase() === 'UNRANKED') {
+    return {
+      peakTier: currentTier,
+      peakRank: currentRank || 'I',
+      peakLp: currentLp || 0,
+    };
+  }
+
+  const existingTotal = calculateTotalLp(existingPeakTier, existingPeakRank || 'I', existingPeakLp || 0);
+
+  if (curTotal >= existingTotal) {
+    return {
+      peakTier: currentTier,
+      peakRank: currentRank || 'I',
+      peakLp: currentLp || 0,
+    };
+  }
+
+  return {
+    peakTier: existingPeakTier ?? null,
+    peakRank: existingPeakRank ?? null,
+    peakLp: existingPeakLp ?? null,
+  };
+}
+
 export function getTierAndRankFromTotalLp(totalLp: number): { tier: string; rank: string; lp: number } {
   if (totalLp >= 2800) {
     return { tier: 'MASTER', rank: 'I', lp: totalLp - 2800 };
@@ -119,6 +162,66 @@ export async function recordLpSnapshot(
         recordedAt: new Date(),
       },
     });
+  }
+
+  // Update peak on Summoner table if this snapshot exceeds current peak
+  try {
+    const summoner = await prisma.summoner.findUnique({
+      where: { id: summonerId },
+      select: {
+        soloPeakTier: true,
+        soloPeakRank: true,
+        soloPeakLp: true,
+        flexPeakTier: true,
+        flexPeakRank: true,
+        flexPeakLp: true,
+        ranked5sPeakTier: true,
+        ranked5sPeakRank: true,
+        ranked5sPeakLp: true,
+      },
+    });
+
+    if (summoner) {
+      if (queueType === 'RANKED_SOLO_5x5') {
+        const peak = computePeakRank(tier, rank, leaguePoints, summoner.soloPeakTier, summoner.soloPeakRank, summoner.soloPeakLp);
+        if (peak.peakTier !== summoner.soloPeakTier || peak.peakRank !== summoner.soloPeakRank || peak.peakLp !== summoner.soloPeakLp) {
+          await prisma.summoner.update({
+            where: { id: summonerId },
+            data: {
+              soloPeakTier: peak.peakTier,
+              soloPeakRank: peak.peakRank,
+              soloPeakLp: peak.peakLp,
+            },
+          });
+        }
+      } else if (queueType === 'RANKED_FLEX_SR') {
+        const peak = computePeakRank(tier, rank, leaguePoints, summoner.flexPeakTier, summoner.flexPeakRank, summoner.flexPeakLp);
+        if (peak.peakTier !== summoner.flexPeakTier || peak.peakRank !== summoner.flexPeakRank || peak.peakLp !== summoner.flexPeakLp) {
+          await prisma.summoner.update({
+            where: { id: summonerId },
+            data: {
+              flexPeakTier: peak.peakTier,
+              flexPeakRank: peak.peakRank,
+              flexPeakLp: peak.peakLp,
+            },
+          });
+        }
+      } else if (queueType === 'RANKED_PREMADE_5x5' || queueType.includes('5x5')) {
+        const peak = computePeakRank(tier, rank, leaguePoints, summoner.ranked5sPeakTier, summoner.ranked5sPeakRank, summoner.ranked5sPeakLp);
+        if (peak.peakTier !== summoner.ranked5sPeakTier || peak.peakRank !== summoner.ranked5sPeakRank || peak.peakLp !== summoner.ranked5sPeakLp) {
+          await prisma.summoner.update({
+            where: { id: summonerId },
+            data: {
+              ranked5sPeakTier: peak.peakTier,
+              ranked5sPeakRank: peak.peakRank,
+              ranked5sPeakLp: peak.peakLp,
+            },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[recordLpSnapshot] Failed to update peak rank:', err);
   }
 }
 

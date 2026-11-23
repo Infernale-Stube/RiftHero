@@ -6,6 +6,9 @@ export interface SummonerRank {
   wins: number;
   losses: number;
   winrate: number;
+  peakTier?: string | null;
+  peakRank?: string | null;
+  peakLp?: number | null;
 }
 
 export interface SummonerData {

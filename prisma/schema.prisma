@@ -27,6 +27,9 @@ model Summoner {
   soloLp         Int       @default(0)
   soloWins       Int       @default(0)
   soloLosses     Int       @default(0)
+  soloPeakTier   String?
+  soloPeakRank   String?
+  soloPeakLp     Int?
 
   // Ranked Flex
   flexTier       String?
@@ -34,6 +37,9 @@ model Summoner {
   flexLp         Int       @default(0)
   flexWins       Int       @default(0)
   flexLosses     Int       @default(0)
+  flexPeakTier   String?
+  flexPeakRank   String?
+  flexPeakLp     Int?
 
   // Ranked 5s / Premade 5s
   ranked5sTier   String?
@@ -41,6 +47,9 @@ model Summoner {
   ranked5sLp     Int       @default(0)
   ranked5sWins   Int       @default(0)
   ranked5sLosses Int       @default(0)
+  ranked5sPeakTier String?
+  ranked5sPeakRank String?
+  ranked5sPeakLp   Int?
 
   lpSnapshots    SummonerLpSnapshot[]
 

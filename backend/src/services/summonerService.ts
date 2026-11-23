@@ -87,6 +87,9 @@ export async function getSummonerProfile(
     wins: number;
     losses: number;
     winrate: number;
+    peakTier?: string | null;
+    peakRank?: string | null;
+    peakLp?: number | null;
   }> = [];
 
   if (summoner?.soloTier) {
@@ -99,6 +102,9 @@ export async function getSummonerProfile(
       wins: summoner.soloWins,
       losses: summoner.soloLosses,
       winrate: total > 0 ? Math.round((summoner.soloWins / total) * 100) : 0,
+      peakTier: summoner.soloPeakTier || summoner.soloTier,
+      peakRank: summoner.soloPeakRank || summoner.soloRank || 'I',
+      peakLp: summoner.soloPeakLp ?? summoner.soloLp,
     });
   }
 
@@ -112,6 +118,9 @@ export async function getSummonerProfile(
       wins: summoner.flexWins,
       losses: summoner.flexLosses,
       winrate: total > 0 ? Math.round((summoner.flexWins / total) * 100) : 0,
+      peakTier: summoner.flexPeakTier || summoner.flexTier,
+      peakRank: summoner.flexPeakRank || summoner.flexRank || 'I',
+      peakLp: summoner.flexPeakLp ?? summoner.flexLp,
     });
   }
 
@@ -125,6 +134,9 @@ export async function getSummonerProfile(
       wins: summoner.ranked5sWins,
       losses: summoner.ranked5sLosses,
       winrate: total > 0 ? Math.round((summoner.ranked5sWins / total) * 100) : 0,
+      peakTier: summoner.ranked5sPeakTier || summoner.ranked5sTier,
+      peakRank: summoner.ranked5sPeakRank || summoner.ranked5sRank || 'I',
+      peakLp: summoner.ranked5sPeakLp ?? summoner.ranked5sLp,
     });
   }
 
