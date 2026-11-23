@@ -124,6 +124,10 @@ export interface TranslationDictionary {
     matchId: string;
     switchToTaken: string;
     switchToDamage: string;
+    badgeNew: string;
+    surrender: string;
+    matchDetails: string;
+    toggleDetails: string;
   };
   champions: {
     championsPlayed: string;
@@ -606,6 +610,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
       matchId: 'Match-ID:',
       switchToTaken: 'Zu Schaden Erhalten (Taken) wechseln',
       switchToDamage: 'Zu Ausgeteilter Schaden (Damage) wechseln',
+      badgeNew: 'Neu',
+      surrender: 'Aufgabe',
+      matchDetails: 'Match-Details',
+      toggleDetails: 'Match-Details ein-/ausklappen',
     },
     champions: {
       championsPlayed: 'Champions',
@@ -1086,6 +1094,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
       matchId: 'Match ID:',
       switchToTaken: 'Switch to Damage Taken',
       switchToDamage: 'Switch to Damage Dealt',
+      badgeNew: 'New',
+      surrender: 'Surrender',
+      matchDetails: 'Match Details',
+      toggleDetails: 'Toggle Match Details',
     },
     champions: {
       championsPlayed: 'Champions',

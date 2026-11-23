@@ -801,7 +801,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               )}
               {showNewBadge && (
                 <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none transition-opacity duration-300">
-                  New
+                  {t('matches.badgeNew')}
                 </span>
               )}
             </div>
@@ -814,7 +814,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             {isSurrender && !isRemake && (
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <span className="rounded bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 uppercase tracking-wide">
-                  Surrender
+                  {t('matches.surrender')}
                 </span>
               </div>
             )}
@@ -995,8 +995,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             <Link
               href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
               className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
-              title="Match Details"
-              aria-label="Match Details"
+              title={t('matches.matchDetails')}
+              aria-label={t('matches.matchDetails')}
             >
               <svg
                 viewBox="0 0 20 20"
@@ -1026,7 +1026,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 setIsExpanded(!isExpanded);
               }}
               className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
-              aria-label="Toggle Match Details"
+              aria-label={t('matches.toggleDetails')}
             >
               {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </button>
