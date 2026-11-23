@@ -174,10 +174,18 @@ model MatchParticipant {
   primaryStyle                Int?      // Primary Path style ID
   secondaryStyle              Int?      // Secondary Sub-style ID
 
+  // Rank / LP Progression (Tracked post-game state)
+  lpDelta                     Int?
+  postGameLp                  Int?
+  postGameTier                String?
+  postGameRank                String?
+  postGameTotalLp             Int?
+
   match                       Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@unique([matchId, puuid])
   @@index([puuid])
+  @@index([puuid, postGameTotalLp])
   @@index([championId])
   @@index([win])
   @@map("match_participants")

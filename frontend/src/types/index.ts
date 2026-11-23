@@ -110,6 +110,11 @@ export interface MatchParticipant {
   goldSpent?: number;
   heroScore?: number | null;
   score?: DeepLolScore;
+  lpDelta?: number | null;
+  postGameLp?: number | null;
+  postGameTier?: string | null;
+  postGameRank?: string | null;
+  postGameTotalLp?: number | null;
   lpChange?: MatchLpChange | null;
   largestMultiKill?: number;
   doubleKills?: number;

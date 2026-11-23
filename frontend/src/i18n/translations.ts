@@ -106,6 +106,24 @@ export interface TranslationDictionary {
     mostDmg: string;
     mostGold: string;
     mostCs: string;
+    blueSide: string;
+    redSide: string;
+    remake: string;
+    bans: string;
+    towers: string;
+    inhibitors: string;
+    dragons: string;
+    barons: string;
+    herald: string;
+    build: string;
+    damage: string;
+    taken: string;
+    vision: string;
+    gold: string;
+    heroScore: string;
+    matchId: string;
+    switchToTaken: string;
+    switchToDamage: string;
   };
   champions: {
     championsPlayed: string;
@@ -570,6 +588,24 @@ export const translations: Record<Locale, TranslationDictionary> = {
       mostDmg: 'Most Dmg',
       mostGold: 'Most Gold',
       mostCs: 'Most CS',
+      blueSide: 'Blaue Seite',
+      redSide: 'Rote Seite',
+      remake: 'Remake',
+      bans: 'Bans:',
+      towers: 'Türme',
+      inhibitors: 'Inhibitoren',
+      dragons: 'Drachen',
+      barons: 'Barone',
+      herald: 'Herolde / Maden',
+      build: 'Build',
+      damage: 'Schaden',
+      taken: 'Erhalten',
+      vision: 'Sicht',
+      gold: 'Gold',
+      heroScore: 'Hero Score',
+      matchId: 'Match-ID:',
+      switchToTaken: 'Zu Schaden Erhalten (Taken) wechseln',
+      switchToDamage: 'Zu Ausgeteilter Schaden (Damage) wechseln',
     },
     champions: {
       championsPlayed: 'Champions',
@@ -1032,6 +1068,24 @@ export const translations: Record<Locale, TranslationDictionary> = {
       mostDmg: 'Most Dmg',
       mostGold: 'Most Gold',
       mostCs: 'Most CS',
+      blueSide: 'Blue Side',
+      redSide: 'Red Side',
+      remake: 'Remake',
+      bans: 'Bans:',
+      towers: 'Towers',
+      inhibitors: 'Inhibitors',
+      dragons: 'Dragons',
+      barons: 'Barons',
+      herald: 'Voidgrubs / Herald',
+      build: 'Build',
+      damage: 'Damage',
+      taken: 'Taken',
+      vision: 'Vision',
+      gold: 'Gold',
+      heroScore: 'Hero Score',
+      matchId: 'Match ID:',
+      switchToTaken: 'Switch to Damage Taken',
+      switchToDamage: 'Switch to Damage Dealt',
     },
     champions: {
       championsPlayed: 'Champions',

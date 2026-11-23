@@ -37,6 +37,11 @@ export interface FormattedMatchParticipant {
   damageShare?: number;
   heroScore?: number | null;
   score?: DeepLolScore;
+  lpDelta?: number | null;
+  postGameLp?: number | null;
+  postGameTier?: string | null;
+  postGameRank?: string | null;
+  postGameTotalLp?: number | null;
   lpChange?: MatchLpChange | null;
   largestMultiKill?: number;
   doubleKills?: number;
@@ -133,6 +138,11 @@ function formatParticipant(
     spells: [p.summoner1Id, p.summoner2Id],
     primaryRune: p.primaryRune,
     secondaryStyle: p.secondaryStyle,
+    lpDelta: p.lpDelta,
+    postGameLp: p.postGameLp,
+    postGameTier: p.postGameTier,
+    postGameRank: p.postGameRank,
+    postGameTotalLp: p.postGameTotalLp,
     largestMultiKill: undefined,
     doubleKills: 0,
     tripleKills: 0,

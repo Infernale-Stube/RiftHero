@@ -184,8 +184,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
     );
 
   const effectiveLpDelta =
-    match.lpChange?.delta ??
-    (isRankedMatch ? (isRemake ? 0 : win ? 21 : -19) : null);
+    participant.lpDelta ?? match.lpChange?.delta ?? null;
 
   const runeKeystoneUrl = getRuneIconUrl(participant.primaryRune);
   const runeStyleUrl = getStyleIconUrl(participant.secondaryStyle);
@@ -292,16 +291,16 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 {isRemake ? 'REMAKE' : teamWon ? t('matches.victory') : t('matches.defeat')}
               </span>
               <span className="text-xs text-zinc-400 font-semibold">
-                {isBlue ? 'Blue Side' : 'Red Side'}
+                {isBlue ? t('matches.blueSide') : t('matches.redSide')}
               </span>
             </div>
 
             {/* Objective icons + counts */}
             <div className="flex items-center gap-2.5 text-[11px] text-zinc-300 font-bold ml-1">
-              <span className="flex items-center gap-1" title="Towers">
+              <span className="flex items-center gap-1" title={t('matches.towers')}>
                 <Image
                   src={getObjectiveIconUrl('tower', teamSide)}
-                  alt="Towers"
+                  alt={t('matches.towers')}
                   width={14}
                   height={14}
                   className="h-3.5 w-3.5 object-contain shrink-0"
@@ -309,10 +308,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 />
                 <span>{sideTowers}</span>
               </span>
-              <span className="flex items-center gap-1" title="Inhibitors">
+              <span className="flex items-center gap-1" title={t('matches.inhibitors')}>
                 <Image
                   src={getObjectiveIconUrl('inhibitor', teamSide)}
-                  alt="Inhibitors"
+                  alt={t('matches.inhibitors')}
                   width={14}
                   height={14}
                   className="h-3.5 w-3.5 object-contain shrink-0"
@@ -320,10 +319,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 />
                 <span>{sideInhibitors}</span>
               </span>
-              <span className="flex items-center gap-1" title="Dragons">
+              <span className="flex items-center gap-1" title={t('matches.dragons')}>
                 <Image
                   src={getObjectiveIconUrl('dragon', teamSide)}
-                  alt="Dragons"
+                  alt={t('matches.dragons')}
                   width={14}
                   height={14}
                   className="h-3.5 w-3.5 object-contain shrink-0"
@@ -331,10 +330,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 />
                 <span>{sideDragons}</span>
               </span>
-              <span className="flex items-center gap-1" title="Barons">
+              <span className="flex items-center gap-1" title={t('matches.barons')}>
                 <Image
                   src={getObjectiveIconUrl('baron', teamSide)}
-                  alt="Barons"
+                  alt={t('matches.barons')}
                   width={14}
                   height={14}
                   className="h-3.5 w-3.5 object-contain shrink-0"
@@ -342,10 +341,10 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 />
                 <span>{sideBarons}</span>
               </span>
-              <span className="flex items-center gap-1" title="Voidgrubs / Herald">
+              <span className="flex items-center gap-1" title={t('matches.herald')}>
                 <Image
                   src={getObjectiveIconUrl('herald', teamSide)}
-                  alt="Herald"
+                  alt={t('matches.herald')}
                   width={14}
                   height={14}
                   className="h-3.5 w-3.5 object-contain shrink-0"
@@ -357,7 +356,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
             {/* Bans (Always 5 slots per team, with empty slot placeholders) */}
             <div className="flex items-center gap-1.5 ml-2 shrink-0">
-              <span className="text-[11px] text-zinc-500 font-bold">Bans:</span>
+              <span className="text-[11px] text-zinc-500 font-bold">{t('matches.bans')}</span>
               <div className="flex items-center gap-1 shrink-0">
                 {[0, 1, 2, 3, 4].map((slotIdx) => (
                   <BanSlot key={slotIdx} champId={bans[slotIdx]} />
@@ -368,7 +367,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
           {/* Right: Table Column Labels with Interactive Damage/Taken Toggle */}
           <div className="hidden lg:flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500">
-            <span className="w-[185px] text-center">BUILD</span>
+            <span className="w-[185px] text-center">{t('matches.build')}</span>
             <span className="w-16 text-center">KDA</span>
             <span className="w-12 text-center">KP</span>
             <span className="w-14 text-center">CS</span>
@@ -379,8 +378,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               className="w-28 flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-white/[0.05] transition-colors cursor-pointer group"
               title={
                 damageMode === 'dealt'
-                  ? 'Zu Schaden Erhalten (Taken) wechseln'
-                  : 'Zu Ausgeteilter Schaden (Damage) wechseln'
+                  ? t('matches.switchToTaken')
+                  : t('matches.switchToDamage')
               }
             >
               <span
@@ -388,16 +387,16 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   damageMode === 'taken' ? 'text-sky-400' : 'text-zinc-400 group-hover:text-zinc-200'
                 }`}
               >
-                {damageMode === 'dealt' ? 'DAMAGE' : 'TAKEN'}
+                {damageMode === 'dealt' ? t('matches.damage') : t('matches.taken')}
               </span>
               <div className="flex items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
                 <ChevronLeft className="h-3 w-3" />
                 <ChevronRight className="h-3 w-3" />
               </div>
             </button>
-            <span className="w-14 text-center">VISION</span>
-            <span className="w-16 text-right pr-1">GOLD</span>
-            <span className="w-16 text-center text-[10px] font-bold tracking-tight" title="Hero Score">HERO SCORE</span>
+            <span className="w-14 text-center">{t('matches.vision')}</span>
+            <span className="w-16 text-right pr-1">{t('matches.gold')}</span>
+            <span className="w-16 text-center text-[10px] font-bold tracking-tight" title={t('matches.heroScore')}>{t('matches.heroScore')}</span>
           </div>
         </div>
 
@@ -1032,7 +1031,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
           {/* Match Footer Info: Match ID */}
           <div className="flex items-center text-[11px] text-zinc-500 pt-3 px-1 border-t border-white/[0.04]">
             <div className="flex items-center gap-1.5 font-mono">
-              <span className="text-zinc-500 font-sans">Match ID:</span>
+              <span className="text-zinc-500 font-sans">{t('matches.matchId')}</span>
               <span className="text-zinc-400 font-semibold select-all">{match.matchId}</span>
             </div>
           </div>

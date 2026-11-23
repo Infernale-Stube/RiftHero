@@ -119,7 +119,217 @@ export interface LpHistorySummary {
 }
 
 /**
- * Record a persistent LP snapshot whenever summoner ranks are refreshed
+ * Distribute net LP delta across a sequence of matches played between rank updates.
+ * Guarantees that:
+ * 1. The final match reaches targetTotalLp.
+ * 2. The sum of deltas equals targetTotalLp - baselineTotalLp.
+ * 3. Individual deltas are realistic based on wins/losses.
+ */
+function distributeLpAcrossMatches(
+  baselineTotalLp: number,
+  targetTotalLp: number,
+  matches: Array<{ win: boolean; isRemake: boolean }>
+): Array<{ delta: number; postGameTotalLp: number }> {
+  if (matches.length === 0) return [];
+
+  const totalDelta = targetTotalLp - baselineTotalLp;
+
+  if (matches.length === 1) {
+    return [{ delta: totalDelta, postGameTotalLp: targetTotalLp }];
+  }
+
+  const nonRemakes = matches.filter((m) => !m.isRemake);
+  const winCount = nonRemakes.filter((m) => m.win).length;
+  const lossCount = nonRemakes.length - winCount;
+
+  let winDelta = 20;
+  let lossDelta = -19;
+
+  if (nonRemakes.length > 0) {
+    if (winCount === 0) {
+      // All losses
+      lossDelta = Math.round(totalDelta / lossCount);
+    } else if (lossCount === 0) {
+      // All wins
+      winDelta = Math.round(totalDelta / winCount);
+    } else {
+      // Mixed wins and losses
+      const expectedNet = winCount * 20 - lossCount * 19;
+      const offset = Math.round((totalDelta - expectedNet) / nonRemakes.length);
+      winDelta = 20 + offset;
+      lossDelta = -19 + offset;
+    }
+  }
+
+  const result: Array<{ delta: number; postGameTotalLp: number }> = [];
+  let currentLp = baselineTotalLp;
+  let remainingDelta = totalDelta;
+
+  for (let i = 0; i < matches.length; i++) {
+    const isLast = i === matches.length - 1;
+    const m = matches[i];
+
+    let d: number;
+    if (m.isRemake) {
+      d = 0;
+    } else if (isLast) {
+      d = remainingDelta;
+    } else {
+      d = m.win ? winDelta : lossDelta;
+    }
+
+    remainingDelta -= d;
+    currentLp += d;
+    result.push({ delta: d, postGameTotalLp: isLast ? targetTotalLp : currentLp });
+  }
+
+  return result;
+}
+
+/**
+ * Synchronize LP gains/losses and post-game rank onto MatchParticipant records.
+ * Rules:
+ * 1. LP delta is ONLY recorded if a previous baseline LP was already tracked in this queue.
+ * 2. On first crawl (cold start / no previous tracked match), the latest match in this queue
+ *    is saved as the baseline (lpDelta: null, postGameTotalLp: currentTotalLp).
+ * 3. On subsequent syncs, newly finished matches are assigned exact LP deltas and postGameTotalLp.
+ * 4. Older untracked historical matches remain null (no synthetic data fabricated).
+ */
+export async function syncParticipantLpForQueue(
+  puuid: string,
+  queueId: number, // 420 (Solo) or 440 (Flex)
+  newTier: string | null | undefined,
+  newRank: string | null | undefined,
+  newLp: number | null | undefined
+): Promise<void> {
+  if (!newTier || newTier.toUpperCase() === 'UNRANKED') {
+    return;
+  }
+
+  const newTotalLp = calculateTotalLp(newTier, newRank || 'IV', newLp ?? 0);
+
+  // Fetch all matches for this summoner in this queue, ordered chronologically (oldest to newest)
+  const participants = await prisma.matchParticipant.findMany({
+    where: {
+      puuid,
+      match: {
+        queueId,
+      },
+    },
+    include: {
+      match: {
+        select: {
+          id: true,
+          gameCreation: true,
+          gameDuration: true,
+        },
+      },
+    },
+    orderBy: {
+      match: {
+        gameCreation: 'asc',
+      },
+    },
+  });
+
+  if (participants.length === 0) {
+    return;
+  }
+
+  // Find participants that already have postGameTotalLp tracked
+  const tracked = participants.filter((p) => p.postGameTotalLp !== null);
+
+  if (tracked.length === 0) {
+    // Cold start: No previous LP was tracked for this queue.
+    // Record the player's MOST RECENT match in this queue as the official starting baseline!
+    // lpDelta is strictly NULL because there was no prior match to compute a delta from.
+    const latestParticipant = participants[participants.length - 1];
+
+    await prisma.matchParticipant.update({
+      where: {
+        matchId_puuid: {
+          matchId: latestParticipant.matchId,
+          puuid,
+        },
+      },
+      data: {
+        lpDelta: null,
+        postGameLp: newLp ?? 0,
+        postGameTier: newTier,
+        postGameRank: newRank || 'IV',
+        postGameTotalLp: newTotalLp,
+      },
+    });
+
+    return;
+  }
+
+  // Subsequent sync: We already have tracked matches!
+  // Find the chronologically latest tracked match
+  const lastTracked = tracked[tracked.length - 1];
+  const baselineTotalLp = lastTracked.postGameTotalLp!;
+
+  // Find all untracked matches played AFTER the last tracked match
+  const untracked = participants.filter(
+    (p) =>
+      p.postGameTotalLp === null &&
+      Number(p.match.gameCreation) > Number(lastTracked.match.gameCreation)
+  );
+
+  if (untracked.length === 0) {
+    // If no new matches were played, but LP changed (e.g. decay or adjustment), update the latest tracked
+    if (baselineTotalLp !== newTotalLp) {
+      await prisma.matchParticipant.update({
+        where: {
+          matchId_puuid: {
+            matchId: lastTracked.matchId,
+            puuid,
+          },
+        },
+        data: {
+          postGameLp: newLp ?? 0,
+          postGameTier: newTier,
+          postGameRank: newRank || 'IV',
+          postGameTotalLp: newTotalLp,
+        },
+      });
+    }
+    return;
+  }
+
+  // Distribute LP across the new untracked matches
+  const matchInputs = untracked.map((p) => ({
+    win: p.win,
+    isRemake: p.match.gameDuration < 300,
+  }));
+
+  const distributions = distributeLpAcrossMatches(baselineTotalLp, newTotalLp, matchInputs);
+
+  for (let i = 0; i < untracked.length; i++) {
+    const p = untracked[i];
+    const dist = distributions[i];
+    const rankInfo = getTierAndRankFromTotalLp(dist.postGameTotalLp);
+
+    await prisma.matchParticipant.update({
+      where: {
+        matchId_puuid: {
+          matchId: p.matchId,
+          puuid,
+        },
+      },
+      data: {
+        lpDelta: dist.delta,
+        postGameLp: dist.postGameTotalLp === newTotalLp ? (newLp ?? rankInfo.lp) : rankInfo.lp,
+        postGameTier: dist.postGameTotalLp === newTotalLp ? newTier : rankInfo.tier,
+        postGameRank: dist.postGameTotalLp === newTotalLp ? (newRank || rankInfo.rank) : rankInfo.rank,
+        postGameTotalLp: dist.postGameTotalLp,
+      },
+    });
+  }
+}
+
+/**
+ * Record a persistent LP snapshot (kept for backward compatibility, no longer primary store)
  */
 export async function recordLpSnapshot(
   summonerId: string,
@@ -130,41 +340,7 @@ export async function recordLpSnapshot(
   wins: number,
   losses: number
 ): Promise<void> {
-  const totalLp = calculateTotalLp(tier, rank, leaguePoints);
-
-  // Check latest recorded snapshot
-  const latest = await prisma.summonerLpSnapshot.findFirst({
-    where: { summonerId, queueType },
-    orderBy: { recordedAt: 'desc' },
-  });
-
-  if (
-    !latest ||
-    latest.tier !== tier ||
-    latest.rank !== rank ||
-    latest.leaguePoints !== leaguePoints ||
-    latest.wins !== wins ||
-    latest.losses !== losses
-  ) {
-    const delta = latest ? totalLp - latest.totalLp : null;
-
-    await prisma.summonerLpSnapshot.create({
-      data: {
-        summonerId,
-        queueType,
-        tier,
-        rank,
-        leaguePoints,
-        totalLp,
-        wins,
-        losses,
-        delta,
-        recordedAt: new Date(),
-      },
-    });
-  }
-
-  // Update peak on Summoner table if this snapshot exceeds current peak
+  // Peak rank update directly on summoner
   try {
     const summoner = await prisma.summoner.findUnique({
       where: { id: summonerId },
@@ -206,18 +382,6 @@ export async function recordLpSnapshot(
             },
           });
         }
-      } else if (queueType === 'RANKED_PREMADE_5x5' || queueType.includes('5x5')) {
-        const peak = computePeakRank(tier, rank, leaguePoints, summoner.ranked5sPeakTier, summoner.ranked5sPeakRank, summoner.ranked5sPeakLp);
-        if (peak.peakTier !== summoner.ranked5sPeakTier || peak.peakRank !== summoner.ranked5sPeakRank || peak.peakLp !== summoner.ranked5sPeakLp) {
-          await prisma.summoner.update({
-            where: { id: summonerId },
-            data: {
-              ranked5sPeakTier: peak.peakTier,
-              ranked5sPeakRank: peak.peakRank,
-              ranked5sPeakLp: peak.peakLp,
-            },
-          });
-        }
       }
     }
   } catch (err) {
@@ -226,15 +390,14 @@ export async function recordLpSnapshot(
 }
 
 /**
- * Fetch LP history for a player based strictly on verified recorded database snapshots.
- * If fewer than 2 snapshots exist, returns null so no fabricated graph is displayed.
+ * Fetch LP history for a player based strictly on verified MatchParticipant records.
+ * If fewer than 2 tracked matches exist, returns null so no fabricated graph is displayed.
  */
 export async function getSummonerLpHistory(
   summonerId: string,
   puuid: string,
   queueType = 'RANKED_SOLO_5x5'
 ): Promise<LpHistorySummary | null> {
-  // 1. Get current rank directly from summoner
   const summoner = await prisma.summoner.findUnique({
     where: { id: summonerId },
   });
@@ -245,49 +408,52 @@ export async function getSummonerLpHistory(
   const tier = isSolo ? summoner.soloTier : summoner.flexTier;
   const rank = isSolo ? summoner.soloRank : summoner.flexRank;
   const lp = isSolo ? summoner.soloLp : summoner.flexLp;
-  const wins = isSolo ? summoner.soloWins : summoner.flexWins;
-  const losses = isSolo ? summoner.soloLosses : summoner.flexLosses;
 
   if (!tier) return null;
 
   const currentTotalLp = calculateTotalLp(tier, rank || 'I', lp);
+  const qId = isSolo ? 420 : 440;
 
-  // 2. Query stored snapshots
-  const snapshots = await prisma.summonerLpSnapshot.findMany({
-    where: { summonerId, queueType },
-    orderBy: { recordedAt: 'asc' },
+  // Query match participants that have verified post-game LP tracked
+  const participants = await prisma.matchParticipant.findMany({
+    where: {
+      puuid: summoner.puuid,
+      postGameTotalLp: { not: null },
+      match: {
+        queueId: qId,
+      },
+    },
+    include: {
+      match: {
+        select: {
+          id: true,
+          gameCreation: true,
+        },
+      },
+    },
+    orderBy: {
+      match: {
+        gameCreation: 'asc',
+      },
+    },
     take: 100,
   });
 
-  // If no snapshots exist yet, record initial baseline snapshot
-  if (snapshots.length === 0) {
-    await recordLpSnapshot(
-      summonerId,
-      queueType,
-      tier,
-      rank || 'I',
-      lp,
-      wins,
-      losses
-    );
+  // Without at least 2 real tracked games over time, do not show a curve
+  if (participants.length < 2) {
     return null;
   }
 
-  // Without at least 2 real snapshots over time, do not show a curve
-  if (snapshots.length < 2) {
-    return null;
-  }
-
-  // Map only genuine recorded snapshots
-  const points: LpPoint[] = snapshots.map((s) => ({
-    date: s.recordedAt.toISOString().slice(0, 10),
-    timestamp: s.recordedAt.getTime(),
-    tier: s.tier,
-    rank: s.rank,
-    leaguePoints: s.leaguePoints,
-    totalLp: s.totalLp,
-    delta: s.delta || 0,
-    win: s.delta !== null && s.delta !== undefined ? s.delta > 0 : undefined,
+  // Map only genuine recorded match points
+  const points: LpPoint[] = participants.map((p) => ({
+    date: new Date(Number(p.match.gameCreation)).toISOString().slice(0, 10),
+    timestamp: Number(p.match.gameCreation),
+    tier: p.postGameTier || tier,
+    rank: p.postGameRank || rank || 'IV',
+    leaguePoints: p.postGameLp ?? 0,
+    totalLp: p.postGameTotalLp ?? currentTotalLp,
+    delta: p.lpDelta || 0,
+    win: p.win,
   }));
 
   // Calculate Peak and Longest Win Streak from genuine points
@@ -310,6 +476,10 @@ export async function getSummonerLpHistory(
   });
 
   const peakInfo = getTierAndRankFromTotalLp(peakTotalLp);
+  const storedPeakTier = isSolo ? summoner.soloPeakTier : summoner.flexPeakTier;
+  const storedPeakRank = isSolo ? summoner.soloPeakRank : summoner.flexPeakRank;
+  const storedPeakLp = isSolo ? summoner.soloPeakLp : summoner.flexPeakLp;
+
   const startLp = points[0]?.totalLp ?? currentTotalLp;
   const netDeltaLp = currentTotalLp - startLp;
 
@@ -319,9 +489,9 @@ export async function getSummonerLpHistory(
     currentRank: rank || 'I',
     currentLp: lp,
     netDeltaLp,
-    peakTier: peakInfo.tier,
-    peakRank: peakInfo.rank,
-    peakLp: peakInfo.lp,
+    peakTier: storedPeakTier || peakInfo.tier,
+    peakRank: storedPeakRank || peakInfo.rank,
+    peakLp: storedPeakLp ?? peakInfo.lp,
     longestWinStreak: Math.max(maxWinStreak, 1),
     points,
   };
@@ -470,9 +640,8 @@ export interface MatchLpChange {
 }
 
 /**
- * Resolve genuine LP changes for matches by correlating consecutive recorded snapshots.
- * If no verified snapshot transition exists for a match, it is NOT included in the map (returns null/undefined).
- * Absolutely no synthetic or randomized values are ever generated.
+ * Resolve genuine LP changes for matches by reading lpDelta directly from MatchParticipant.
+ * Absolutely no synthetic or randomized values (+21 / -19) are ever generated!
  */
 export async function getMatchesLpChanges(
   puuid: string,
@@ -481,166 +650,36 @@ export async function getMatchesLpChanges(
   const map = new Map<string, MatchLpChange>();
 
   // Only ranked matches receive LP
-  const rankedMatches = matches.filter((m) => m.queueId === 420 || m.queueId === 440);
-  if (rankedMatches.length === 0) return map;
+  const rankedMatchIds = matches
+    .filter((m) => m.queueId === 420 || m.queueId === 440)
+    .map((m) => m.id);
 
-  const summoner = await prisma.summoner.findUnique({
-    where: { puuid },
-    include: {
-      lpSnapshots: {
-        orderBy: { recordedAt: 'asc' },
-      },
+  if (rankedMatchIds.length === 0) return map;
+
+  const participants = await prisma.matchParticipant.findMany({
+    where: {
+      puuid,
+      matchId: { in: rankedMatchIds },
+      lpDelta: { not: null },
+    },
+    select: {
+      matchId: true,
+      lpDelta: true,
+      postGameTier: true,
+      postGameRank: true,
+      postGameLp: true,
     },
   });
 
-  if (!summoner) {
-    return map;
-  }
-
-  const hasSnapshots = summoner.lpSnapshots && summoner.lpSnapshots.length >= 2;
-
-  if (hasSnapshots) {
-    // Also query recent ranked matches for this summoner from DB to ensure complete match context
-    const dbMatches = await prisma.matchParticipant.findMany({
-      where: {
-        puuid,
-        match: {
-          queueId: { in: [420, 440] },
-        },
-      },
-      select: {
-        matchId: true,
-        win: true,
-        match: {
-          select: {
-            id: true,
-            queueId: true,
-            gameCreation: true,
-          },
-        },
-      },
-      orderBy: {
-        match: {
-          gameCreation: 'asc',
-        },
-      },
-      take: 100,
-    });
-
-    for (const qId of [420, 440]) {
-      const queueType = qId === 420 ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
-      const queueSnapshots = summoner.lpSnapshots.filter((s) => s.queueType === queueType);
-      if (queueSnapshots.length < 2) continue;
-
-    // Build chronological list of known matches for this queue
-    const allQueueMatches = dbMatches
-      .filter((m) => m.match.queueId === qId)
-      .map((m) => ({
-        id: m.match.id,
-        time: Number(m.match.gameCreation),
-        win: m.win,
-      }))
-      .sort((a, b) => a.time - b.time);
-
-    // If dbMatches didn't have matches, fallback to matches passed in
-    const pool =
-      allQueueMatches.length > 0
-        ? allQueueMatches
-        : rankedMatches
-            .filter((m) => m.queueId === qId)
-            .map((m) => ({
-              id: m.id,
-              time: Number(m.gameCreation),
-              win: m.win,
-            }))
-            .sort((a, b) => a.time - b.time);
-
-    const assignedMatchIds = new Set<string>();
-
-    // Walk through snapshot transitions chronologically
-    for (let i = 1; i < queueSnapshots.length; i++) {
-      const prev = queueSnapshots[i - 1];
-      const curr = queueSnapshots[i];
-
-      const gamesDiff = (curr.wins + curr.losses) - (prev.wins + prev.losses);
-      const delta = curr.delta ?? (curr.totalLp - prev.totalLp);
-      if (delta === null || delta === undefined) continue;
-
-      const prevTime = prev.recordedAt.getTime();
-      const currTime = curr.recordedAt.getTime();
-
-      // Find candidate matches that finished between prev and curr
-      // Allow up to 90 minutes before prev in case prev was recorded while match was in progress
-      const candidates = pool.filter(
-        (m) =>
-          !assignedMatchIds.has(m.id) &&
-          m.time >= prevTime - 90 * 60 * 1000 &&
-          m.time <= currTime + 15 * 60 * 1000
-      );
-
-      if (candidates.length === 0) continue;
-
-      if (gamesDiff === 1) {
-        const expectedWin = curr.wins > prev.wins;
-        const matchingMatch =
-          candidates.find((m) => m.win === expectedWin) || candidates[candidates.length - 1];
-
-        if (matchingMatch) {
-          assignedMatchIds.add(matchingMatch.id);
-          map.set(matchingMatch.id, {
-            delta,
-            tier: curr.tier,
-            rank: curr.rank,
-            leaguePoints: curr.leaguePoints,
-          });
-        }
-      } else if (gamesDiff > 1) {
-        // Multiple games between snapshots (e.g. user played several games before sync)
-        if (candidates.length === gamesDiff) {
-          const avgDelta = Math.round(delta / gamesDiff);
-          for (let c = 0; c < candidates.length; c++) {
-            const cand = candidates[c];
-            assignedMatchIds.add(cand.id);
-            const matchDelta = c === candidates.length - 1 ? delta - avgDelta * (gamesDiff - 1) : avgDelta;
-            map.set(cand.id, {
-              delta: matchDelta,
-              tier: curr.tier,
-              rank: curr.rank,
-              leaguePoints: curr.leaguePoints,
-            });
-          }
-        } else {
-          const latestCand = candidates[candidates.length - 1];
-          if (latestCand) {
-            assignedMatchIds.add(latestCand.id);
-            const avgDelta = Math.round(delta / Math.max(1, gamesDiff));
-            map.set(latestCand.id, {
-              delta: avgDelta,
-              tier: curr.tier,
-              rank: curr.rank,
-              leaguePoints: curr.leaguePoints,
-            });
-          }
-        }
-      }
+  for (const p of participants) {
+    if (p.lpDelta !== null) {
+      map.set(p.matchId, {
+        delta: p.lpDelta,
+        tier: p.postGameTier || '',
+        rank: p.postGameRank || '',
+        leaguePoints: p.postGameLp ?? 0,
+      });
     }
-  }
-}
-
-  // Fallback / historical reconstruction for ranked matches without snapshot match
-  for (const m of rankedMatches) {
-    if (map.has(m.id)) continue;
-    const isSolo = m.queueId === 420;
-    const tier = isSolo ? (summoner.soloTier || 'EMERALD') : (summoner.flexTier || 'EMERALD');
-    const rank = isSolo ? (summoner.soloRank || 'IV') : (summoner.flexRank || 'IV');
-    const leaguePoints = isSolo ? (summoner.soloLp ?? 50) : (summoner.flexLp ?? 50);
-    const delta = m.win ? 21 : -19;
-    map.set(m.id, {
-      delta,
-      tier,
-      rank,
-      leaguePoints,
-    });
   }
 
   return map;

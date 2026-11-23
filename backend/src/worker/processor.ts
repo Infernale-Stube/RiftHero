@@ -11,7 +11,7 @@ import {
   enqueueLowPrioritySummoner,
 } from '../queue/bullmq';
 import { config } from '../config';
-import { recordLpSnapshot, computePeakRank } from '../services/lpService';
+import { syncParticipantLpForQueue, computePeakRank } from '../services/lpService';
 import { calculateMatchScores } from '../services/scoreService';
 
 export async function processSummonerJob(job: Job<SummonerJobData>): Promise<void> {
@@ -201,55 +201,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       ranked5sPeakLp: ranked5sPeak.peakLp,
     },
   });
-
-  // 6. Record LP Snapshots if ranks exist
-  if (soloEntry) {
-    try {
-      await recordLpSnapshot(
-        savedSummoner.id,
-        'RANKED_SOLO_5x5',
-        soloEntry.tier,
-        soloEntry.rank,
-        soloEntry.leaguePoints,
-        soloEntry.wins,
-        soloEntry.losses
-      );
-    } catch {
-      // Ignore snapshot errors
-    }
-  }
-
-  if (flexEntry) {
-    try {
-      await recordLpSnapshot(
-        savedSummoner.id,
-        'RANKED_FLEX_SR',
-        flexEntry.tier,
-        flexEntry.rank,
-        flexEntry.leaguePoints,
-        flexEntry.wins,
-        flexEntry.losses
-      );
-    } catch {
-      // Ignore snapshot errors
-    }
-  }
-
-  if (ranked5sEntry) {
-    try {
-      await recordLpSnapshot(
-        savedSummoner.id,
-        ranked5sEntry.queueType,
-        ranked5sEntry.tier,
-        ranked5sEntry.rank,
-        ranked5sEntry.leaguePoints,
-        ranked5sEntry.wins,
-        ranked5sEntry.losses
-      );
-    } catch {
-      // Ignore snapshot errors
-    }
-  }
 
   // 6. Match-v5 (Regional routing: europe, americas, asia)
   let matchIds: string[] = [];
@@ -490,7 +441,36 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     }
   }
 
-  // 7. Trigger Snowball Background Crawling for fellow 9 players
+  // 7. Synchronize LP deltas and post-game rank onto match participants for Solo and Flex queues
+  if (soloEntry) {
+    try {
+      await syncParticipantLpForQueue(
+        puuid,
+        420,
+        soloEntry.tier,
+        soloEntry.rank,
+        soloEntry.leaguePoints
+      );
+    } catch (err: any) {
+      job.log(`[Worker] Failed to sync Solo LP: ${err.message}`);
+    }
+  }
+
+  if (flexEntry) {
+    try {
+      await syncParticipantLpForQueue(
+        puuid,
+        440,
+        flexEntry.tier,
+        flexEntry.rank,
+        flexEntry.leaguePoints
+      );
+    } catch (err: any) {
+      job.log(`[Worker] Failed to sync Flex LP: ${err.message}`);
+    }
+  }
+
+  // 8. Trigger Snowball Background Crawling for fellow 9 players
   if (config.enableSnowballCrawler && !isSnowball && snowballCandidates.length > 0) {
     job.log(`[Worker] Snowball Crawler: Found ${snowballCandidates.length} fellow player candidates. Enqueueing to low-priority queue...`);
     
