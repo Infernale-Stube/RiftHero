@@ -1,7 +1,6 @@
 import {
   syncChampionSnapshot,
   ensureMetaTableExists,
-  isSnapshotFresh,
 } from '../services/championService';
 import {
   computeAndSaveItemSnapshot,

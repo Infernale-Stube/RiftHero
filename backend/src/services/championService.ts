@@ -251,6 +251,7 @@ export async function syncLoldbSkins(): Promise<void> {
   try {
     const res = await fetch('https://loldb.info/skins', {
       headers: { RSC: '1' },
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return;
     const text = await res.text();
@@ -363,7 +364,9 @@ export async function syncLoldbSkins(): Promise<void> {
 export async function syncLoldbCatalog(): Promise<void> {
   if (loldbCatalogMap.size > 0) return;
   try {
-    const res = await fetch('https://loldb.info/api/champions');
+    const res = await fetch('https://loldb.info/api/champions', {
+      signal: AbortSignal.timeout(15000),
+    });
     if (res.ok) {
       const json = (await res.json()) as any;
       const rawList = json?.data || [];
@@ -524,7 +527,8 @@ export async function buildChampionRostersAndDetails(
     const key = lang.startsWith('de') ? 'de' : 'en';
     try {
       const res = await fetch(
-        `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/championFull.json`
+        `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/${lang}/championFull.json`,
+        { signal: AbortSignal.timeout(25000) }
       );
       if (res.ok) {
         const json = (await res.json()) as any;
@@ -557,7 +561,7 @@ export async function buildChampionRostersAndDetails(
             // Process skins: filter out chromas, match with LoLDB for timeline, rarities, and release dates
             const rawSkins = Array.isArray(champ.skins) ? champ.skins : [];
             let skinsLookup = loldbSkinsCache.get(cleanId) || loldbSkinsCache.get(cleanName);
-            if (!skinsLookup && loldbChamp?.slug) {
+            if (!skinsLookup && loldbChamp?.slug && globalSkinMap.size === 0) {
               skinsLookup = (await fetchLoldbChampionSkins(loldbChamp.slug)) || undefined;
             }
 
@@ -566,69 +570,75 @@ export async function buildChampionRostersAndDetails(
               : 2011;
             const currentYear = new Date().getFullYear();
 
-            const processedSkins = await Promise.all(
-              rawSkins
-                .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
-                .map(async (s: any) => {
-                  if (s.num === 0) {
-                    return {
-                      id: String(s.id),
-                      num: 0,
-                      name: s.name,
-                      rarity: 'Regular',
-                      rarityColor: '#2E8D4C',
-                      releaseDate: storePrice.releaseDate,
-                      releaseYear: isNaN(baseYear) ? 2011 : baseYear,
-                      cost: 0,
-                      price: 0,
-                      currency: 'RP',
-                      isLegacy: false,
-                    };
-                  }
-
-                  const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                  const skinInfo =
-                    globalSkinMap.get(String(s.id)) ||
-                    skinsLookup?.get(String(s.id)) ||
-                    skinsLookup?.get(String(s.num)) ||
-                    skinsLookup?.get(normName);
-
-                  // Query /skins/[slug] directly for this skin using canonical English name
-                  const englishSkinName = skinInfo?.name || s.name;
-                  const detail = await fetchLoldbSkinDetail(englishSkinName);
-
-                  const rarityRaw = detail?.tier || skinInfo?.rarity || 'Regular';
-                  const rarityInfo = mapSkinRarity(rarityRaw);
-
-                  const relDate = detail?.releaseDate || skinInfo?.releaseDate || `${currentYear}`;
-                  let relYear = currentYear;
-                  if (relDate) {
-                    const dt = new Date(relDate);
-                    if (!isNaN(dt.getTime())) relYear = dt.getFullYear();
-                  }
-
-                  const cost = detail?.cost ?? skinInfo?.cost ?? 975;
-                  const price = detail?.price ?? skinInfo?.price ?? cost;
-                  const currency = detail?.currency || skinInfo?.currency || 'RP';
-                  const isLegacy = detail?.isLegacy !== undefined ? detail.isLegacy : Boolean(skinInfo?.isLegacy);
-
+            const processedSkins = rawSkins
+              .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
+              .map((s: any) => {
+                if (s.num === 0) {
                   return {
                     id: String(s.id),
-                    num: s.num,
+                    num: 0,
                     name: s.name,
-                    rarity: rarityInfo.rarity,
-                    rarityColor: rarityInfo.rarityColor,
-                    releaseDate: relDate,
-                    releaseYear: relYear,
-                    cost,
-                    price,
-                    currency,
-                    isLegacy,
-                    skinLines: skinInfo?.skinLines || [],
+                    rarity: 'Regular',
+                    rarityColor: '#2E8D4C',
+                    releaseDate: storePrice.releaseDate,
+                    releaseYear: isNaN(baseYear) ? 2011 : baseYear,
+                    cost: 0,
+                    price: 0,
+                    currency: 'RP',
+                    isLegacy: false,
                   };
-                })
-            );
+                }
+
+                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                const skinInfo =
+                  globalSkinMap.get(String(s.id)) ||
+                  skinsLookup?.get(String(s.id)) ||
+                  skinsLookup?.get(String(s.num)) ||
+                  skinsLookup?.get(normName);
+
+                // Check in-memory skinDetailCache without firing external HTTP requests
+                const englishSkinName = skinInfo?.name || s.name || '';
+                const cleanSlug = englishSkinName
+                  .toLowerCase()
+                  .replace(/k\/da/gi, 'kda')
+                  .replace(/['’.]/g, '')
+                  .replace(/&/g, 'and')
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, '');
+                const cachedDetail = skinDetailCache.get(cleanSlug);
+
+                const rarityRaw = cachedDetail?.tier || skinInfo?.rarity || 'Regular';
+                const rarityInfo = mapSkinRarity(rarityRaw);
+
+                const relDate = cachedDetail?.releaseDate || skinInfo?.releaseDate || `${currentYear}`;
+                let relYear = currentYear;
+                if (relDate) {
+                  const dt = new Date(relDate);
+                  if (!isNaN(dt.getTime())) relYear = dt.getFullYear();
+                }
+
+                const cost = cachedDetail?.cost ?? skinInfo?.cost ?? 975;
+                const price = cachedDetail?.price ?? skinInfo?.price ?? cost;
+                const currency = cachedDetail?.currency || skinInfo?.currency || 'RP';
+                const isLegacy =
+                  cachedDetail?.isLegacy !== undefined ? cachedDetail.isLegacy : Boolean(skinInfo?.isLegacy);
+
+                return {
+                  id: String(s.id),
+                  num: s.num,
+                  name: s.name,
+                  rarity: rarityInfo.rarity,
+                  rarityColor: rarityInfo.rarityColor,
+                  releaseDate: relDate,
+                  releaseYear: relYear,
+                  cost,
+                  price,
+                  currency,
+                  isLegacy,
+                  skinLines: skinInfo?.skinLines || [],
+                };
+              });
 
             // 1. Roster summary entry
             const rosterEntry = {
@@ -715,21 +725,11 @@ export async function buildChampionRostersAndDetails(
 }
 
 export function isSnapshotFresh(row: any): boolean {
-  if (!row || !row.championDetailsJson) return false;
+  if (!row) return false;
   try {
-    const details = row.championDetailsJson as any;
-    const aatrox = details?.de?.aatrox || details?.en?.aatrox;
-    if (!aatrox || !Array.isArray(aatrox.skins)) return false;
-    // Check if Mecha Aatrox (num: 2 or id: '266002') has correct releaseYear 2014 and full releaseDate from LoLDB /skins
-    const mecha = aatrox.skins.find((s: any) => s.num === 2 || s.id === '266002');
-    if (!mecha || mecha.releaseYear !== 2014 || mecha.releaseDate !== '2014-07-23') {
-      return false;
-    }
-    // Also check if isLegacy and currency fields are present
-    if (mecha.isLegacy === undefined || mecha.currency === undefined) {
-      return false;
-    }
-    return true;
+    const dataDe = row.dataDe as any;
+    const skins = dataDe?.skins || [];
+    return Array.isArray(skins) && skins.length > 0;
   } catch {
     return false;
   }
@@ -738,6 +738,7 @@ export function isSnapshotFresh(row: any): boolean {
 // In-memory cache for fast (<1ms) reads: slot -> memory object
 const championMemoryCache = new Map<'current' | 'previous', { data: ChampionSnapshotMemory; timestamp: number }>();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+let isChampionSyncRunning = false;
 
 /**
  * Champion Worker task:
@@ -750,80 +751,96 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
  * 2. New patch is saved into the 'current' slot.
  */
 export async function syncChampionSnapshot(force = false): Promise<ChampionSnapshotMemory> {
-  const ddragonVersion = await getLatestDDragonVersion(force);
-  const patch = ddragonVersion.split('.').slice(0, 2).join('.');
-
-  console.log(`[ChampionWorker] Syncing individual champions for version ${ddragonVersion} (Patch ${patch})...`);
-
-  const { rosters, details } = await buildChampionRostersAndDetails(ddragonVersion);
-  const championsCount = rosters.de?.length || rosters.en?.length || 0;
-  const now = new Date();
-
-  // Save every champion as its own row in the champions table
-  const champList = rosters.de.length > 0 ? rosters.de : rosters.en;
-
-  for (const c of champList) {
-    const cleanId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const dataDe = details.de[cleanId] || null;
-    const dataEn = details.en[cleanId] || null;
-
-    await prisma.champion.upsert({
-      where: { id: c.id },
-      create: {
-        id: c.id,
-        key: Number(c.key),
-        name: c.name,
-        title: c.title,
-        image: c.image,
-        role: c.role || null,
-        positions: c.positions || [],
-        tags: c.tags || [],
-        difficulty: c.difficulty ?? 5,
-        classes: c.classes || [],
-        releaseDate: c.releaseDate || null,
-        patch,
-        version: ddragonVersion,
-        dataDe: dataDe as any,
-        dataEn: dataEn as any,
-        createdAt: now,
-        updatedAt: now,
-      },
-      update: {
-        key: Number(c.key),
-        name: c.name,
-        title: c.title,
-        image: c.image,
-        role: c.role || null,
-        positions: c.positions || [],
-        tags: c.tags || [],
-        difficulty: c.difficulty ?? 5,
-        classes: c.classes || [],
-        releaseDate: c.releaseDate || null,
-        patch,
-        version: ddragonVersion,
-        dataDe: dataDe as any,
-        dataEn: dataEn as any,
-        updatedAt: now,
-      },
-    });
+  if (isChampionSyncRunning) {
+    console.log('[ChampionWorker] Champion sync already in progress, awaiting/reusing existing cache...');
+    const cached = championMemoryCache.get('current');
+    if (cached) return cached.data;
   }
+  isChampionSyncRunning = true;
+  try {
+    const ddragonVersion = await getLatestDDragonVersion(force);
+    const patch = ddragonVersion.split('.').slice(0, 2).join('.');
 
-  const memoryObj: ChampionSnapshotMemory = {
-    id: 'current',
-    version: ddragonVersion,
-    patch,
-    championsCount,
-    championsRoster: rosters as any,
-    championDetails: details as any,
-    timestamp: Date.now(),
-  };
+    console.log(`[ChampionWorker] Syncing individual champions for version ${ddragonVersion} (Patch ${patch})...`);
 
-  championMemoryCache.set('current', { data: memoryObj, timestamp: Date.now() });
+    const { rosters, details } = await buildChampionRostersAndDetails(ddragonVersion);
+    const championsCount = rosters.de?.length || rosters.en?.length || 0;
+    const now = new Date();
 
-  console.log(
-    `⚡ [ChampionWorker] Champions table successfully updated (${championsCount} individual champion rows, version ${ddragonVersion}, patch ${patch}).`
-  );
-  return memoryObj;
+    // Save every champion as its own row in the champions table
+    const champList = rosters.de.length > 0 ? rosters.de : rosters.en;
+
+    const chunkSize = 25;
+    for (let i = 0; i < champList.length; i += chunkSize) {
+      const chunk = champList.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((c) => {
+          const cleanId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const dataDe = details.de[cleanId] || null;
+          const dataEn = details.en[cleanId] || null;
+
+          return prisma.champion.upsert({
+            where: { id: c.id },
+            create: {
+              id: c.id,
+              key: Number(c.key),
+              name: c.name,
+              title: c.title,
+              image: c.image,
+              role: c.role || null,
+              positions: c.positions || [],
+              tags: c.tags || [],
+              difficulty: c.difficulty ?? 5,
+              classes: c.classes || [],
+              releaseDate: c.releaseDate || null,
+              patch,
+              version: ddragonVersion,
+              dataDe: dataDe as any,
+              dataEn: dataEn as any,
+              createdAt: now,
+              updatedAt: now,
+            },
+            update: {
+              key: Number(c.key),
+              name: c.name,
+              title: c.title,
+              image: c.image,
+              role: c.role || null,
+              positions: c.positions || [],
+              tags: c.tags || [],
+              difficulty: c.difficulty ?? 5,
+              classes: c.classes || [],
+              releaseDate: c.releaseDate || null,
+              patch,
+              version: ddragonVersion,
+              dataDe: dataDe as any,
+              dataEn: dataEn as any,
+              updatedAt: now,
+            },
+          });
+        })
+      );
+    }
+
+    const memoryObj: ChampionSnapshotMemory = {
+      id: 'current',
+      version: ddragonVersion,
+      patch,
+      championsCount,
+      championsRoster: rosters as any,
+      championDetails: details as any,
+      timestamp: Date.now(),
+    };
+
+    championMemoryCache.set('current', { data: memoryObj, timestamp: Date.now() });
+
+    console.log(
+      `⚡ [ChampionWorker] Champions table successfully updated (${championsCount} individual champion rows, version ${ddragonVersion}, patch ${patch}).`
+    );
+    return memoryObj;
+  } finally {
+    isChampionSyncRunning = false;
+  }
 }
 
 /**
