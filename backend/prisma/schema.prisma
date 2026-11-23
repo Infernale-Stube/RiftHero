@@ -174,17 +174,28 @@ model MatchParticipant {
   @@map("match_participants")
 }
 
-model ChampionSnapshot {
-  id                  String   @id // 'current', 'previous', or 'active'
-  version             String
-  patch               String
-  championsCount      Int      @default(0)
-  championsJson       Json
-  championDetailsJson Json?
-  computedAt          DateTime @default(now())
+model Champion {
+  id                  String   @id // e.g. "Aatrox"
+  key                 Int      @unique // e.g. 266 (champion numeric key)
+  name                String
+  title               String
+  image               String
+  role                String?
+  positions           String[]
+  tags                String[]
+  difficulty          Int      @default(5)
+  classes             String[]
+  releaseDate         String?
+  patch               String   @default("")
+  version             String   @default("")
+  dataDe              Json?    // Detailed data (spells, passives, skins, lore, storeData) in German
+  dataEn              Json?    // Detailed data (spells, passives, skins, lore, storeData) in English
+  createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@map("champion_snapshots")
+  @@index([name])
+  @@index([key])
+  @@map("champions")
 }
 
 model MetaSnapshot {
@@ -201,17 +212,34 @@ model MetaSnapshot {
   @@map("meta_snapshots")
 }
 
-model ItemSnapshot {
-  id              String   @id @default("active")
-  version         String
-  patch           String
-  itemsCount      Int      @default(0)
-  itemsJson       Json
-  itemDetailsJson Json?
-  treeJson        Json?
-  computedAt      DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+model Item {
+  id                  String   @id // e.g. "3031"
+  name                String
+  plaintext           String?
+  description         String?
+  goldTotal           Int      @default(0)
+  goldBase            Int      @default(0)
+  goldSell            Int      @default(0)
+  purchasable         Boolean  @default(true)
+  tags                String[]
+  categories          String[]
+  tier                String   @default("basic")
+  depth               Int      @default(1)
+  icon                String
+  from                String[]
+  into                String[]
+  inStore             Boolean  @default(true)
+  requiredChampion    String?
+  requiredAlly        String?
+  patch               String   @default("")
+  version             String   @default("")
+  dataDe              Json?    // Localized item record in German
+  dataEn              Json?    // Localized item record in English
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@map("item_snapshots")
+  @@index([name])
+  @@index([tier])
+  @@map("items")
 }
 

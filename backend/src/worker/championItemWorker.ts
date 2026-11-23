@@ -66,32 +66,31 @@ export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVA
       await Promise.all([ensureMetaTableExists(), ensureItemTableExists()]);
       const latestVersion = await getLatestDDragonVersion();
 
-      const champRow =
-        (await prisma.championSnapshot.findUnique({ where: { id: 'current' } })) ||
-        (await prisma.championSnapshot.findUnique({ where: { id: 'active' } }));
-      const itemRow = await prisma.itemSnapshot.findUnique({ where: { id: 'active' } });
+      const champCount = await prisma.champion.count();
+      const champSample = await prisma.champion.findFirst({ select: { version: true } });
+      const itemCount = await prisma.item.count();
+      const itemSample = await prisma.item.findFirst({ select: { version: true } });
 
       const champNeedsUpdate =
-        !champRow ||
-        champRow.version !== latestVersion ||
-        champRow.championsCount === 0 ||
-        !isSnapshotFresh(champRow);
+        champCount === 0 ||
+        !champSample ||
+        champSample.version !== latestVersion;
 
       const itemNeedsUpdate =
-        !itemRow ||
-        itemRow.version !== latestVersion ||
-        itemRow.itemsCount === 0;
+        itemCount === 0 ||
+        !itemSample ||
+        itemSample.version !== latestVersion;
 
       if (champNeedsUpdate || itemNeedsUpdate) {
         console.log(
-          `🔄 [ChampionItemWorker] Catalog missing or outdated (Champs: ${champRow?.version || 'none'}, Items: ${itemRow?.version || 'none'} vs Latest: ${latestVersion}). Triggering initial synchronization...`
+          `🔄 [ChampionItemWorker] Catalog missing or outdated (Champs: ${champSample?.version || 'none'} [${champCount}], Items: ${itemSample?.version || 'none'} [${itemCount}] vs Latest: ${latestVersion}). Triggering initial synchronization...`
         );
         syncChampionAndItemData().catch((err) => {
           console.error('[ChampionItemWorker] Initial catalog sync failed:', err);
         });
       } else {
         console.log(
-          `⚡ [ChampionItemWorker] Catalogs up-to-date (Version: ${latestVersion}, ${champRow.championsCount} champions, ${itemRow.itemsCount} items).`
+          `⚡ [ChampionItemWorker] Catalogs up-to-date (Version: ${latestVersion}, ${champCount} champions, ${itemCount} items).`
         );
       }
     } catch (err) {
@@ -104,14 +103,13 @@ export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVA
     workerTimer = setInterval(async () => {
       try {
         const latestVersion = await getLatestDDragonVersion(true);
-        const champRow = await prisma.championSnapshot.findUnique({
-          where: { id: 'active' },
+        const champSample = await prisma.champion.findFirst({
           select: { version: true },
         });
 
-        if (champRow && champRow.version !== latestVersion) {
+        if (champSample && champSample.version !== latestVersion) {
           console.log(
-            `⏰ [ChampionItemWorker] New game version detected (${champRow.version} -> ${latestVersion}). Updating champion and item catalogs...`
+            `⏰ [ChampionItemWorker] New game version detected (${champSample.version} -> ${latestVersion}). Updating champion and item catalogs...`
           );
           await syncChampionAndItemData(true);
         }

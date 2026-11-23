@@ -71,28 +71,10 @@ let isSyncRunning = false;
 let tableChecked = false;
 
 /**
- * Ensures the dedicated item_snapshots table exists in PostgreSQL.
+ * Ensures the dedicated items table exists in PostgreSQL.
  */
 export async function ensureItemTableExists(): Promise<void> {
-  if (tableChecked) return;
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS item_snapshots (
-        id TEXT PRIMARY KEY DEFAULT 'active',
-        version TEXT NOT NULL,
-        patch TEXT NOT NULL,
-        "itemsCount" INTEGER NOT NULL DEFAULT 0,
-        "itemsJson" JSONB NOT NULL,
-        "itemDetailsJson" JSONB,
-        "treeJson" JSONB,
-        "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    tableChecked = true;
-  } catch (err) {
-    console.warn('[ItemService] Table check warning:', (err as Error).message);
-  }
+  // Managed by Prisma schema
 }
 
 /**
@@ -382,63 +364,84 @@ export async function computeAndSaveItemSnapshot(force = false): Promise<ItemMem
   }
 
   isSyncRunning = true;
-  await ensureItemTableExists();
 
   try {
     const latestVersion = await getLatestDDragonVersion(force);
     const patches = await getDDragonPatches();
     const patch = patches[0] || latestVersion.split('.').slice(0, 2).join('.');
 
-    // Check if current DB snapshot already matches this version unless forced
+    // Check if current DB items already match this version unless forced
     if (!force) {
-      const existing = await prisma.itemSnapshot.findUnique({
-        where: { id: 'active' },
-      });
-      if (existing && existing.version === latestVersion && existing.itemsJson) {
-        console.log(`⚡ [ItemWorker] Active items snapshot is up-to-date for version ${latestVersion}.`);
-        itemMemoryCache = {
-          version: existing.version,
-          patch: existing.patch,
-          totalItems: existing.itemsCount,
-          items: existing.itemsJson as any,
-          details: (existing.itemDetailsJson as any) || { de: {}, en: {} },
-          tree: (existing.treeJson as any) || [],
-          timestamp: Date.now(),
-        };
-        return itemMemoryCache;
+      const count = await prisma.item.count();
+      const sample = await prisma.item.findFirst({ select: { version: true } });
+      if (count > 0 && sample?.version === latestVersion) {
+        console.log(`⚡ [ItemWorker] Active items catalog is up-to-date for version ${latestVersion}.`);
+        return await loadActiveItemSnapshot(true);
       }
     }
 
-    console.log(`🔄 [ItemWorker] Syncing items from Riot DDragon for version ${latestVersion}...`);
+    console.log(`🔄 [ItemWorker] Syncing individual items from Riot DDragon for version ${latestVersion}...`);
     const { rosters, details, tree, itemsCount } = await buildItemCatalogs(latestVersion);
+    const now = new Date();
 
-    // Save into dedicated item_snapshots database table
-    try {
-      await prisma.itemSnapshot.upsert({
-        where: { id: 'active' },
-        update: {
-          version: latestVersion,
-          patch,
-          itemsCount,
-          itemsJson: rosters as any,
-          itemDetailsJson: details as any,
-          treeJson: tree as any,
-          computedAt: new Date(),
-        },
+    // Save every item as its own row in the items table
+    for (const item of rosters.de) {
+      const dataDe = details.de[item.id] || null;
+      const dataEn = details.en[item.id] || null;
+
+      await prisma.item.upsert({
+        where: { id: item.id },
         create: {
-          id: 'active',
-          version: latestVersion,
+          id: item.id,
+          name: item.name,
+          plaintext: item.plaintext || '',
+          description: item.description || '',
+          goldTotal: item.gold?.total ?? 0,
+          goldBase: item.gold?.base ?? 0,
+          goldSell: item.gold?.sell ?? 0,
+          purchasable: item.gold?.purchasable ?? true,
+          tags: item.tags || [],
+          categories: item.categories || [],
+          tier: item.tier || 'basic',
+          depth: item.depth ?? 1,
+          icon: item.icon,
+          from: item.from || [],
+          into: item.into || [],
+          inStore: item.inStore !== false,
+          requiredChampion: item.requiredChampion || null,
+          requiredAlly: item.requiredAlly || null,
           patch,
-          itemsCount,
-          itemsJson: rosters as any,
-          itemDetailsJson: details as any,
-          treeJson: tree as any,
-          computedAt: new Date(),
+          version: latestVersion,
+          dataDe: dataDe as any,
+          dataEn: dataEn as any,
+          createdAt: now,
+          updatedAt: now,
+        },
+        update: {
+          name: item.name,
+          plaintext: item.plaintext || '',
+          description: item.description || '',
+          goldTotal: item.gold?.total ?? 0,
+          goldBase: item.gold?.base ?? 0,
+          goldSell: item.gold?.sell ?? 0,
+          purchasable: item.gold?.purchasable ?? true,
+          tags: item.tags || [],
+          categories: item.categories || [],
+          tier: item.tier || 'basic',
+          depth: item.depth ?? 1,
+          icon: item.icon,
+          from: item.from || [],
+          into: item.into || [],
+          inStore: item.inStore !== false,
+          requiredChampion: item.requiredChampion || null,
+          requiredAlly: item.requiredAlly || null,
+          patch,
+          version: latestVersion,
+          dataDe: dataDe as any,
+          dataEn: dataEn as any,
+          updatedAt: now,
         },
       });
-      console.log(`✅ [ItemWorker] Items snapshot saved to 'item_snapshots' table. Total items: ${itemsCount} (Version ${latestVersion}).`);
-    } catch (dbErr) {
-      console.warn('[ItemWorker] Database write warning (falling back to memory cache):', (dbErr as Error).message);
     }
 
     itemMemoryCache = {
@@ -451,9 +454,10 @@ export async function computeAndSaveItemSnapshot(force = false): Promise<ItemMem
       timestamp: Date.now(),
     };
 
+    console.log(`✅ [ItemWorker] Individual items saved to 'items' table. Total items: ${itemsCount} (Version ${latestVersion}).`);
     return itemMemoryCache;
   } catch (err) {
-    console.warn('[ItemWorker] Error computing items snapshot:', (err as Error).message);
+    console.warn('[ItemWorker] Error computing items catalog:', (err as Error).message);
     const fallbackVersion = await getLatestDDragonVersion();
     const fallbackPatch = fallbackVersion.split('.').slice(0, 2).join('.');
     return {
@@ -471,36 +475,71 @@ export async function computeAndSaveItemSnapshot(force = false): Promise<ItemMem
 }
 
 /**
- * Loads the active items snapshot from memory or PostgreSQL table.
+ * Loads the active items from memory or PostgreSQL 'items' table.
  * Instant lookup (<1ms), zero external Riot requests on user visits!
  */
-export async function loadActiveItemSnapshot(): Promise<ItemMemoryCache> {
+export async function loadActiveItemSnapshot(skipCacheCheck = false): Promise<ItemMemoryCache> {
   const now = Date.now();
-  if (itemMemoryCache && now - itemMemoryCache.timestamp < CACHE_TTL_MS) {
+  if (!skipCacheCheck && itemMemoryCache && now - itemMemoryCache.timestamp < CACHE_TTL_MS) {
     return itemMemoryCache;
   }
 
-  await ensureItemTableExists();
-
   try {
-    const row = await prisma.itemSnapshot.findUnique({
-      where: { id: 'active' },
-    });
+    const rows = await prisma.item.findMany();
+    if (rows && rows.length > 0) {
+      const first = rows[0];
+      const version = first.version || '15.1.1';
+      const patch = first.patch || version.split('.').slice(0, 2).join('.');
 
-    if (row && row.itemsJson) {
+      const rosters: { de: ItemRecord[]; en: ItemRecord[] } = { de: [], en: [] };
+      const details: { de: Record<string, ItemRecord>; en: Record<string, ItemRecord> } = { de: {}, en: {} };
+
+      for (const row of rows) {
+        const dataDe = row.dataDe as any;
+        const dataEn = (row.dataEn as any) || dataDe;
+
+        if (dataDe) {
+          rosters.de.push(dataDe);
+          details.de[row.id] = dataDe;
+        }
+        if (dataEn) {
+          rosters.en.push(dataEn);
+          details.en[row.id] = dataEn;
+        }
+      }
+
+      // Sort by tier and gold
+      const tierRank: Record<string, number> = {
+        legendary: 5,
+        epic: 4,
+        basic: 3,
+        boots: 2,
+        starter: 1,
+        consumable: 0,
+      };
+      const sortFn = (a: ItemRecord, b: ItemRecord) => {
+        const rDiff = (tierRank[b.tier] ?? 0) - (tierRank[a.tier] ?? 0);
+        if (rDiff !== 0) return rDiff;
+        if (b.gold.total !== a.gold.total) return b.gold.total - a.gold.total;
+        return a.name.localeCompare(b.name);
+      };
+
+      rosters.de.sort(sortFn);
+      rosters.en.sort(sortFn);
+
       itemMemoryCache = {
-        version: row.version,
-        patch: row.patch,
-        totalItems: row.itemsCount,
-        items: row.itemsJson as any,
-        details: (row.itemDetailsJson as any) || { de: {}, en: {} },
-        tree: (row.treeJson as any) || [],
+        version,
+        patch,
+        totalItems: rows.length,
+        items: rosters,
+        details,
+        tree: [],
         timestamp: now,
       };
       return itemMemoryCache;
     }
   } catch (err) {
-    console.warn('[ItemService] Item snapshot DB read failed, synchronizing immediately:', (err as Error).message);
+    console.warn('[ItemService] Items table DB read failed, synchronizing immediately:', (err as Error).message);
   }
 
   return await computeAndSaveItemSnapshot();
@@ -572,18 +611,18 @@ export function initItemSyncWorker(intervalMs = ITEM_WORKER_INTERVAL_MS): void {
     try {
       await ensureItemTableExists();
       const latestVersion = await getLatestDDragonVersion();
-      const existing = await prisma.itemSnapshot.findUnique({
-        where: { id: 'active' },
-        select: { version: true, updatedAt: true, itemsCount: true },
+      const count = await prisma.item.count();
+      const existing = await prisma.item.findFirst({
+        select: { version: true },
       });
 
-      if (!existing || existing.version !== latestVersion || existing.itemsCount === 0) {
-        console.log(`🔄 [ItemWorker] Stored items snapshot is missing or outdated (${existing?.version || 'none'} vs ${latestVersion}). Synchronizing...`);
+      if (count === 0 || !existing || existing.version !== latestVersion) {
+        console.log(`🔄 [ItemWorker] Stored items table is missing or outdated (${existing?.version || 'none'} vs ${latestVersion}). Synchronizing...`);
         computeAndSaveItemSnapshot().catch((err) => {
           console.warn('[ItemWorker] Initial background item sync failed:', err);
         });
       } else {
-        console.log(`⚡ [ItemWorker] Stored items snapshot is up-to-date (Version: ${existing.version}, ${existing.itemsCount} items).`);
+        console.log(`⚡ [ItemWorker] Stored items table is up-to-date (Version: ${existing.version}, ${count} items).`);
       }
     } catch (err) {
       console.warn('[ItemWorker] Startup check error:', (err as Error).message);

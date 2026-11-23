@@ -57,27 +57,10 @@ export interface LoldbSkinInfo {
 let tableChecked = false;
 
 /**
- * Ensures the dedicated champion_snapshots table exists in PostgreSQL.
+ * Ensures the dedicated champions table exists in PostgreSQL.
  */
 export async function ensureChampionTableExists(): Promise<void> {
-  if (tableChecked) return;
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS champion_snapshots (
-        id TEXT PRIMARY KEY,
-        version TEXT NOT NULL DEFAULT '16.23.1',
-        patch TEXT NOT NULL,
-        "championsCount" INTEGER NOT NULL DEFAULT 0,
-        "championsJson" JSONB NOT NULL,
-        "championDetailsJson" JSONB,
-        "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    tableChecked = true;
-  } catch (err) {
-    console.warn('[ChampionService] Table check warning:', (err as Error).message);
-  }
+  // Managed by Prisma schema
 }
 
 export const ensureMetaTableExists = ensureChampionTableExists;
@@ -767,93 +750,63 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
  * 2. New patch is saved into the 'current' slot.
  */
 export async function syncChampionSnapshot(force = false): Promise<ChampionSnapshotMemory> {
-  await ensureChampionTableExists();
   const ddragonVersion = await getLatestDDragonVersion(force);
   const patch = ddragonVersion.split('.').slice(0, 2).join('.');
 
-  console.log(`[ChampionWorker] Syncing champion snapshot for version ${ddragonVersion} (Patch ${patch})...`);
-
-  // Check existing 'current' slot in champion_snapshots
-  const existingCurrent = await prisma.championSnapshot.findUnique({
-    where: { id: 'current' },
-  });
-
-  if (existingCurrent && existingCurrent.patch !== patch) {
-    console.log(
-      `📦 [ChampionWorker] New patch detected (${existingCurrent.patch} -> ${patch}). Shifting previous champion catalog ${existingCurrent.patch} into 'previous' slot...`
-    );
-    await prisma.championSnapshot.upsert({
-      where: { id: 'previous' },
-      update: {
-        version: existingCurrent.version,
-        patch: existingCurrent.patch,
-        championsCount: existingCurrent.championsCount,
-        championsJson: existingCurrent.championsJson as any,
-        championDetailsJson: existingCurrent.championDetailsJson as any,
-        updatedAt: new Date(),
-      },
-      create: {
-        id: 'previous',
-        version: existingCurrent.version,
-        patch: existingCurrent.patch,
-        championsCount: existingCurrent.championsCount,
-        championsJson: existingCurrent.championsJson as any,
-        championDetailsJson: existingCurrent.championDetailsJson as any,
-        updatedAt: new Date(),
-      },
-    });
-    championMemoryCache.delete('previous');
-  }
+  console.log(`[ChampionWorker] Syncing individual champions for version ${ddragonVersion} (Patch ${patch})...`);
 
   const { rosters, details } = await buildChampionRostersAndDetails(ddragonVersion);
   const championsCount = rosters.de?.length || rosters.en?.length || 0;
   const now = new Date();
 
-  // Save into 'current' slot
-  await prisma.championSnapshot.upsert({
-    where: { id: 'current' },
-    update: {
-      version: ddragonVersion,
-      patch,
-      championsCount,
-      championsJson: rosters as any,
-      championDetailsJson: details as any,
-      updatedAt: now,
-    },
-    create: {
-      id: 'current',
-      version: ddragonVersion,
-      patch,
-      championsCount,
-      championsJson: rosters as any,
-      championDetailsJson: details as any,
-      computedAt: now,
-      updatedAt: now,
-    },
-  });
+  // Save every champion as its own row in the champions table
+  const champList = rosters.de.length > 0 ? rosters.de : rosters.en;
 
-  // Also maintain 'active' slot for backwards compatibility
-  await prisma.championSnapshot.upsert({
-    where: { id: 'active' },
-    update: {
-      version: ddragonVersion,
-      patch,
-      championsCount,
-      championsJson: rosters as any,
-      championDetailsJson: details as any,
-      updatedAt: now,
-    },
-    create: {
-      id: 'active',
-      version: ddragonVersion,
-      patch,
-      championsCount,
-      championsJson: rosters as any,
-      championDetailsJson: details as any,
-      computedAt: now,
-      updatedAt: now,
-    },
-  });
+  for (const c of champList) {
+    const cleanId = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const dataDe = details.de[cleanId] || null;
+    const dataEn = details.en[cleanId] || null;
+
+    await prisma.champion.upsert({
+      where: { id: c.id },
+      create: {
+        id: c.id,
+        key: Number(c.key),
+        name: c.name,
+        title: c.title,
+        image: c.image,
+        role: c.role || null,
+        positions: c.positions || [],
+        tags: c.tags || [],
+        difficulty: c.difficulty ?? 5,
+        classes: c.classes || [],
+        releaseDate: c.releaseDate || null,
+        patch,
+        version: ddragonVersion,
+        dataDe: dataDe as any,
+        dataEn: dataEn as any,
+        createdAt: now,
+        updatedAt: now,
+      },
+      update: {
+        key: Number(c.key),
+        name: c.name,
+        title: c.title,
+        image: c.image,
+        role: c.role || null,
+        positions: c.positions || [],
+        tags: c.tags || [],
+        difficulty: c.difficulty ?? 5,
+        classes: c.classes || [],
+        releaseDate: c.releaseDate || null,
+        patch,
+        version: ddragonVersion,
+        dataDe: dataDe as any,
+        dataEn: dataEn as any,
+        updatedAt: now,
+      },
+    });
+  }
 
   const memoryObj: ChampionSnapshotMemory = {
     id: 'current',
@@ -868,13 +821,13 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
   championMemoryCache.set('current', { data: memoryObj, timestamp: Date.now() });
 
   console.log(
-    `⚡ [ChampionWorker] Champion snapshot successfully updated (${championsCount} champions, version ${ddragonVersion}, patch ${patch}).`
+    `⚡ [ChampionWorker] Champions table successfully updated (${championsCount} individual champion rows, version ${ddragonVersion}, patch ${patch}).`
   );
   return memoryObj;
 }
 
 /**
- * Loads the active precomputed snapshot from memory or 'champion_snapshots' table for a given slot.
+ * Loads the active precomputed champions from memory or 'champions' table.
  * Instant lookup (<1ms), zero query lag for the user!
  */
 export async function loadActiveChampionSnapshot(
@@ -886,58 +839,104 @@ export async function loadActiveChampionSnapshot(
     return cached.data;
   }
 
-  await ensureChampionTableExists();
-
   try {
-    // Try primary slot, then fallback to 'active' for legacy
-    let row = await prisma.championSnapshot.findUnique({
-      where: { id: slot },
-    });
-    if (!row && slot === 'current') {
-      row = await prisma.championSnapshot.findUnique({ where: { id: 'active' } });
-    }
+    const rows = await prisma.champion.findMany();
+    if (rows && rows.length > 0) {
+      const first = rows[0];
+      const version = first.version || '15.1.1';
+      const patch = first.patch || version.split('.').slice(0, 2).join('.');
 
-    if (row && row.championsJson && isSnapshotFresh(row)) {
+      const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
+      const details: { de: Record<string, any>; en: Record<string, any> } = { de: {}, en: {} };
+
+      for (const row of rows) {
+        const cleanId = row.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = row.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanKey = String(row.key);
+
+        const dataDe = (row.dataDe as any) || {
+          id: row.id,
+          key: String(row.key),
+          name: row.name,
+          title: row.title,
+          image: row.image,
+          role: row.role || 'Mid',
+          positions: row.positions,
+          tags: row.tags,
+          difficulty: row.difficulty,
+          classes: row.classes,
+          releaseDate: row.releaseDate,
+        };
+
+        const dataEn = (row.dataEn as any) || dataDe;
+
+        rosters.de.push({
+          id: row.id,
+          key: String(row.key),
+          name: dataDe.name || row.name,
+          title: dataDe.title || row.title,
+          image: row.image,
+          role: row.role || 'Mid',
+          positions: row.positions,
+          tags: row.tags,
+          difficulty: row.difficulty,
+          classes: row.classes,
+          releaseDate: row.releaseDate,
+          storeData: dataDe.storeData,
+          meta: null,
+        });
+
+        rosters.en.push({
+          id: row.id,
+          key: String(row.key),
+          name: dataEn.name || row.name,
+          title: dataEn.title || row.title,
+          image: row.image,
+          role: row.role || 'Mid',
+          positions: row.positions,
+          tags: row.tags,
+          difficulty: row.difficulty,
+          classes: row.classes,
+          releaseDate: row.releaseDate,
+          storeData: dataEn.storeData,
+          meta: null,
+        });
+
+        details.de[cleanId] = dataDe;
+        details.de[cleanName] = dataDe;
+        details.de[cleanKey] = dataDe;
+
+        details.en[cleanId] = dataEn;
+        details.en[cleanName] = dataEn;
+        details.en[cleanKey] = dataEn;
+      }
+
+      rosters.de.sort((a, b) => a.name.localeCompare(b.name));
+      rosters.en.sort((a, b) => a.name.localeCompare(b.name));
+
       const memoryObj: ChampionSnapshotMemory = {
-        id: (row.id as any) || slot,
-        version: row.version,
-        patch: row.patch,
-        championsCount: row.championsCount,
-        championsRoster: row.championsJson as any,
-        championDetails: row.championDetailsJson as any,
+        id: 'current',
+        version,
+        patch,
+        championsCount: rows.length,
+        championsRoster: rosters as any,
+        championDetails: details as any,
         timestamp: now,
       };
+
       championMemoryCache.set(slot, { data: memoryObj, timestamp: now });
       return memoryObj;
     }
-
-    if (row && !isSnapshotFresh(row) && slot === 'current') {
-      console.log(
-        '🔄 [ChampionService] Stored snapshot has outdated skin release years. Recomputing fresh snapshot from DDragon + LoLDB...'
-      );
-    }
   } catch (err) {
-    console.warn('[ChampionService] Snapshot lookup error, computing on the fly:', (err as Error).message);
+    console.warn('[ChampionService] Champions table read error, computing on the fly:', (err as Error).message);
   }
 
-  // If table is empty or stale, sync champions immediately
-  if (slot === 'current') {
-    return await syncChampionSnapshot();
-  }
-
-  return {
-    id: 'previous',
-    version: 'none',
-    patch: 'none',
-    championsCount: 0,
-    championsRoster: { de: [], en: [] },
-    championDetails: { de: {}, en: {} },
-    timestamp: Date.now(),
-  };
+  // If table is empty, sync champions immediately
+  return await syncChampionSnapshot();
 }
 
 /**
- * Empties the champion_snapshots table and flushes all champion/skin in-memory caches.
+ * Empties the champions table and flushes all champion/skin in-memory caches.
  */
 export async function clearChampionSnapshots(): Promise<{ count: number }> {
   championMemoryCache.clear();
@@ -945,9 +944,8 @@ export async function clearChampionSnapshots(): Promise<{ count: number }> {
   loldbCatalogMap.clear();
   globalSkinMap.clear();
 
-  await ensureChampionTableExists();
-  const result = await prisma.championSnapshot.deleteMany({});
-  console.log(`🧹 [ChampionService] Emptied champion_snapshots table (${result.count} records removed).`);
+  const result = await prisma.champion.deleteMany({});
+  console.log(`🧹 [ChampionService] Emptied champions table (${result.count} records removed).`);
   return { count: result.count };
 }
 
