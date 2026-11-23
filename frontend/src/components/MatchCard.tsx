@@ -383,9 +383,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               }
             >
               <span
-                className={`text-[10px] font-black uppercase tracking-wider transition-colors ${
-                  damageMode === 'taken' ? 'text-sky-400' : 'text-zinc-400 group-hover:text-zinc-200'
-                }`}
+                className="text-[10px] font-black uppercase tracking-wider transition-colors text-zinc-400 group-hover:text-zinc-200"
               >
                 {damageMode === 'dealt' ? t('matches.damage') : t('matches.taken')}
               </span>

@@ -20,12 +20,19 @@ export async function runMetaAnalysis(): Promise<MetaSnapshotData> {
   return await computeAndSaveMetaAnalysis();
 }
 
+export function stopMetaWorker(): void {
+  if (metaWorkerTimer) {
+    clearInterval(metaWorkerTimer);
+    metaWorkerTimer = null;
+  }
+}
+
 /**
  * Initializes the dedicated Meta Worker:
  * 1. Startup check: verifies if match meta analysis is missing or older than 6h in 'meta_snapshots'.
  * 2. Periodic 6-hour interval: recalculates meta stats and saves them to meta_snapshots.
  */
-export function initMetaWorker(intervalMs = META_WORKER_INTERVAL_MS): void {
+export function initMetaWorker(intervalMs = META_WORKER_INTERVAL_MS, unref = true): void {
   // 1. Startup check
   (async () => {
     try {
@@ -66,6 +73,8 @@ export function initMetaWorker(intervalMs = META_WORKER_INTERVAL_MS): void {
         console.error('[MetaWorker] Periodic analysis error:', err);
       });
     }, intervalMs);
-    metaWorkerTimer.unref();
+    if (unref) {
+      metaWorkerTimer.unref();
+    }
   }
 }

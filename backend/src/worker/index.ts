@@ -7,29 +7,15 @@ import {
 } from '../queue/bullmq';
 import { processSummonerJob } from './processor';
 import { config } from '../config';
-import { disconnectPrisma } from '../db/prisma';
-import { initChampionItemWorker } from './championItemWorker';
-import { initMetaWorker } from './metaWorker';
+import { initChampionItemWorker, stopChampionItemWorker } from './championItemWorker';
+import { initMetaWorker, stopMetaWorker } from './metaWorker';
+import { setupWorkerProcess, registerGracefulShutdown } from './workerUtils';
 
-// Polyfill BigInt JSON serialization
-(BigInt.prototype as any).toJSON = function () {
-  const n = Number(this);
-  return Number.isSafeInteger(n) ? n : this.toString();
-};
-
-// Global error handlers to keep worker alive on third-party timer or async glitches
-process.on('uncaughtException', (err: Error) => {
-  console.error('🚨 [Worker] Intercepted uncaughtException (worker kept running):', err.message);
-  if (err.stack) console.error(err.stack);
-});
-
-process.on('unhandledRejection', (reason: any) => {
-  console.error('🚨 [Worker] Intercepted unhandledRejection (worker kept running):', reason);
-});
+setupWorkerProcess('AllInOneWorker');
 
 async function main() {
   console.log('=================================================================');
-  console.log('⚡ RiftHero Riot API Worker Starting...');
+  console.log('⚡ RiftHero Riot API All-in-One Worker Starting...');
   console.log(`📡 Rate Limits Configured: ${config.rateLimit10s} req/10s | ${config.rateLimit10m} req/10m`);
   console.log(`❄️ Snowball Crawler: ${config.enableSnowballCrawler ? 'ENABLED' : 'DISABLED'} (Depth: ${config.snowballMatchDepth})`);
   console.log('=================================================================');
@@ -68,7 +54,6 @@ async function main() {
     {
       connection: redisLow,
       concurrency: config.snowballMaxConcurrency,
-      // Throttled pacing
       limiter: {
         max: 5,
         duration: 1000,
@@ -86,26 +71,21 @@ async function main() {
 
   console.log('🚀 [Worker] Workers listening to queues [summoner-high, summoner-low]');
 
-  // 1. Initialize Champion & Items Worker (keeps champions, skins, and items fresh)
+  // Initialize Champion & Items Worker
   initChampionItemWorker();
 
-  // 2. Initialize Meta & Tier List Worker (computes match winrates, pickrates, banrates, tier lists)
+  // Initialize Meta & Tier List Worker
   initMetaWorker();
 
   // Graceful shutdown
-  const shutdown = async (signal: string) => {
-    console.log(`\n🛑 Received ${signal}. Shutting down worker gracefully...`);
+  registerGracefulShutdown('AllInOneWorker', async () => {
+    stopChampionItemWorker();
+    stopMetaWorker();
     await highWorker.close();
     await lowWorker.close();
     await redisHigh.quit();
     await redisLow.quit();
-    await disconnectPrisma();
-    console.log('👋 Worker stopped cleanly.');
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  });
 }
 
 main().catch((err) => {

@@ -304,6 +304,13 @@ export interface SummonerMasteriesResponse {
 }
 
 // Live Game Types
+export interface LiveGameParticipantMastery {
+  championLevel: number;
+  championPoints: number;
+  tokensEarned?: number;
+  championSeasonMilestone?: number;
+}
+
 export interface LiveGameParticipant {
   puuid: string;
   riotId: string;
@@ -332,6 +339,7 @@ export interface LiveGameParticipant {
     losses: number;
     winrate: number;
   } | null;
+  mastery?: LiveGameParticipantMastery | null;
 }
 
 export interface BannedChampion {
@@ -355,6 +363,11 @@ export interface LiveGameWinProbability {
     blueChampWinrate: number | null;
     redChampWinrate: number | null;
     sideAdvantage: number;
+    blueAvgMasteryPts?: number | null;
+    redAvgMasteryPts?: number | null;
+    blueAvgMasteryLevel?: number | null;
+    redAvgMasteryLevel?: number | null;
+    masteryAdvantage?: number;
   };
 }
 

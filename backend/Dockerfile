@@ -30,6 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
     wget \
+    postgresql-client \
+    gzip \
     && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production

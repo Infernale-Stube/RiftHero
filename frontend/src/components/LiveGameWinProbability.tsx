@@ -7,6 +7,7 @@ import {
   Trophy,
   Percent,
   Swords,
+  Flame,
   Shield,
   Info,
   ChevronDown,
@@ -46,6 +47,11 @@ export default function LiveGameWinProbability({
     blueChampWinrate: null,
     redChampWinrate: null,
     sideAdvantage: 0,
+    blueAvgMasteryPts: null,
+    redAvgMasteryPts: null,
+    blueAvgMasteryLevel: null,
+    redAvgMasteryLevel: null,
+    masteryAdvantage: 0,
   };
 
   const {
@@ -57,6 +63,11 @@ export default function LiveGameWinProbability({
     blueChampWinrate = null,
     redChampWinrate = null,
     sideAdvantage = 0,
+    blueAvgMasteryPts = null,
+    redAvgMasteryPts = null,
+    blueAvgMasteryLevel = null,
+    redAvgMasteryLevel = null,
+    masteryAdvantage = 0,
   } = factors;
 
   // Determine leaders for each factor
@@ -76,6 +87,16 @@ export default function LiveGameWinProbability({
       : 0;
   const champLeader =
     champDiff > 2 ? 'blue' : champDiff < -2 ? 'red' : 'even';
+
+  const masteryLeader =
+    masteryAdvantage > 0.5 ? 'blue' : masteryAdvantage < -0.5 ? 'red' : 'even';
+
+  const formatMasteryPoints = (pts: number | null | undefined) => {
+    if (pts == null) return null;
+    if (pts >= 1000000) return `${(pts / 1000000).toFixed(1)}M`;
+    if (pts >= 1000) return `${Math.round(pts / 1000)}k`;
+    return String(pts);
+  };
 
   const confidenceBadge = {
     high: {
@@ -259,7 +280,7 @@ export default function LiveGameWinProbability({
         {/* Breakdown Factors (Always visible or toggleable) */}
         {showDetails && (
           <div className="mt-2 pt-3 border-t border-white/[0.06] animate-fadeIn">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
               {/* Factor 1: Rank & MMR */}
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-zinc-400 mb-1.5">
@@ -376,7 +397,55 @@ export default function LiveGameWinProbability({
                 </div>
               </div>
 
-              {/* Factor 4: Map & Side Bias */}
+              {/* Factor 4: Champion Mastery */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Flame className="h-3.5 w-3.5 text-amber-400" />
+                    <span>{t('live.masteryFactor')}</span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      masteryLeader === 'blue'
+                        ? 'bg-blue-500/20 text-cyan-300'
+                        : masteryLeader === 'red'
+                        ? 'bg-rose-500/20 text-rose-300'
+                        : 'bg-zinc-500/20 text-zinc-400'
+                    }`}
+                  >
+                    {masteryLeader === 'blue'
+                      ? t('live.blueLead')
+                      : masteryLeader === 'red'
+                      ? t('live.redLead')
+                      : t('live.balanced')}
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-slate-200">
+                  {blueAvgMasteryPts !== null && redAvgMasteryPts !== null ? (
+                    <span>
+                      {formatMasteryPoints(blueAvgMasteryPts)} vs {formatMasteryPoints(redAvgMasteryPts)}
+                    </span>
+                  ) : blueAvgMasteryPts !== null ? (
+                    <span>{t('live.bluePrefix')}: {formatMasteryPoints(blueAvgMasteryPts)}</span>
+                  ) : redAvgMasteryPts !== null ? (
+                    <span>{t('live.redPrefix')}: {formatMasteryPoints(redAvgMasteryPts)}</span>
+                  ) : (
+                    t('live.noData')
+                  )}
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">
+                  {blueAvgMasteryLevel !== null && redAvgMasteryLevel !== null
+                    ? t('live.masterySubtitle', { bLvl: blueAvgMasteryLevel, rLvl: redAvgMasteryLevel })
+                    : t('masteries.totalPoints')}
+                  {masteryAdvantage !== 0 && (
+                    <span className={masteryAdvantage > 0 ? ' text-cyan-400 font-semibold' : ' text-rose-400 font-semibold'}>
+                      {' '}({masteryAdvantage > 0 ? '+' : ''}{masteryAdvantage.toFixed(1)}%)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Factor 5: Map & Side Bias */}
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-zinc-400 mb-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-semibold">

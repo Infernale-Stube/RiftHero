@@ -87,12 +87,80 @@ export function calculateLiveGameWinProbability(
     champAdvantage = Math.max(-6, Math.min(6, champDelta * 0.25));
   }
 
-  // 4. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
+  // 4. Champion Mastery Experience
+  function getPlayerMasteryScore(p: LiveGameParticipant): number {
+    if (!p.mastery) return 25; // neutral baseline (~5k-10k pts)
+    const pts = Math.max(0, p.mastery.championPoints || 0);
+    const lvl = Math.max(0, p.mastery.championLevel || 0);
+
+    // Smooth log scale for points (0 to 100)
+    // 0 pts -> 0, 5k -> ~33, 25k -> ~56, 50k -> ~66, 100k -> ~76, 250k -> ~90, 500k+ -> 100
+    const ptsScore = pts <= 0 ? 0 : Math.min(100, Math.log10(pts / 500 + 1) * 33.3);
+    const lvlScore = Math.min(100, lvl * 10);
+    return Math.round(ptsScore * 0.85 + lvlScore * 0.15);
+  }
+
+  const blueMasteryScores = safeBlueTeam.map(getPlayerMasteryScore);
+  const redMasteryScores = safeRedTeam.map(getPlayerMasteryScore);
+
+  const blueAvgMasteryScore =
+    blueMasteryScores.length > 0
+      ? blueMasteryScores.reduce((a, b) => a + b, 0) / blueMasteryScores.length
+      : 25;
+  const redAvgMasteryScore =
+    redMasteryScores.length > 0
+      ? redMasteryScores.reduce((a, b) => a + b, 0) / redMasteryScores.length
+      : 25;
+
+  const blueKnownMasteries = safeBlueTeam.filter((p) => p.mastery != null);
+  const redKnownMasteries = safeRedTeam.filter((p) => p.mastery != null);
+
+  const blueAvgMasteryPts =
+    blueKnownMasteries.length > 0
+      ? Math.round(
+          blueKnownMasteries.reduce((a, b) => a + (b.mastery?.championPoints || 0), 0) /
+            blueKnownMasteries.length
+        )
+      : null;
+  const redAvgMasteryPts =
+    redKnownMasteries.length > 0
+      ? Math.round(
+          redKnownMasteries.reduce((a, b) => a + (b.mastery?.championPoints || 0), 0) /
+            redKnownMasteries.length
+        )
+      : null;
+
+  const blueAvgMasteryLevel =
+    blueKnownMasteries.length > 0
+      ? Math.round(
+          (blueKnownMasteries.reduce((a, b) => a + (b.mastery?.championLevel || 0), 0) /
+            blueKnownMasteries.length) *
+            10
+        ) / 10
+      : null;
+  const redAvgMasteryLevel =
+    redKnownMasteries.length > 0
+      ? Math.round(
+          (redKnownMasteries.reduce((a, b) => a + (b.mastery?.championLevel || 0), 0) /
+            redKnownMasteries.length) *
+            10
+        ) / 10
+      : null;
+
+  let masteryAdvantage = 0;
+  if (blueAvgMasteryPts !== null || redAvgMasteryPts !== null) {
+    const masteryDelta = blueAvgMasteryScore - redAvgMasteryScore;
+    // Map -100..+100 to max +/-7% winrate swing
+    masteryAdvantage = Math.max(-7, Math.min(7, Math.round(masteryDelta * 0.07 * 10) / 10));
+  }
+
+  // 5. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
   const isSummonersRift = mapId === 11 || [420, 440, 400, 430].includes(queueId || 0);
   const sideAdvantage = isSummonersRift ? 1.2 : 0;
 
-  // 5. Total Blue Winrate
-  const rawBlue = 50 + mmrAdvantage + wrAdvantage + champAdvantage + sideAdvantage;
+  // 6. Total Blue Winrate
+  const rawBlue =
+    50 + mmrAdvantage + wrAdvantage + champAdvantage + masteryAdvantage + sideAdvantage;
   const clampedBlue = Math.max(20, Math.min(80, rawBlue));
   const blueWinrate = Math.round(clampedBlue * 10) / 10;
   const redWinrate = Math.round((100 - blueWinrate) * 10) / 10;
@@ -101,8 +169,15 @@ export function calculateLiveGameWinProbability(
     blueWinrate >= 51.0 ? 'blue' : redWinrate >= 51.0 ? 'red' : 'even';
 
   const knownCount = allKnownMmrs.length;
+  const knownMasteryCount = [...safeBlueTeam, ...safeRedTeam].filter(
+    (p) => p.mastery != null
+  ).length;
   const confidence: 'high' | 'medium' | 'low' =
-    knownCount >= 8 ? 'high' : knownCount >= 4 ? 'medium' : 'low';
+    knownCount >= 8 && knownMasteryCount >= 6
+      ? 'high'
+      : knownCount >= 4 || knownMasteryCount >= 6
+      ? 'medium'
+      : 'low';
 
   return {
     blueWinrate,
@@ -118,6 +193,11 @@ export function calculateLiveGameWinProbability(
       blueChampWinrate,
       redChampWinrate,
       sideAdvantage,
+      blueAvgMasteryPts,
+      redAvgMasteryPts,
+      blueAvgMasteryLevel,
+      redAvgMasteryLevel,
+      masteryAdvantage,
     },
   };
 }

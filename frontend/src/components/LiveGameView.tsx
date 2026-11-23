@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Radio, RefreshCw, Ban, Copy, Check } from 'lucide-react';
+import { Radio, RefreshCw, Ban, Copy, Check, Flame } from 'lucide-react';
 import { LiveGameResponse, LiveGameParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -420,10 +420,48 @@ export default function LiveGameView({
                 )}
               </div>
 
-              {/* Line 2: Champion Name */}
-              <span className="text-xs text-zinc-300 font-semibold truncate mt-0.5">
-                {p.championName}
-              </span>
+              {/* Line 2: Champion Name & Mastery Badge */}
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-xs text-zinc-300 font-semibold truncate">
+                  {p.championName}
+                </span>
+
+                {/* Champion Mastery Badge */}
+                {p.mastery ? (
+                  p.mastery.championPoints > 0 ? (
+                    <div
+                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shadow-sm ${
+                        p.mastery.championLevel >= 10
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          : p.mastery.championLevel >= 7
+                          ? 'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                          : p.mastery.championLevel >= 5
+                          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                          : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
+                      }`}
+                      title={`${t('live.masteryLevel', { level: p.mastery.championLevel })} · ${p.mastery.championPoints.toLocaleString()} ${t('masteries.totalPoints')}`}
+                    >
+                      <Flame className="h-2.5 w-2.5" />
+                      <span>M{p.mastery.championLevel}</span>
+                      <span className="opacity-80">·</span>
+                      <span className="font-mono">
+                        {p.mastery.championPoints >= 1000000
+                          ? `${(p.mastery.championPoints / 1000000).toFixed(1)}M`
+                          : p.mastery.championPoints >= 1000
+                          ? `${Math.round(p.mastery.championPoints / 1000)}k`
+                          : p.mastery.championPoints}
+                      </span>
+                    </div>
+                  ) : (
+                    <div
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-zinc-800/80 text-zinc-400 border border-zinc-700/40"
+                      title={t('live.firstTime')}
+                    >
+                      <span>{t('live.firstTime')}</span>
+                    </div>
+                  )
+                ) : null}
+              </div>
             </div>
           </div>
 

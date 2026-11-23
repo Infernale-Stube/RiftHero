@@ -269,6 +269,7 @@ export interface TranslationDictionary {
     rankFactor: string;
     winrateFactor: string;
     champFactor: string;
+    masteryFactor: string;
     mapFactor: string;
     blueLead: string;
     redLead: string;
@@ -296,6 +297,9 @@ export interface TranslationDictionary {
     redPrefix: string;
     firstMatches: string;
     champExpSubtitle: string;
+    masterySubtitle: string;
+    masteryLevel: string;
+    firstTime: string;
     sideAdvantageBlue: string;
     sideAdvantageNeutral: string;
     sideAdvantageBlueDesc: string;
@@ -748,13 +752,14 @@ export const translations: Record<Locale, TranslationDictionary> = {
       draftBans: 'Gebannte Champions',
       you: 'DU',
       winProbability: 'Siegwahrscheinlichkeit',
-      winProbabilitySubtitle: 'Berechnet aus MMR, Siegraten, Champion-Erfahrung & Karten-Vorteil',
+      winProbabilitySubtitle: 'Berechnet aus MMR, Siegraten, Champion-Meisterschaft & Karten-Vorteil',
       blueFavored: 'Blaues Team favorisiert',
       redFavored: 'Rotes Team favorisiert',
       evenMatch: 'Ausgeglichenes Duell',
       rankFactor: 'Rang & MMR',
       winrateFactor: 'Ø Ranked Winrate',
       champFactor: 'Champion-Erfahrung',
+      masteryFactor: 'Champion-Mastery',
       mapFactor: 'Karten-Vorteil',
       blueLead: 'Blau führt',
       redLead: 'Rot führt',
@@ -782,6 +787,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redPrefix: 'Rot',
       firstMatches: 'Erste Matches',
       champExpSubtitle: 'Erfahrung mit gewähltem Champion',
+      masterySubtitle: 'Ø Stufe {bLvl} vs {rLvl}',
+      masteryLevel: 'Mastery Stufe {level}',
+      firstTime: 'First Time',
       sideAdvantageBlue: '+1.2% Blau',
       sideAdvantageNeutral: 'Neutral',
       sideAdvantageBlueDesc: 'Blaues Team (First Pick)',
@@ -1232,13 +1240,14 @@ export const translations: Record<Locale, TranslationDictionary> = {
       draftBans: 'Champion Bans',
       you: 'YOU',
       winProbability: 'Win Probability',
-      winProbabilitySubtitle: 'Calculated from MMR, win rates, champion experience & map advantage',
+      winProbabilitySubtitle: 'Calculated from MMR, win rates, champion mastery & map advantage',
       blueFavored: 'Blue Team Favored',
       redFavored: 'Red Team Favored',
       evenMatch: 'Even Matchup',
       rankFactor: 'Rank & MMR',
       winrateFactor: 'Avg. Ranked Winrate',
       champFactor: 'Champion Experience',
+      masteryFactor: 'Champion Mastery',
       mapFactor: 'Map Advantage',
       blueLead: 'Blue leads',
       redLead: 'Red leads',
@@ -1266,6 +1275,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redPrefix: 'Red',
       firstMatches: 'First matches',
       champExpSubtitle: 'Experience on selected champion',
+      masterySubtitle: 'Avg Lvl {bLvl} vs {rLvl}',
+      masteryLevel: 'Mastery Level {level}',
+      firstTime: 'First Time',
       sideAdvantageBlue: '+1.2% Blue',
       sideAdvantageNeutral: 'Neutral',
       sideAdvantageBlueDesc: 'Blue Team (First Pick)',

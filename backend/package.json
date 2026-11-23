@@ -9,6 +9,11 @@
     "prisma:push": "prisma db push --schema=./prisma/schema.prisma",
     "start:api": "node dist/api/server.js",
     "start:worker": "node dist/worker/index.js",
+    "start:worker:high": "node dist/worker/highWorker.js",
+    "start:worker:low": "node dist/worker/lowWorker.js",
+    "start:worker:champions": "node dist/worker/championWorker.js",
+    "start:worker:meta": "node dist/worker/metaWorkerRunner.js",
+    "start:worker:maintenance": "node dist/worker/maintenanceWorker.js",
     "dev:api": "tsx watch src/api/server.ts",
     "dev:worker": "tsx watch src/worker/index.ts",
     "db:clear:champions": "tsx scripts/clear-champions.ts"

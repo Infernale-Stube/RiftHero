@@ -51,6 +51,13 @@ export async function syncChampionAndItemData(force = false): Promise<{
   }
 }
 
+export function stopChampionItemWorker(): void {
+  if (workerTimer) {
+    clearInterval(workerTimer);
+    workerTimer = null;
+  }
+}
+
 /**
  * Initializes the dedicated Champion & Items Worker:
  * 1. Startup check: verifies that both champion_snapshots and item_snapshots exist,
@@ -58,7 +65,7 @@ export async function syncChampionAndItemData(force = false): Promise<{
  * 2. Hourly periodic check: polls Riot's versions.json and automatically synchronizes
  *    both catalogs whenever a new patch drops.
  */
-export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVAL_MS): void {
+export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVAL_MS, unref = true): void {
   // 1. Startup check
   (async () => {
     try {
@@ -116,6 +123,8 @@ export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVA
         console.error('[ChampionItemWorker] Periodic patch check error:', err);
       }
     }, intervalMs);
-    workerTimer.unref();
+    if (unref) {
+      workerTimer.unref();
+    }
   }
 }

@@ -1,10 +1,19 @@
 name: rifthero-${APP_ENV:-prod}
 
+# Global log rotation defaults (caps log sizes at 150MB per container)
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "3"
+
 services:
   # =========================================================================
   # 1. Caddy Reverse Proxy (Automatic Let's Encrypt HTTPS / TLS)
   # =========================================================================
   caddy:
+    <<: *default-logging
     image: caddy:2-alpine
     container_name: rifthero-${APP_ENV:-prod}-caddy
     restart: unless-stopped
@@ -32,6 +41,7 @@ services:
   # 2. RiftHero Next.js Frontend (App Router, Tailwind CSS, Dark Mode)
   # =========================================================================
   frontend:
+    <<: *default-logging
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -64,6 +74,7 @@ services:
   # 3. RiftHero REST API (Fastify Node.js Service)
   # =========================================================================
   api:
+    <<: *default-logging
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -103,16 +114,17 @@ services:
       start_period: 25s
 
   # =========================================================================
-  # 4. RiftHero Background Worker (BullMQ + Riot Rate-Limiter & Snowball Crawler)
+  # 4. RiftHero High-Priority Worker (Interactive User Lookups & Refreshes)
   # =========================================================================
-  worker:
+  worker-high:
+    <<: *default-logging
     build:
       context: ./backend
       dockerfile: Dockerfile
     image: rifthero-backend:${APP_ENV:-prod}
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker
-    command: ["worker"]
+    container_name: rifthero-${APP_ENV:-prod}-worker-high
+    command: ["worker:high"]
     restart: unless-stopped
     env_file:
       - path: .env
@@ -128,9 +140,6 @@ services:
       - RATE_LIMIT_10S=${RATE_LIMIT_10S:-1000}
       - RATE_LIMIT_10M=${RATE_LIMIT_10M:-60000}
       - INITIAL_MATCH_COUNT=${INITIAL_MATCH_COUNT:-50}
-      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
-      - SNOWBALL_MATCH_DEPTH=${SNOWBALL_MATCH_DEPTH:-20}
-      - SNOWBALL_MAX_CONCURRENCY=${SNOWBALL_MAX_CONCURRENCY:-3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,9 +147,140 @@ services:
         condition: service_healthy
 
   # =========================================================================
-  # 5. PostgreSQL 16 Database
+  # 5. RiftHero Low-Priority Worker (Snowball Background Crawler)
+  # =========================================================================
+  worker-low:
+    <<: *default-logging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker-low
+    command: ["worker:low"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - RIOT_API_KEY=${RIOT_API_KEY}
+      - RATE_LIMIT_10S=${RATE_LIMIT_10S:-1000}
+      - RATE_LIMIT_10M=${RATE_LIMIT_10M:-60000}
+      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
+      - SNOWBALL_MATCH_DEPTH=${SNOWBALL_MATCH_DEPTH:-20}
+      - SNOWBALL_MAX_CONCURRENCY=${SNOWBALL_MAX_CONCURRENCY:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 6. RiftHero Champion & Item Catalog Sync Worker (Hourly Patch Checks)
+  # =========================================================================
+  worker-champions:
+    <<: *default-logging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker-champions
+    command: ["worker:champions"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 7. RiftHero Meta & Tier List Worker (6h Periodic Statistical Aggregation)
+  # =========================================================================
+  worker-meta:
+    <<: *default-logging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker-meta
+    command: ["worker:meta"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 8. RiftHero Maintenance Worker (Daily Vacuum, BullMQ Pruning, Backups)
+  # =========================================================================
+  worker-maintenance:
+    <<: *default-logging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker-maintenance
+    command: ["worker:maintenance"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - POSTGRES_USER=${POSTGRES_USER:-rifthero}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rifthero_secret_2026}
+      - POSTGRES_DB=${POSTGRES_DB:-rifthero}
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - backups-data:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 9. PostgreSQL 16 Database
   # =========================================================================
   postgres:
+    <<: *default-logging
     image: postgres:16-alpine
     container_name: rifthero-${APP_ENV:-prod}-postgres
     restart: unless-stopped
@@ -160,9 +300,10 @@ services:
       start_period: 10s
 
   # =========================================================================
-  # 6. Redis 7 (In-Memory Datastore & BullMQ Queue Broker)
+  # 10. Redis 7 (In-Memory Datastore & BullMQ Queue Broker)
   # =========================================================================
   redis:
+    <<: *default-logging
     image: redis:7-alpine
     container_name: rifthero-${APP_ENV:-prod}-redis
     restart: unless-stopped
@@ -179,9 +320,10 @@ services:
       start_period: 5s
 
   # =========================================================================
-  # 7. Production Mailserver (docker-mailserver)
+  # 11. Production Mailserver (docker-mailserver)
   # =========================================================================
   mailserver:
+    <<: *default-logging
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: rifthero-${APP_ENV:-prod}-mailserver
     hostname: mail
@@ -221,18 +363,23 @@ services:
       retries: 3
       start_period: 40s
 
+# =========================================================================
+# Volumes (without 'prod' prefixes)
+# =========================================================================
 volumes:
   caddy-data:
-    name: ${CADDY_DATA_VOLUME:-rifthero-${APP_ENV:-prod}-caddy-data}
+    name: ${CADDY_DATA_VOLUME:-rifthero-caddy-data}
   caddy-config:
-    name: ${CADDY_CONFIG_VOLUME:-rifthero-${APP_ENV:-prod}-caddy-config}
+    name: ${CADDY_CONFIG_VOLUME:-rifthero-caddy-config}
   postgres-data:
-    name: rifthero-${APP_ENV:-prod}-postgres-data
+    name: ${POSTGRES_DATA_VOLUME:-rifthero-postgres-data}
   redis-data:
-    name: rifthero-${APP_ENV:-prod}-redis-data
+    name: ${REDIS_DATA_VOLUME:-rifthero-redis-data}
   mail-data:
-    name: ${MAIL_DATA_VOLUME:-rifthero-${APP_ENV:-prod}-mail-data}
+    name: ${MAIL_DATA_VOLUME:-rifthero-mail-data}
   mail-state:
-    name: ${MAIL_STATE_VOLUME:-rifthero-${APP_ENV:-prod}-mail-state}
+    name: ${MAIL_STATE_VOLUME:-rifthero-mail-state}
   mail-logs:
-    name: ${MAIL_LOGS_VOLUME:-rifthero-${APP_ENV:-prod}-mail-logs}
+    name: ${MAIL_LOGS_VOLUME:-rifthero-mail-logs}
+  backups-data:
+    name: ${BACKUPS_DATA_VOLUME:-rifthero-backups-data}
