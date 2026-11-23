@@ -474,7 +474,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
     try {
       await syncParticipantLpForQueue(
         puuid,
-        4,
+        710, // Ranked 5s queue ID
         ranked5sEntry.tier,
         ranked5sEntry.rank,
         ranked5sEntry.leaguePoints

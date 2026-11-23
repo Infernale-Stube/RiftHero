@@ -181,6 +181,7 @@ export function getClusterForPlatform(platform: string): RegionalCluster {
 export const QUEUE_NAMES: Record<number, string> = {
   420: 'Ranked Solo/Duo',
   440: 'Ranked Flex',
+  710: 'Ranked 5s',
   450: 'ARAM',
   400: 'Normal Draft',
   430: 'Normal Blind',
@@ -205,7 +206,7 @@ export function mapQueueFilterToId(filter?: string): number[] | undefined {
     case 'ranked_5s':
     case 'ranked5s':
     case 'ranked_premade_5x5':
-      return [4, 42, 440];
+      return [710];
     case 'aram':
       return [450];
     case 'arena':

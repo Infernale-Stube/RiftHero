@@ -118,12 +118,12 @@ export interface LpHistorySummary {
   points: LpPoint[];
 }
 
-export const VALID_RANKED_QUEUE_IDS = [420, 440, 4, 42, 470] as const;
+export const VALID_RANKED_QUEUE_IDS = [420, 440, 710] as const;
 
 /**
  * Synchronize LP gains/losses and post-game rank onto MatchParticipant records.
  * Rules:
- * 1. LP delta is ONLY recorded within the 3 ranked queues (Solo/Duo 420, Flex 440, 5s 4/42/470).
+ * 1. LP delta is ONLY recorded within the 3 ranked queues (Solo/Duo 420, Flex 440, Ranked 5s 710).
  *    Matches from other game modes (ARAM, Normals, Arena, etc.) played in between have nothing to do
  *    with LP and are completely ignored (they do not count towards untracked matches).
  * 2. On first crawl (cold start / no previous tracked match in this queue), the latest match in this
@@ -136,7 +136,7 @@ export const VALID_RANKED_QUEUE_IDS = [420, 440, 4, 42, 470] as const;
  */
 export async function syncParticipantLpForQueue(
   puuid: string,
-  queueId: number, // 420 (Solo), 440 (Flex), or 4/42/470 (Ranked 5s/3s)
+  queueId: number, // 420 (Solo), 440 (Flex), or 710 (Ranked 5s)
   newTier: string | null | undefined,
   newRank: string | null | undefined,
   newLp: number | null | undefined
@@ -379,7 +379,7 @@ export async function getSummonerLpHistory(
   if (!tier) return null;
 
   const currentTotalLp = calculateTotalLp(tier, rank || 'I', lp);
-  const qId = isSolo ? 420 : isFlex ? 440 : 4;
+  const qId = isSolo ? 420 : isFlex ? 440 : 710;
 
   // Query match participants that have verified post-game LP tracked
   const participants = await prisma.matchParticipant.findMany({

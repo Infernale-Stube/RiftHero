@@ -262,7 +262,7 @@ export async function getMatchDetails(
 
   // Resolve genuine match-to-match LP changes for participants if ranked (strictly the 3 ranked queues)
   const lpChangeMap = new Map<string, MatchLpChange>();
-  if ([420, 440, 4, 42, 470].includes(match.queueId)) {
+  if ([420, 440, 710].includes(match.queueId)) {
     await Promise.all(
       participants.map(async (p) => {
         try {
