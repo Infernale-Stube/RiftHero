@@ -92,8 +92,10 @@ export async function ensureMetaTableExists(): Promise<void> {
         "championStatsJson" JSONB,
         "computedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championStatsJson" JSONB;
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE meta_snapshots ADD COLUMN IF NOT EXISTS "championStatsJson" JSONB
     `);
     tableChecked = true;
   } catch (err) {
