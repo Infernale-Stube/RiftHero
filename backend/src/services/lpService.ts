@@ -119,80 +119,15 @@ export interface LpHistorySummary {
 }
 
 /**
- * Distribute net LP delta across a sequence of matches played between rank updates.
- * Guarantees that:
- * 1. The final match reaches targetTotalLp.
- * 2. The sum of deltas equals targetTotalLp - baselineTotalLp.
- * 3. Individual deltas are realistic based on wins/losses.
- */
-function distributeLpAcrossMatches(
-  baselineTotalLp: number,
-  targetTotalLp: number,
-  matches: Array<{ win: boolean; isRemake: boolean }>
-): Array<{ delta: number; postGameTotalLp: number }> {
-  if (matches.length === 0) return [];
-
-  const totalDelta = targetTotalLp - baselineTotalLp;
-
-  if (matches.length === 1) {
-    return [{ delta: totalDelta, postGameTotalLp: targetTotalLp }];
-  }
-
-  const nonRemakes = matches.filter((m) => !m.isRemake);
-  const winCount = nonRemakes.filter((m) => m.win).length;
-  const lossCount = nonRemakes.length - winCount;
-
-  let winDelta = 20;
-  let lossDelta = -19;
-
-  if (nonRemakes.length > 0) {
-    if (winCount === 0) {
-      // All losses
-      lossDelta = Math.round(totalDelta / lossCount);
-    } else if (lossCount === 0) {
-      // All wins
-      winDelta = Math.round(totalDelta / winCount);
-    } else {
-      // Mixed wins and losses
-      const expectedNet = winCount * 20 - lossCount * 19;
-      const offset = Math.round((totalDelta - expectedNet) / nonRemakes.length);
-      winDelta = 20 + offset;
-      lossDelta = -19 + offset;
-    }
-  }
-
-  const result: Array<{ delta: number; postGameTotalLp: number }> = [];
-  let currentLp = baselineTotalLp;
-  let remainingDelta = totalDelta;
-
-  for (let i = 0; i < matches.length; i++) {
-    const isLast = i === matches.length - 1;
-    const m = matches[i];
-
-    let d: number;
-    if (m.isRemake) {
-      d = 0;
-    } else if (isLast) {
-      d = remainingDelta;
-    } else {
-      d = m.win ? winDelta : lossDelta;
-    }
-
-    remainingDelta -= d;
-    currentLp += d;
-    result.push({ delta: d, postGameTotalLp: isLast ? targetTotalLp : currentLp });
-  }
-
-  return result;
-}
-
-/**
  * Synchronize LP gains/losses and post-game rank onto MatchParticipant records.
  * Rules:
  * 1. LP delta is ONLY recorded if a previous baseline LP was already tracked in this queue.
  * 2. On first crawl (cold start / no previous tracked match), the latest match in this queue
  *    is saved as the baseline (lpDelta: null, postGameTotalLp: currentTotalLp).
- * 3. On subsequent syncs, newly finished matches are assigned exact LP deltas and postGameTotalLp.
+ * 3. On subsequent syncs, lpDelta is ONLY recorded if EXACTLY ONE new match was downloaded/played.
+ *    If multiple matches were downloaded at once, no delta may be assigned because we cannot know
+ *    the individual game gains/losses, avoiding bundling multiple games' deltas into one game.
+ *    Only the chronologically latest match updates postGameTotalLp as the new baseline (with lpDelta: null).
  * 4. Older untracked historical matches remain null (no synthetic data fabricated).
  */
 export async function syncParticipantLpForQueue(
@@ -297,35 +232,50 @@ export async function syncParticipantLpForQueue(
     return;
   }
 
-  // Distribute LP across the new untracked matches
-  const matchInputs = untracked.map((p) => ({
-    win: p.win,
-    isRemake: p.match.gameDuration < 300,
-  }));
-
-  const distributions = distributeLpAcrossMatches(baselineTotalLp, newTotalLp, matchInputs);
-
-  for (let i = 0; i < untracked.length; i++) {
-    const p = untracked[i];
-    const dist = distributions[i];
-    const rankInfo = getTierAndRankFromTotalLp(dist.postGameTotalLp);
+  if (untracked.length === 1) {
+    // Exactly ONE match was played since the last tracked state!
+    // The entire LP delta was caused by this specific match.
+    const singleMatch = untracked[0];
+    const delta = newTotalLp - baselineTotalLp;
 
     await prisma.matchParticipant.update({
       where: {
         matchId_puuid: {
-          matchId: p.matchId,
+          matchId: singleMatch.matchId,
           puuid,
         },
       },
       data: {
-        lpDelta: dist.delta,
-        postGameLp: dist.postGameTotalLp === newTotalLp ? (newLp ?? rankInfo.lp) : rankInfo.lp,
-        postGameTier: dist.postGameTotalLp === newTotalLp ? newTier : rankInfo.tier,
-        postGameRank: dist.postGameTotalLp === newTotalLp ? (newRank || rankInfo.rank) : rankInfo.rank,
-        postGameTotalLp: dist.postGameTotalLp,
+        lpDelta: delta,
+        postGameLp: newLp ?? 0,
+        postGameTier: newTier,
+        postGameRank: newRank || 'IV',
+        postGameTotalLp: newTotalLp,
       },
     });
+    return;
   }
+
+  // If untracked.length > 1 (multiple matches downloaded at once):
+  // We CANNOT know individual game deltas. Bundling multi-game delta into a match would be wrong!
+  // Therefore, lpDelta stays null for all of them.
+  // We only set postGameTotalLp on the chronologically latest match to establish the new baseline.
+  const latestMatch = untracked[untracked.length - 1];
+  await prisma.matchParticipant.update({
+    where: {
+      matchId_puuid: {
+        matchId: latestMatch.matchId,
+        puuid,
+      },
+    },
+    data: {
+      lpDelta: null,
+      postGameLp: newLp ?? 0,
+      postGameTier: newTier,
+      postGameRank: newRank || 'IV',
+      postGameTotalLp: newTotalLp,
+    },
+  });
 }
 
 /**
