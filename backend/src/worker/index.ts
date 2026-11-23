@@ -17,6 +17,16 @@ import { initMetaWorker } from './metaWorker';
   return Number.isSafeInteger(n) ? n : this.toString();
 };
 
+// Global error handlers to keep worker alive on third-party timer or async glitches
+process.on('uncaughtException', (err: Error) => {
+  console.error('🚨 [Worker] Intercepted uncaughtException (worker kept running):', err.message);
+  if (err.stack) console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  console.error('🚨 [Worker] Intercepted unhandledRejection (worker kept running):', reason);
+});
+
 async function main() {
   console.log('=================================================================');
   console.log('⚡ RiftHero Riot API Worker Starting...');

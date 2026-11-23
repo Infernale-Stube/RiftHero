@@ -267,6 +267,21 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
 
         job.log(`[Worker] Match Crawler: Found ${matchIds.length} match IDs so far...`);
 
+        // Check if any match in this batch was already ingested for this player
+        const existingCount = await prisma.matchParticipant.count({
+          where: {
+            puuid,
+            matchId: { in: batch },
+          },
+        });
+
+        // If this summoner already exists in DB and we hit previously ingested matches,
+        // we have connected with historical data and can safely stop fetching further batches!
+        if (existingSummoner && existingCount > 0) {
+          console.log(`[Worker] Found ${existingCount} previously ingested matches in batch. Stopping pagination to conserve API limits.`);
+          break;
+        }
+
         // Reached end of history
         if (batch.length < batchSize) break;
       }
