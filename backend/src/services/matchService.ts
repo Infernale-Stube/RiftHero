@@ -307,7 +307,44 @@ export async function getSummonerMatches(
       redTeamTotals,
       maxDamage,
       lpChange: matchLpChange,
-      teams: (m.teamsJson as any) || [],
+      teams: [
+        {
+          teamId: 100,
+          bans: [
+            { championId: m.blueBan1 ?? -1 },
+            { championId: m.blueBan2 ?? -1 },
+            { championId: m.blueBan3 ?? -1 },
+            { championId: m.blueBan4 ?? -1 },
+            { championId: m.blueBan5 ?? -1 },
+          ],
+          objectives: {
+            tower: { kills: m.blueTowerKills },
+            inhibitor: { kills: m.blueInhibitorKills },
+            baron: { kills: m.blueBaronKills },
+            dragon: { kills: m.blueDragonKills },
+            riftHerald: { kills: m.blueRiftHeraldKills },
+            horde: { kills: m.blueHordeKills },
+          },
+        },
+        {
+          teamId: 200,
+          bans: [
+            { championId: m.redBan1 ?? -1 },
+            { championId: m.redBan2 ?? -1 },
+            { championId: m.redBan3 ?? -1 },
+            { championId: m.redBan4 ?? -1 },
+            { championId: m.redBan5 ?? -1 },
+          ],
+          objectives: {
+            tower: { kills: m.redTowerKills },
+            inhibitor: { kills: m.redInhibitorKills },
+            baron: { kills: m.redBaronKills },
+            dragon: { kills: m.redDragonKills },
+            riftHerald: { kills: m.redRiftHeraldKills },
+            horde: { kills: m.redHordeKills },
+          },
+        },
+      ],
     };
   });
 

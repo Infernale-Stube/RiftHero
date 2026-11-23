@@ -85,6 +85,15 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
   const flexEntry = Array.isArray(leagueEntries)
     ? leagueEntries.find((e: any) => e.queueType === 'RANKED_FLEX_SR')
     : undefined;
+  const ranked5sEntry = Array.isArray(leagueEntries)
+    ? leagueEntries.find((e: any) =>
+        e.queueType === 'RANKED_PREMADE_5x5' ||
+        e.queueType === 'RANKED_TEAM_5x5' ||
+        e.queueType === 'RANKED_5s' ||
+        e.queueType === 'RANKED_5X5' ||
+        e.queueType === 'CHERRY'
+      )
+    : undefined;
 
   // 5. Upsert Summoner in PostgreSQL (Ranks integrated directly!)
   const savedSummoner = await prisma.summoner.upsert({
@@ -109,6 +118,11 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       flexLp: flexEntry?.leaguePoints ?? 0,
       flexWins: flexEntry?.wins ?? 0,
       flexLosses: flexEntry?.losses ?? 0,
+      ranked5sTier: ranked5sEntry?.tier || null,
+      ranked5sRank: ranked5sEntry?.rank || null,
+      ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
+      ranked5sWins: ranked5sEntry?.wins ?? 0,
+      ranked5sLosses: ranked5sEntry?.losses ?? 0,
     },
     update: {
       gameName: cleanGameName,
@@ -129,6 +143,11 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       flexLp: flexEntry?.leaguePoints ?? 0,
       flexWins: flexEntry?.wins ?? 0,
       flexLosses: flexEntry?.losses ?? 0,
+      ranked5sTier: ranked5sEntry?.tier || null,
+      ranked5sRank: ranked5sEntry?.rank || null,
+      ranked5sLp: ranked5sEntry?.leaguePoints ?? 0,
+      ranked5sWins: ranked5sEntry?.wins ?? 0,
+      ranked5sLosses: ranked5sEntry?.losses ?? 0,
     },
   });
 
@@ -159,6 +178,22 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
         flexEntry.leaguePoints,
         flexEntry.wins,
         flexEntry.losses
+      );
+    } catch {
+      // Ignore snapshot errors
+    }
+  }
+
+  if (ranked5sEntry) {
+    try {
+      await recordLpSnapshot(
+        savedSummoner.id,
+        ranked5sEntry.queueType,
+        ranked5sEntry.tier,
+        ranked5sEntry.rank,
+        ranked5sEntry.leaguePoints,
+        ranked5sEntry.wins,
+        ranked5sEntry.losses
       );
     } catch {
       // Ignore snapshot errors
@@ -258,31 +293,77 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
 
       const { info, metadata } = matchData;
 
+      const blueTeam = info.teams?.find((t: any) => t.teamId === 100);
+      const redTeam = info.teams?.find((t: any) => t.teamId === 200);
+
+      const blueBans = blueTeam?.bans || [];
+      const redBans = redTeam?.bans || [];
+
+      const blueObj = (blueTeam?.objectives || {}) as any;
+      const redObj = (redTeam?.objectives || {}) as any;
+
+      const matchDataToSave = {
+        gameDuration: info.gameDuration,
+        gameEndTimestamp: info.gameEndTimestamp ? BigInt(info.gameEndTimestamp) : null,
+        gameMode: info.gameMode,
+        gameType: info.gameType,
+        gameVersion: info.gameVersion,
+        mapId: info.mapId,
+        queueId: info.queueId,
+        endOfGameResult: info.endOfGameResult || null,
+
+        // Blue Bans (championId > 0)
+        blueBan1: blueBans[0]?.championId > 0 ? blueBans[0].championId : null,
+        blueBan2: blueBans[1]?.championId > 0 ? blueBans[1].championId : null,
+        blueBan3: blueBans[2]?.championId > 0 ? blueBans[2].championId : null,
+        blueBan4: blueBans[3]?.championId > 0 ? blueBans[3].championId : null,
+        blueBan5: blueBans[4]?.championId > 0 ? blueBans[4].championId : null,
+
+        // Red Bans (championId > 0)
+        redBan1: redBans[0]?.championId > 0 ? redBans[0].championId : null,
+        redBan2: redBans[1]?.championId > 0 ? redBans[1].championId : null,
+        redBan3: redBans[2]?.championId > 0 ? redBans[2].championId : null,
+        redBan4: redBans[3]?.championId > 0 ? redBans[3].championId : null,
+        redBan5: redBans[4]?.championId > 0 ? redBans[4].championId : null,
+
+        // Blue Objectives
+        blueTowerKills: blueObj.tower?.kills ?? 0,
+        blueInhibitorKills: blueObj.inhibitor?.kills ?? 0,
+        blueBaronKills: blueObj.baron?.kills ?? 0,
+        blueDragonKills: blueObj.dragon?.kills ?? 0,
+        blueRiftHeraldKills: blueObj.riftHerald?.kills ?? 0,
+        blueHordeKills: blueObj.horde?.kills ?? 0,
+        blueFirstTower: blueObj.tower?.first ?? false,
+        blueFirstInhibitor: blueObj.inhibitor?.first ?? false,
+        blueFirstBaron: blueObj.baron?.first ?? false,
+        blueFirstDragon: blueObj.dragon?.first ?? false,
+        blueFirstHorde: blueObj.horde?.first ?? false,
+        blueFirstRiftHerald: blueObj.riftHerald?.first ?? false,
+
+        // Red Objectives
+        redTowerKills: redObj.tower?.kills ?? 0,
+        redInhibitorKills: redObj.inhibitor?.kills ?? 0,
+        redBaronKills: redObj.baron?.kills ?? 0,
+        redDragonKills: redObj.dragon?.kills ?? 0,
+        redRiftHeraldKills: redObj.riftHerald?.kills ?? 0,
+        redHordeKills: redObj.horde?.kills ?? 0,
+        redFirstTower: redObj.tower?.first ?? false,
+        redFirstInhibitor: redObj.inhibitor?.first ?? false,
+        redFirstBaron: redObj.baron?.first ?? false,
+        redFirstDragon: redObj.dragon?.first ?? false,
+        redFirstHorde: redObj.horde?.first ?? false,
+        redFirstRiftHerald: redObj.riftHerald?.first ?? false,
+      };
+
       // Upsert Match
       await prisma.match.upsert({
         where: { id: matchId },
         create: {
           id: matchId,
-          cluster,
-          dataVersion: metadata.dataVersion || '2',
           gameCreation: BigInt(info.gameCreation),
-          gameDuration: info.gameDuration,
-          gameEndTimestamp: info.gameEndTimestamp ? BigInt(info.gameEndTimestamp) : null,
-          gameId: BigInt(info.gameId),
-          gameMode: info.gameMode,
-          gameType: info.gameType,
-          gameVersion: info.gameVersion,
-          mapId: info.mapId,
-          queueId: info.queueId,
-          tournamentCode: info.tournamentCode || null,
-          endOfGameResult: info.endOfGameResult || null,
-          teamsJson: info.teams as any || null,
+          ...matchDataToSave,
         },
-        update: {
-          gameDuration: info.gameDuration,
-          queueId: info.queueId,
-          teamsJson: info.teams as any || null,
-        },
+        update: matchDataToSave,
       });
 
       // Save all 10 participants

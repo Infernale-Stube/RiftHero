@@ -192,25 +192,41 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
         queueId: { in: [420, 440] },
         gameVersion: { startsWith: patch },
       },
-      select: { teamsJson: true },
+      select: {
+        blueBan1: true,
+        blueBan2: true,
+        blueBan3: true,
+        blueBan4: true,
+        blueBan5: true,
+        redBan1: true,
+        redBan2: true,
+        redBan3: true,
+        redBan4: true,
+        redBan5: true,
+      },
       take: 400,
       orderBy: { gameCreation: 'desc' },
     });
 
     const totalMatchesAnalyzed = matchesWithBans.length;
     for (const m of matchesWithBans) {
-      if (Array.isArray(m.teamsJson)) {
-        for (const team of m.teamsJson as any[]) {
-          if (Array.isArray(team?.bans)) {
-            for (const ban of team.bans) {
-              const cid = Number(ban?.championId);
-              if (cid && cid > 0) {
-                const cname = await getChampionNameById(cid);
-                if (cname && !cname.startsWith('Champion_')) {
-                  banCounts.set(cname, (banCounts.get(cname) || 0) + 1);
-                }
-              }
-            }
+      const bans = [
+        m.blueBan1,
+        m.blueBan2,
+        m.blueBan3,
+        m.blueBan4,
+        m.blueBan5,
+        m.redBan1,
+        m.redBan2,
+        m.redBan3,
+        m.redBan4,
+        m.redBan5,
+      ];
+      for (const cid of bans) {
+        if (cid && cid > 0) {
+          const cname = await getChampionNameById(cid);
+          if (cname && !cname.startsWith('Champion_')) {
+            banCounts.set(cname, (banCounts.get(cname) || 0) + 1);
           }
         }
       }

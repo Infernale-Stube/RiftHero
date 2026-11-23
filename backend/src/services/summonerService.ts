@@ -115,6 +115,19 @@ export async function getSummonerProfile(
     });
   }
 
+  if (summoner?.ranked5sTier) {
+    const total = summoner.ranked5sWins + summoner.ranked5sLosses;
+    formattedRanks.push({
+      queueType: 'RANKED_PREMADE_5x5',
+      tier: summoner.ranked5sTier,
+      rank: summoner.ranked5sRank || 'I',
+      leaguePoints: summoner.ranked5sLp,
+      wins: summoner.ranked5sWins,
+      losses: summoner.ranked5sLosses,
+      winrate: total > 0 ? Math.round((summoner.ranked5sWins / total) * 100) : 0,
+    });
+  }
+
   if (!summoner) {
     return {
       summoner: null,

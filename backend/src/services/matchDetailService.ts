@@ -119,23 +119,70 @@ export async function getMatchDetails(
       if (!matchData || !matchData.info) return null;
       const { info, metadata } = matchData;
 
+      const blueTeamInfo = info.teams?.find((t: any) => t.teamId === 100);
+      const redTeamInfo = info.teams?.find((t: any) => t.teamId === 200);
+
+      const blueBans = blueTeamInfo?.bans || [];
+      const redBans = redTeamInfo?.bans || [];
+
+      const blueObj = (blueTeamInfo?.objectives || {}) as any;
+      const redObj = (redTeamInfo?.objectives || {}) as any;
+
       match = await prisma.match.create({
         data: {
           id: matchId,
-          cluster,
-          dataVersion: metadata.dataVersion || '2',
           gameCreation: BigInt(info.gameCreation),
           gameDuration: info.gameDuration,
           gameEndTimestamp: info.gameEndTimestamp ? BigInt(info.gameEndTimestamp) : null,
-          gameId: BigInt(info.gameId),
           gameMode: info.gameMode,
           gameType: info.gameType,
           gameVersion: info.gameVersion,
           mapId: info.mapId,
           queueId: info.queueId,
-          tournamentCode: info.tournamentCode || null,
           endOfGameResult: info.endOfGameResult || null,
-          teamsJson: info.teams as any || null,
+
+          // Blue Bans
+          blueBan1: blueBans[0]?.championId > 0 ? blueBans[0].championId : null,
+          blueBan2: blueBans[1]?.championId > 0 ? blueBans[1].championId : null,
+          blueBan3: blueBans[2]?.championId > 0 ? blueBans[2].championId : null,
+          blueBan4: blueBans[3]?.championId > 0 ? blueBans[3].championId : null,
+          blueBan5: blueBans[4]?.championId > 0 ? blueBans[4].championId : null,
+
+          // Red Bans
+          redBan1: redBans[0]?.championId > 0 ? redBans[0].championId : null,
+          redBan2: redBans[1]?.championId > 0 ? redBans[1].championId : null,
+          redBan3: redBans[2]?.championId > 0 ? redBans[2].championId : null,
+          redBan4: redBans[3]?.championId > 0 ? redBans[3].championId : null,
+          redBan5: redBans[4]?.championId > 0 ? redBans[4].championId : null,
+
+          // Blue Objectives
+          blueTowerKills: blueObj.tower?.kills ?? 0,
+          blueInhibitorKills: blueObj.inhibitor?.kills ?? 0,
+          blueBaronKills: blueObj.baron?.kills ?? 0,
+          blueDragonKills: blueObj.dragon?.kills ?? 0,
+          blueRiftHeraldKills: blueObj.riftHerald?.kills ?? 0,
+          blueHordeKills: blueObj.horde?.kills ?? 0,
+          blueFirstTower: blueObj.tower?.first ?? false,
+          blueFirstInhibitor: blueObj.inhibitor?.first ?? false,
+          blueFirstBaron: blueObj.baron?.first ?? false,
+          blueFirstDragon: blueObj.dragon?.first ?? false,
+          blueFirstHorde: blueObj.horde?.first ?? false,
+          blueFirstRiftHerald: blueObj.riftHerald?.first ?? false,
+
+          // Red Objectives
+          redTowerKills: redObj.tower?.kills ?? 0,
+          redInhibitorKills: redObj.inhibitor?.kills ?? 0,
+          redBaronKills: redObj.baron?.kills ?? 0,
+          redDragonKills: redObj.dragon?.kills ?? 0,
+          redRiftHeraldKills: redObj.riftHerald?.kills ?? 0,
+          redHordeKills: redObj.horde?.kills ?? 0,
+          redFirstTower: redObj.tower?.first ?? false,
+          redFirstInhibitor: redObj.inhibitor?.first ?? false,
+          redFirstBaron: redObj.baron?.first ?? false,
+          redFirstDragon: redObj.dragon?.first ?? false,
+          redFirstHorde: redObj.horde?.first ?? false,
+          redFirstRiftHerald: redObj.riftHerald?.first ?? false,
+
           participants: {
             create: info.participants.map((p) => {
               const kdaValue = p.deaths === 0
@@ -220,10 +267,6 @@ export async function getMatchDetails(
   }
 
   // 3. Process Teams and Objectives
-  const rawTeams = (match as any).teamsJson as any[] || [];
-  const blueTeamRaw = rawTeams.find((t) => t.teamId === 100) || {};
-  const redTeamRaw = rawTeams.find((t) => t.teamId === 200) || {};
-
   const participants = match.participants || [];
   const durationMinutes = match.gameDuration / 60;
 
@@ -323,23 +366,24 @@ export async function getMatchDetails(
     .filter((p) => p.teamId === 200)
     .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
 
-  const formatBans = async (rawBans: any[] = []) => {
+  const formatBans = async (rawBans: Array<number | null>) => {
     const bans = [];
-    for (const b of rawBans) {
-      if (b.championId > 0) {
-        const champName = await getChampionNameById(b.championId);
+    for (let i = 0; i < rawBans.length; i++) {
+      const cid = rawBans[i];
+      if (cid && cid > 0) {
+        const champName = await getChampionNameById(cid);
         bans.push({
-          championId: b.championId,
+          championId: cid,
           championName: champName,
-          pickTurn: b.pickTurn,
+          pickTurn: i + 1,
         });
       }
     }
     return bans;
   };
 
-  const blueBans = await formatBans(blueTeamRaw.bans);
-  const redBans = await formatBans(redTeamRaw.bans);
+  const blueBans = await formatBans([match.blueBan1, match.blueBan2, match.blueBan3, match.blueBan4, match.blueBan5]);
+  const redBans = await formatBans([match.redBan1, match.redBan2, match.redBan3, match.redBan4, match.redBan5]);
 
   // Extract dragon types if timeline is available
   const blueDragonTypes: string[] = [];
@@ -362,12 +406,9 @@ export async function getMatchDetails(
     }
   }
 
-  const blueObjectives = blueTeamRaw.objectives || {};
-  const redObjectives = redTeamRaw.objectives || {};
-
   const blueTeam: TeamMatchDetail = {
     teamId: 100,
-    win: blueTeamRaw.win || blueParticipants.some((p) => p.win),
+    win: blueParticipants.some((p) => p.win),
     totalKills: blueParticipants.reduce((acc, p) => acc + p.kills, 0),
     totalDeaths: blueParticipants.reduce((acc, p) => acc + p.deaths, 0),
     totalAssists: blueParticipants.reduce((acc, p) => acc + p.assists, 0),
@@ -375,19 +416,19 @@ export async function getMatchDetails(
     totalDamage: blueParticipants.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
     bans: blueBans,
     objectives: {
-      baron: blueObjectives.baron || { first: false, kills: 0 },
-      dragon: blueObjectives.dragon || { first: false, kills: blueDragonTypes.length },
-      riftHerald: blueObjectives.riftHerald || { first: false, kills: 0 },
-      horde: blueObjectives.horde || { first: false, kills: 0 },
-      tower: blueObjectives.tower || { first: false, kills: 0 },
-      inhibitor: blueObjectives.inhibitor || { first: false, kills: 0 },
+      baron: { first: match.blueFirstBaron, kills: match.blueBaronKills },
+      dragon: { first: match.blueFirstDragon, kills: match.blueDragonKills || blueDragonTypes.length },
+      riftHerald: { first: match.blueFirstRiftHerald, kills: match.blueRiftHeraldKills },
+      horde: { first: match.blueFirstHorde, kills: match.blueHordeKills },
+      tower: { first: match.blueFirstTower, kills: match.blueTowerKills },
+      inhibitor: { first: match.blueFirstInhibitor, kills: match.blueInhibitorKills },
     },
     dragonTypes: blueDragonTypes,
   };
 
   const redTeam: TeamMatchDetail = {
     teamId: 200,
-    win: redTeamRaw.win || redParticipants.some((p) => p.win),
+    win: redParticipants.some((p) => p.win),
     totalKills: redParticipants.reduce((acc, p) => acc + p.kills, 0),
     totalDeaths: redParticipants.reduce((acc, p) => acc + p.deaths, 0),
     totalAssists: redParticipants.reduce((acc, p) => acc + p.assists, 0),
@@ -395,12 +436,12 @@ export async function getMatchDetails(
     totalDamage: redParticipants.reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0),
     bans: redBans,
     objectives: {
-      baron: redObjectives.baron || { first: false, kills: 0 },
-      dragon: redObjectives.dragon || { first: false, kills: redDragonTypes.length },
-      riftHerald: redObjectives.riftHerald || { first: false, kills: 0 },
-      horde: redObjectives.horde || { first: false, kills: 0 },
-      tower: redObjectives.tower || { first: false, kills: 0 },
-      inhibitor: redObjectives.inhibitor || { first: false, kills: 0 },
+      baron: { first: match.redFirstBaron, kills: match.redBaronKills },
+      dragon: { first: match.redFirstDragon, kills: match.redDragonKills || redDragonTypes.length },
+      riftHerald: { first: match.redFirstRiftHerald, kills: match.redRiftHeraldKills },
+      horde: { first: match.redFirstHorde, kills: match.redHordeKills },
+      tower: { first: match.redFirstTower, kills: match.redTowerKills },
+      inhibitor: { first: match.redFirstInhibitor, kills: match.redInhibitorKills },
     },
     dragonTypes: redDragonTypes,
   };
@@ -445,7 +486,7 @@ export async function getMatchDetails(
 
   return {
     matchId: match.id,
-    cluster: match.cluster,
+    cluster,
     gameDuration: match.gameDuration,
     gameCreation: Number(match.gameCreation),
     gameEndTimestamp: match.gameEndTimestamp

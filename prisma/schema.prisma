@@ -35,6 +35,13 @@ model Summoner {
   flexWins       Int       @default(0)
   flexLosses     Int       @default(0)
 
+  // Ranked 5s / Premade 5s
+  ranked5sTier   String?
+  ranked5sRank   String?
+  ranked5sLp     Int       @default(0)
+  ranked5sWins   Int       @default(0)
+  ranked5sLosses Int       @default(0)
+
   lpSnapshots    SummonerLpSnapshot[]
   participants   MatchParticipant[]
 
@@ -65,25 +72,61 @@ model SummonerLpSnapshot {
 }
 
 model Match {
-  id               String   @id // e.g. EUW1_6999999999
-  cluster          String   // europe, americas, asia
-  dataVersion      String   @default("2")
-  gameCreation     BigInt
-  gameDuration     Int      // seconds
-  gameEndTimestamp BigInt?
-  gameId           BigInt
-  gameMode         String   // CLASSIC, ARAM, etc.
-  gameType         String   // MATCHED_GAME
-  gameVersion      String
-  mapId            Int
-  queueId          Int      // 420: Solo, 440: Flex, 450: ARAM, 400: Normal Draft
-  tournamentCode   String?
-  endOfGameResult  String?
-  teamsJson        Json?    // Full team objectives (Drakes, Barons, Towers, Grubs, Bans)
-  timelineJson     Json?    // Timeline frames for gold diff graphs & objective timeline
-  createdAt        DateTime @default(now())
+  id                  String   @id // e.g. EUW1_6999999999
+  gameCreation        BigInt
+  gameDuration        Int      // seconds
+  gameEndTimestamp    BigInt?
+  gameMode            String   // CLASSIC, ARAM, etc.
+  gameType            String   // MATCHED_GAME
+  gameVersion         String
+  mapId               Int
+  queueId             Int      // 420: Solo, 440: Flex, 450: ARAM, 400: Normal Draft
+  endOfGameResult     String?
+  createdAt           DateTime @default(now())
 
-  participants     MatchParticipant[]
+  // Team 100 (Blue) Bans (Champion IDs)
+  blueBan1            Int?
+  blueBan2            Int?
+  blueBan3            Int?
+  blueBan4            Int?
+  blueBan5            Int?
+
+  // Team 200 (Red) Bans (Champion IDs)
+  redBan1             Int?
+  redBan2             Int?
+  redBan3             Int?
+  redBan4             Int?
+  redBan5             Int?
+
+  // Team 100 (Blue) Objectives
+  blueTowerKills      Int      @default(0)
+  blueInhibitorKills  Int      @default(0)
+  blueBaronKills      Int      @default(0)
+  blueDragonKills     Int      @default(0)
+  blueRiftHeraldKills Int      @default(0)
+  blueHordeKills      Int      @default(0)
+  blueFirstTower      Boolean  @default(false)
+  blueFirstInhibitor  Boolean  @default(false)
+  blueFirstBaron      Boolean  @default(false)
+  blueFirstDragon     Boolean  @default(false)
+  blueFirstHorde      Boolean  @default(false)
+  blueFirstRiftHerald Boolean  @default(false)
+
+  // Team 200 (Red) Objectives
+  redTowerKills       Int      @default(0)
+  redInhibitorKills   Int      @default(0)
+  redBaronKills       Int      @default(0)
+  redDragonKills      Int      @default(0)
+  redRiftHeraldKills  Int      @default(0)
+  redHordeKills       Int      @default(0)
+  redFirstTower       Boolean  @default(false)
+  redFirstInhibitor   Boolean  @default(false)
+  redFirstBaron       Boolean  @default(false)
+  redFirstDragon      Boolean  @default(false)
+  redFirstHorde       Boolean  @default(false)
+  redFirstRiftHerald  Boolean  @default(false)
+
+  participants        MatchParticipant[]
 
   @@index([gameCreation(sort: Desc)])
   @@index([queueId])
