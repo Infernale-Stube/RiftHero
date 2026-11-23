@@ -2,7 +2,7 @@ import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
 import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
-import { calculateMatchScores, getOrCalculateMatchScores, DeepLolScore } from './scoreService';
+import { buildScoresFromSavedHeroScores, DeepLolScore } from './scoreService';
 
 export interface FormattedMatchParticipant {
   puuid: string;
@@ -211,7 +211,7 @@ export async function getSummonerMatches(
     const blueTotalDmg = allParticipants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
     const redTotalDmg = allParticipants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
-    const matchScores = getOrCalculateMatchScores(allParticipants, m.gameDuration);
+    const matchScores = buildScoresFromSavedHeroScores(allParticipants);
 
     const formattedParticipants = allParticipants.map((p) => {
       const isBlue = p.teamId === 100;
@@ -222,7 +222,7 @@ export async function getSummonerMatches(
         isBlue ? blueTotalDmg : redTotalDmg
       );
       formatted.score = matchScores.get(p.puuid);
-      formatted.heroScore = p.heroScore ?? formatted.score?.score ?? null;
+      formatted.heroScore = p.heroScore ?? null;
       return formatted;
     });
     const blueTeam = formattedParticipants

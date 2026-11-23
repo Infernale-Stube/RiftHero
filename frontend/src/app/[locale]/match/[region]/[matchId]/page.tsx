@@ -389,21 +389,21 @@ export default function MatchDetailPage() {
                             {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
                           </span>
                         )}
-                        {p.score && (
+                        {((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (
                           <span
                             className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 ${
-                              p.score.isMvp
+                              p.score?.isMvp
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                                : p.score.isAce
+                                : p.score?.isAce
                                 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
                                 : 'bg-white/[0.08] text-zinc-300 border border-white/10'
                             }`}
                           >
-                            {p.score.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
-                            {p.score.isAce && <Award className="h-3 w-3 text-purple-400" />}
+                            {p.score?.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
+                            {p.score?.isAce && <Award className="h-3 w-3 text-purple-400" />}
                             <span>
-                              {p.score.isMvp ? 'MVP' : p.score.isAce ? 'ACE' : 'Score'}{' '}
-                              {Math.round(p.score.score <= 10 ? p.score.score * 10 : p.score.score)}
+                              {p.score?.isMvp ? 'MVP' : p.score?.isAce ? 'ACE' : 'Score'}{' '}
+                              {Math.round((p.heroScore ?? p.score!.score) <= 10 ? (p.heroScore ?? p.score!.score) * 10 : (p.heroScore ?? p.score!.score))}
                             </span>
                           </span>
                         )}

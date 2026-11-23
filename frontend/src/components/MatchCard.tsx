@@ -56,8 +56,9 @@ function getMultiKillText(p: MatchParticipant): string | null {
 }
 
 function formatScore(score?: DeepLolScore | number): number {
-  if (score === undefined || score === null) return 50;
+  if (score === undefined || score === null) return 0;
   const val = typeof score === 'number' ? score : score.score;
+  if (!val || val <= 0) return 0;
   const scaled = val <= 10 ? val * 10 : val;
   return Math.round(Math.min(100, Math.max(0, scaled)));
 }
@@ -210,12 +211,24 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const maxGameCs = Math.max(...allParticipants.map((p) => p.cs), 1);
 
 
-  // Sort all 10 players by score descending to assign overall rank (1st to 10th)
-  const allPlayersRanked = [...allParticipants].sort((a, b) => {
-    return formatScore(b.score) - formatScore(a.score);
-  });
+  const hasAnyScore = allParticipants.some(
+    (p) => (typeof p.heroScore === 'number' && p.heroScore > 0) || (typeof p.score?.score === 'number' && p.score.score > 0)
+  );
+
+  // Sort all 10 players by score descending to assign overall rank (1st to 10th) if score exists
+  const allPlayersRanked = hasAnyScore
+    ? [...allParticipants].sort((a, b) => {
+        const scoreB = b.heroScore ?? b.score?.score ?? 0;
+        const scoreA = a.heroScore ?? a.score?.score ?? 0;
+        return scoreB - scoreA;
+      })
+    : [];
 
   const getRankInfo = (p: MatchParticipant) => {
+    const pScore = p.heroScore ?? p.score?.score;
+    if (!hasAnyScore || typeof pScore !== 'number' || pScore <= 0) {
+      return null;
+    }
     if (p.score?.isMvp) return { label: 'MVP', isMvp: true, isAce: false };
     if (p.score?.isAce) return { label: 'ACE', isMvp: false, isAce: true };
     const index = allPlayersRanked.findIndex((item) => item.puuid === p.puuid);
@@ -402,7 +415,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             const rankInfo = getRankInfo(p);
             const pKeystone = getRuneIconUrl(p.primaryRune);
             const pStyle = getStyleIconUrl(p.secondaryStyle);
-            const pScore = formatScore(p.score);
+            const pScore = formatScore(p.heroScore ?? p.score);
 
             return (
               <div
@@ -414,21 +427,23 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 {/* Left: Rank Badge + Champion Avatar + Spells/Runes + Role Icon + Name */}
                 <div className="flex items-center gap-2.5 min-w-[240px]">
                   {/* Rank Badge: MVP (gold), ACE (teal), or 2nd..10th */}
-                  <div className="w-10 sm:w-11 h-6 rounded-md flex items-center justify-center shrink-0">
-                    {rankInfo.isMvp ? (
-                      <span className="w-full h-full rounded-md bg-amber-400 text-black border border-amber-300 font-black text-xs flex items-center justify-center shadow-sm">
-                        MVP
-                      </span>
-                    ) : rankInfo.isAce ? (
-                      <span className="w-full h-full rounded-md bg-teal-500/20 border border-teal-500/50 text-teal-300 font-black text-xs flex items-center justify-center">
-                        ACE
-                      </span>
-                    ) : (
-                      <span className="w-full h-full rounded-md bg-white/[0.04] border border-white/[0.08] text-zinc-400 text-[10px] font-bold flex items-center justify-center">
-                        {rankInfo.label}
-                      </span>
-                    )}
-                  </div>
+                  {rankInfo && (
+                    <div className="w-10 sm:w-11 h-6 rounded-md flex items-center justify-center shrink-0">
+                      {rankInfo.isMvp ? (
+                        <span className="w-full h-full rounded-md bg-amber-400 text-black border border-amber-300 font-black text-xs flex items-center justify-center shadow-sm">
+                          MVP
+                        </span>
+                      ) : rankInfo.isAce ? (
+                        <span className="w-full h-full rounded-md bg-teal-500/20 border border-teal-500/50 text-teal-300 font-black text-xs flex items-center justify-center">
+                          ACE
+                        </span>
+                      ) : (
+                        <span className="w-full h-full rounded-md bg-white/[0.04] border border-white/[0.08] text-zinc-400 text-[10px] font-bold flex items-center justify-center">
+                          {rankInfo.label}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Champion Avatar with Uncropped Level Badge */}
                   <div className="relative h-8 w-8 shrink-0">
@@ -636,14 +651,14 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   <div className="w-16 text-center shrink-0">
                     <span
                       className={`text-xs font-black ${
-                        rankInfo.isMvp
+                        rankInfo?.isMvp
                           ? 'text-amber-400 text-sm'
-                          : rankInfo.isAce
+                          : rankInfo?.isAce
                           ? 'text-emerald-400 text-sm'
                           : 'text-zinc-200'
                       }`}
                     >
-                      {pScore}
+                      {pScore > 0 ? pScore : '—'}
                     </span>
                   </div>
                 </div>
@@ -864,7 +879,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
         </div>
 
         {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
-        {(participant.score || (participant.heroScore !== undefined && participant.heroScore !== null)) && (
+        {((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
           <div className="flex flex-col items-center justify-center shrink-0 min-w-[85px]">
             {participant.score?.isMvp ? (
               <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-3 py-1.5 text-sm font-black shadow-md tracking-tight">

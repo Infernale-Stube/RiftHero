@@ -6,7 +6,7 @@ import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
 import {
   calculateMatchScores,
-  getOrCalculateMatchScores,
+  buildScoresFromSavedHeroScores,
   calculateScoreTimeline,
   DeepLolScore,
   ScoreTimelinePoint,
@@ -285,7 +285,7 @@ export async function getMatchDetails(
     );
   }
 
-  const matchScores = getOrCalculateMatchScores(participants, match.gameDuration);
+  const matchScores = buildScoresFromSavedHeroScores(participants);
 
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
@@ -461,8 +461,8 @@ export async function getMatchDetails(
   const maxDamage = Math.max(...formattedParticipants.map((p) => p.totalDamageDealtToChampions), 1);
   const maxDamageTaken = Math.max(...formattedParticipants.map((p) => p.totalDamageTaken), 1);
 
-  // Compute minute-by-minute score progression timeline (DeepLoL style)
-  const scoreTimeline = calculateScoreTimeline(timeline, participants, matchScores);
+  // Compute minute-by-minute score progression timeline (DeepLoL style) if scores exist
+  const scoreTimeline = matchScores.size > 0 ? calculateScoreTimeline(timeline, participants, matchScores) : [];
 
   // Default overall match LP change from first participant with LP or first participant
   const matchOverallLpChange = formattedParticipants.find((p) => p.lpChange)?.lpChange || null;

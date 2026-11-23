@@ -155,14 +155,23 @@ export function calculateMatchScores(
 
 /**
  * Builds the complete DeepLolScore ranking map from precalculated heroScores stored in the database.
+ * If participants do not have saved heroScores, returns an empty map (NO live calculation/fallback).
  */
 export function buildScoresFromSavedHeroScores(
   participants: Array<{ puuid: string; win: boolean; heroScore?: number | null }>
 ): Map<string, DeepLolScore> {
-  const scoredList = participants.map((p) => ({
+  const withScore = participants.filter(
+    (p) => typeof p.heroScore === 'number' && p.heroScore > 0
+  );
+
+  if (withScore.length === 0) {
+    return new Map<string, DeepLolScore>();
+  }
+
+  const scoredList = withScore.map((p) => ({
     puuid: p.puuid,
     win: p.win,
-    rawScore: p.heroScore ?? 0,
+    rawScore: p.heroScore as number,
   }));
 
   // Sort by rawScore descending
@@ -196,24 +205,6 @@ export function buildScoresFromSavedHeroScores(
   });
 
   return resultMap;
-}
-
-/**
- * Returns match scores from DB heroScore if available, or calculates them on the fly.
- */
-export function getOrCalculateMatchScores(
-  participants: any[],
-  gameDurationSeconds: number
-): Map<string, DeepLolScore> {
-  const hasSavedScores =
-    participants.length > 0 &&
-    participants.every((p) => typeof p.heroScore === 'number' && p.heroScore > 0);
-
-  if (hasSavedScores) {
-    return buildScoresFromSavedHeroScores(participants);
-  }
-
-  return calculateMatchScores(participants, gameDurationSeconds);
 }
 
 /**
