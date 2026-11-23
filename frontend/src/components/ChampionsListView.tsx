@@ -152,14 +152,16 @@ export default function ChampionsListView() {
   // Filter & Sort champions
   const filteredChampions = useMemo(() => {
     const list = champions.filter((champ) => {
-      const posMeta = championPositionsMap[champ.id];
+      if (!champ) return false;
+      const champId = champ.id || '';
+      const posMeta = champId ? championPositionsMap[champId] : null;
 
       // Lane filter
       if (selectedLane !== 'ALL') {
         const recPositions = posMeta?.recommendedPositions || [];
         const primaryRole = posMeta?.role || '';
         const laneMatch = recPositions.some((p) => {
-          const up = p.toUpperCase();
+          const up = (p || '').toUpperCase();
           if (selectedLane === 'TOP') return up === 'TOP';
           if (selectedLane === 'JUNGLE') return up === 'JUNGLE';
           if (selectedLane === 'MID') return up === 'MIDDLE' || up === 'MID';
@@ -169,7 +171,7 @@ export default function ChampionsListView() {
         });
 
         const primaryMatch = (() => {
-          const up = primaryRole.toUpperCase();
+          const up = (primaryRole || '').toUpperCase();
           if (selectedLane === 'TOP') return up === 'TOP';
           if (selectedLane === 'JUNGLE') return up === 'JUNGLE';
           if (selectedLane === 'MID') return up === 'MIDDLE' || up === 'MID';
@@ -184,17 +186,17 @@ export default function ChampionsListView() {
       // Class filter
       if (selectedClass !== 'ALL') {
         const hasTag = champ.tags?.includes(selectedClass);
-        const matchesClass = posMeta?.class?.toLowerCase() === selectedClass.toLowerCase();
+        const matchesClass = (posMeta?.class || '').toLowerCase() === selectedClass.toLowerCase();
         if (!hasTag && !matchesClass) return false;
       }
 
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = champ.name.toLowerCase().includes(q);
-        const matchesTitle = champ.title.toLowerCase().includes(q);
-        const matchesTag = champ.tags?.some((tg) => tg.toLowerCase().includes(q));
-        const matchesRole = posMeta?.role?.toLowerCase().includes(q);
+        const matchesName = (champ.name || '').toLowerCase().includes(q);
+        const matchesTitle = (champ.title || '').toLowerCase().includes(q);
+        const matchesTag = champ.tags?.some((tg) => (tg || '').toLowerCase().includes(q));
+        const matchesRole = (posMeta?.role || '').toLowerCase().includes(q);
         if (!matchesName && !matchesTitle && !matchesTag && !matchesRole) {
           return false;
         }
@@ -205,10 +207,12 @@ export default function ChampionsListView() {
 
     // Sorting
     list.sort((a, b) => {
+      const nameA = a.name || '';
+      const nameB = b.name || '';
       if (sortBy === 'name-desc') {
-        return b.name.localeCompare(a.name);
+        return nameB.localeCompare(nameA);
       }
-      return a.name.localeCompare(b.name);
+      return nameA.localeCompare(nameB);
     });
 
     return list;
@@ -442,13 +446,14 @@ export default function ChampionsListView() {
         ) : filteredChampions.length > 0 ? (
           <div className="flex flex-wrap gap-2 sm:gap-2.5">
             {filteredChampions.map((champ) => {
-              const slug = champ.id.toLowerCase();
-              const meta = championPositionsMap[champ.id];
+              const champId = champ.id || '';
+              const slug = champId.toLowerCase();
+              const meta = champId ? championPositionsMap[champId] : null;
               const primaryPos = meta?.recommendedPositions?.[0] || meta?.role || 'Top';
 
               // Map position to PositionKey
               const posKey: PositionKey = (() => {
-                const up = primaryPos.toUpperCase();
+                const up = (primaryPos || '').toUpperCase();
                 if (up === 'TOP') return 'TOP';
                 if (up === 'JUNGLE') return 'JUNGLE';
                 if (up === 'MIDDLE' || up === 'MID') return 'MID';

@@ -976,12 +976,33 @@ export async function loadActiveChampionSnapshot(
           lore: row.loreDe || '',
           image: row.image,
           role: row.role || 'Mid',
-          positions: row.positions,
-          tags: row.tags,
-          difficulty: row.difficulty,
-          classes: row.classes,
-          releaseDate: row.releaseDate,
+          positions: row.positions || [],
+          tags: row.tags || [],
+          difficulty: row.difficulty ?? 5,
+          classes: row.classes || [],
+          releaseDate: row.releaseDate || '',
           stats,
+          spells: [],
+          skins: [
+            {
+              id: '0',
+              num: 0,
+              name: 'default',
+              rarity: 'Regular',
+              rarityColor: '#2E8D4C',
+              releaseDate: row.releaseDate || '2012-01-01',
+              releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
+              cost: 0,
+              price: 0,
+              currency: 'RP',
+              isLegacy: false,
+            },
+          ],
+          passive: null,
+          partype: 'Mana',
+          info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
+          allytips: [],
+          enemytips: [],
           meta: null,
         };
 
@@ -995,12 +1016,33 @@ export async function loadActiveChampionSnapshot(
           lore: row.loreEn || '',
           image: row.image,
           role: row.role || 'Mid',
-          positions: row.positions,
-          tags: row.tags,
-          difficulty: row.difficulty,
-          classes: row.classes,
-          releaseDate: row.releaseDate,
+          positions: row.positions || [],
+          tags: row.tags || [],
+          difficulty: row.difficulty ?? 5,
+          classes: row.classes || [],
+          releaseDate: row.releaseDate || '',
           stats,
+          spells: [],
+          skins: [
+            {
+              id: '0',
+              num: 0,
+              name: 'default',
+              rarity: 'Regular',
+              rarityColor: '#2E8D4C',
+              releaseDate: row.releaseDate || '2012-01-01',
+              releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
+              cost: 0,
+              price: 0,
+              currency: 'RP',
+              isLegacy: false,
+            },
+          ],
+          passive: null,
+          partype: 'Mana',
+          info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
+          allytips: [],
+          enemytips: [],
           meta: null,
         };
 
@@ -1183,6 +1225,12 @@ export async function getChampionDetail(
 
     const enrichedChampion = {
       ...cached,
+      stats: cached.stats || {},
+      spells: Array.isArray(cached.spells) ? cached.spells : [],
+      skins: Array.isArray(cached.skins) ? cached.skins : [],
+      passive: cached.passive || null,
+      partype: cached.partype || 'Mana',
+      info: cached.info || { attack: 5, defense: 5, magic: 5, difficulty: cached.difficulty ?? 5 },
       meta: metaStats
         ? {
             tier: metaStats.tier,
@@ -1200,16 +1248,16 @@ export async function getChampionDetail(
     };
 
     return {
-      version: snapshot.version,
-      patch: snapshot.patch,
+      version: snapshot.version || '15.1.1',
+      patch: snapshot.patch || '15.1',
       slot,
       champion: enrichedChampion,
     };
   }
 
   return {
-    version: snapshot.version,
-    patch: snapshot.patch,
+    version: snapshot.version || '15.1.1',
+    patch: snapshot.patch || '15.1',
     slot,
     champion: null,
   };

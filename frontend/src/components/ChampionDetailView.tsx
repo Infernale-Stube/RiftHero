@@ -628,26 +628,26 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
   })();
 
   const skins: DDragonSkin[] = useMemo(() => {
-    if (!data || !data.skins) return [];
-    return data.skins.filter((s) => s.parentSkin === undefined || s.parentSkin === null);
+    if (!data || !data.skins || !Array.isArray(data.skins)) return [];
+    return data.skins.filter((s) => s && (s.parentSkin === undefined || s.parentSkin === null));
   }, [data]);
 
-  const activeSkin = skins[selectedSkinIndex] || skins[0] || null;
+  const activeSkin = (skins.length > 0 && skins[selectedSkinIndex]) ? skins[selectedSkinIndex] : (skins[0] || null);
 
   const activeSkinDisplayName = useMemo(() => {
     if (!activeSkin || !data) return '';
     if (activeSkin.num === 0 || activeSkin.name === 'default') {
-      return locale === 'de' ? `Klassische(r) ${data.name}` : `Classic ${data.name}`;
+      return locale === 'de' ? `Klassische(r) ${data.name || ''}` : `Classic ${data.name || ''}`;
     }
-    return activeSkin.name;
+    return activeSkin.name || '';
   }, [activeSkin, data, locale]);
 
   // Selected spell
   const selectedSpell = useMemo(() => {
-    if (!data || selectedSpellIndex < 0 || selectedSpellIndex >= data.spells.length) {
+    if (!data || !data.spells || !Array.isArray(data.spells) || selectedSpellIndex < 0 || selectedSpellIndex >= data.spells.length) {
       return null;
     }
-    return data.spells[selectedSpellIndex];
+    return data.spells[selectedSpellIndex] || null;
   }, [data, selectedSpellIndex]);
 
   // Dynamic Level Stats Calculation (League Standard Formula)
@@ -657,15 +657,19 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     const lvl = selectedLevel;
     const growthCoeff = (lvl - 1) * (0.7025 + 0.0175 * (lvl - 1));
 
-    const calc = (base: number, growth: number) => {
-      if (!growth || lvl === 1) return base;
-      return Math.round((base + growth * growthCoeff) * 10) / 10;
+    const calc = (base?: number, growth?: number) => {
+      const b = base ?? 0;
+      const g = growth ?? 0;
+      if (!g || lvl === 1) return b;
+      return Math.round((b + g * growthCoeff) * 10) / 10;
     };
 
-    const calcAS = (base: number, growthPercent: number) => {
-      if (!growthPercent || lvl === 1) return base;
-      const totalBonusPercent = (growthPercent * growthCoeff) / 100;
-      return Math.round(base * (1 + totalBonusPercent) * 1000) / 1000;
+    const calcAS = (base?: number, growthPercent?: number) => {
+      const b = base ?? 0;
+      const g = growthPercent ?? 0;
+      if (!g || lvl === 1) return b;
+      const totalBonusPercent = (g * growthCoeff) / 100;
+      return Math.round(b * (1 + totalBonusPercent) * 1000) / 1000;
     };
 
     return {
@@ -685,20 +689,20 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
     if (!data || !skins || skins.length === 0) return [];
     const champRelYear = data.releaseDate ? parseInt(data.releaseDate.slice(0, 4), 10) : 2011;
     return skins
-      .filter((s) => s.num !== 0)
+      .filter((s) => s && s.num !== 0)
       .map((s) => {
         const rawRarity = (s.rarity || 'Regular') as string;
         const tier = LOLDB_RARITY_ORDER.includes(rawRarity as any) ? rawRarity : 'Regular';
         const year = s.releaseYear && !isNaN(s.releaseYear) ? s.releaseYear : (champRelYear || 2015);
         return {
-          id: String(s.id),
+          id: String(s.id || s.num),
           num: s.num,
-          name: s.name === 'default' ? (t('championWiki.defaultSkin') || 'Base Skin') : s.name,
+          name: s.name === 'default' ? (t('championWiki.defaultSkin') || 'Base Skin') : (s.name || ''),
           year,
           date: s.releaseDate,
           rank: LOLDB_RARITY_RANKS[tier] ?? 1,
           tier,
-          image: getChampionLoadingUrl(data.id, s.num),
+          image: getChampionLoadingUrl(data.id || '', s.num),
           price:
             s.currency === 'AS' || (typeof s.cost === 'string' && s.cost.includes('AS')) || (typeof s.price === 'string' && s.price.includes('AS'))
               ? `${typeof s.price === 'number' ? s.price : typeof s.cost === 'number' ? s.cost : typeof s.cost === 'string' ? s.cost.replace(/[^0-9]/g, '') : '40'} AS`
@@ -718,10 +722,10 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               ? `${s.price ?? s.cost}`
               : undefined,
           currency: s.currency,
-          isLegacy: s.isLegacy,
+          isLegacy: Boolean(s.isLegacy),
         };
       });
-  }, [data, skins, t]);
+  }, [data, skins, t, locale]);
 
   const { singlesFlat, groupsFlat, allFlat, minYear, maxYear, maxRank, displayRankMap, hasTimelineData } = useMemo(() => {
     if (timelineFilteredSkins.length === 0) {
@@ -1175,14 +1179,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#f87171] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hp ?? data.stats.hp) / 2800) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hp ?? data.stats?.hp ?? 0) / 2800) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.hpperlevel}/lvl
+              +{data.stats?.hpperlevel ?? 0}/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#f87171] tabular-nums">
-              {calcStats?.hp ?? data.stats.hp}
+              {calcStats?.hp ?? data.stats?.hp ?? 0}
             </span>
           </div>
 
@@ -1197,14 +1201,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#fb923c] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.ad ?? data.stats.attackdamage) / 160) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.ad ?? data.stats?.attackdamage ?? 0) / 160) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.attackdamageperlevel}/lvl
+              +{data.stats?.attackdamageperlevel ?? 0}/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#fb923c] tabular-nums">
-              {calcStats?.ad ?? data.stats.attackdamage}
+              {calcStats?.ad ?? data.stats?.attackdamage ?? 0}
             </span>
           </div>
 
@@ -1219,14 +1223,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#facc15] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.armor ?? data.stats.armor) / 130) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.armor ?? data.stats?.armor ?? 0) / 130) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.armorperlevel}/lvl
+              +{data.stats?.armorperlevel ?? 0}/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#facc15] tabular-nums">
-              {calcStats?.armor ?? data.stats.armor}
+              {calcStats?.armor ?? data.stats?.armor ?? 0}
             </span>
           </div>
 
@@ -1241,14 +1245,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#4ade80] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hpregen ?? data.stats.hpregen) / 25) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(10, ((calcStats?.hpregen ?? data.stats?.hpregen ?? 0) / 25) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.hpregenperlevel}/lvl
+              +{data.stats?.hpregenperlevel ?? 0}/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#4ade80] tabular-nums">
-              {calcStats?.hpregen ?? data.stats.hpregen}
+              {calcStats?.hpregen ?? data.stats?.hpregen ?? 0}
             </span>
           </div>
 
@@ -1263,14 +1267,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#94a3b8] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(15, (data.stats.movespeed / 400) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(15, ((data.stats?.movespeed ?? 0) / 400) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
               —
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-zinc-200 tabular-nums">
-              {data.stats.movespeed}
+              {data.stats?.movespeed ?? 0}
             </span>
           </div>
         </div>
@@ -1289,15 +1293,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <div
                 className="h-full bg-[#60a5fa] rounded-full transition-all duration-300 ease-out"
                 style={{
-                  width: `${data.stats.mp > 0 ? Math.min(100, Math.max(10, ((calcStats?.mp ?? data.stats.mp) / 1800) * 100)) : 0}%`,
+                  width: `${(data.stats?.mp ?? 0) > 0 ? Math.min(100, Math.max(10, ((calcStats?.mp ?? data.stats?.mp ?? 0) / 1800) * 100)) : 0}%`,
                 }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              {data.stats.mp > 0 ? `+${data.stats.mpperlevel}/lvl` : '—'}
+              {(data.stats?.mp ?? 0) > 0 ? `+${data.stats?.mpperlevel ?? 0}/lvl` : '—'}
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#60a5fa] tabular-nums">
-              {data.stats.mp > 0 ? (calcStats?.mp ?? data.stats.mp) : 0}
+              {(data.stats?.mp ?? 0) > 0 ? (calcStats?.mp ?? data.stats?.mp ?? 0) : 0}
             </span>
           </div>
 
@@ -1313,15 +1317,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <div
                 className="h-full bg-[#fbbf24] rounded-full transition-all duration-300 ease-out"
                 style={{
-                  width: `${Math.min(100, Math.max(10, (((calcStats?.as ?? data.stats.attackspeed) - 0.5) / 1.0) * 100))}%`,
+                  width: `${Math.min(100, Math.max(10, (((calcStats?.as ?? data.stats?.attackspeed ?? 0) - 0.5) / 1.0) * 100))}%`,
                 }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.attackspeedperlevel}%/lvl
+              +{data.stats?.attackspeedperlevel ?? 0}%/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#fbbf24] tabular-nums">
-              {calcStats?.as ?? data.stats.attackspeed}
+              {calcStats?.as ?? data.stats?.attackspeed ?? 0}
             </span>
           </div>
 
@@ -1337,15 +1341,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <div
                 className="h-full bg-[#c084fc] rounded-full transition-all duration-300 ease-out"
                 style={{
-                  width: `${Math.min(100, Math.max(10, ((calcStats?.mr ?? data.stats.spellblock) / 90) * 100))}%`,
+                  width: `${Math.min(100, Math.max(10, ((calcStats?.mr ?? data.stats?.spellblock ?? 0) / 90) * 100))}%`,
                 }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              +{data.stats.spellblockperlevel}/lvl
+              +{data.stats?.spellblockperlevel ?? 0}/lvl
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#c084fc] tabular-nums">
-              {calcStats?.mr ?? data.stats.spellblock}
+              {calcStats?.mr ?? data.stats?.spellblock ?? 0}
             </span>
           </div>
 
@@ -1361,15 +1365,15 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               <div
                 className="h-full bg-[#38bdf8] rounded-full transition-all duration-300 ease-out"
                 style={{
-                  width: `${data.stats.mp > 0 ? Math.min(100, Math.max(10, ((calcStats?.mpregen ?? data.stats.mpregen) / 25) * 100)) : 0}%`,
+                  width: `${(data.stats?.mp ?? 0) > 0 ? Math.min(100, Math.max(10, ((calcStats?.mpregen ?? data.stats?.mpregen ?? 0) / 25) * 100)) : 0}%`,
                 }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
-              {data.stats.mp > 0 ? `+${data.stats.mpregenperlevel}/lvl` : '—'}
+              {(data.stats?.mp ?? 0) > 0 ? `+${data.stats?.mpregenperlevel ?? 0}/lvl` : '—'}
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-[#38bdf8] tabular-nums">
-              {data.stats.mp > 0 ? (calcStats?.mpregen ?? data.stats.mpregen) : 0}
+              {(data.stats?.mp ?? 0) > 0 ? (calcStats?.mpregen ?? data.stats?.mpregen ?? 0) : 0}
             </span>
           </div>
 
@@ -1384,14 +1388,14 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#94a3b8] rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${Math.min(100, Math.max(15, (data.stats.attackrange / 700) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.max(15, ((data.stats?.attackrange ?? 0) / 700) * 100))}%` }}
               />
             </div>
             <span className="w-14 shrink-0 text-right text-[10px] text-zinc-500 font-semibold tabular-nums">
               —
             </span>
             <span className="w-12 shrink-0 text-right text-sm font-black text-zinc-200 tabular-nums">
-              {data.stats.attackrange}
+              {data.stats?.attackrange ?? 0}
             </span>
           </div>
         </div>
@@ -1596,11 +1600,11 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                 <div className="flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-medium text-zinc-300">
                   <Calendar className="h-3 w-3 text-amber-400" />
                   <span>
-                    {activeSkin.num === 0
+                    {activeSkin?.num === 0
                       ? formattedReleaseDate
-                      : activeSkin.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.length > 4
+                      : activeSkin?.releaseDate && !activeSkin.releaseDate.endsWith('-01-01') && activeSkin.releaseDate.length > 4
                         ? formatReleaseDate(activeSkin.releaseDate, locale)
-                        : activeSkin.releaseYear || releaseYear}
+                        : activeSkin?.releaseYear || releaseYear}
                   </span>
                 </div>
               </div>
@@ -2170,13 +2174,17 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           }`}
         >
           <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
-            <Image
-              src={getChampionPassiveIconUrl(data.passive?.image, version)}
-              alt={data.passive.name}
-              fill
-              className="object-cover"
-              unoptimized
-            />
+            {data.passive?.image ? (
+              <Image
+                src={getChampionPassiveIconUrl(data.passive.image, version)}
+                alt={data.passive.name || ''}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500 font-bold">P</div>
+            )}
           </div>
           <span
             className={`text-[10px] font-black uppercase tracking-wider ${
@@ -2188,12 +2196,12 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         </button>
 
         {/* Q, W, E, R */}
-        {data.spells.map((spell, idx) => {
+        {(data.spells || []).map((spell, idx) => {
           const isSelected = selectedSpellIndex === idx;
-          const keyLabel = ['Q', 'W', 'E', 'R'][idx];
+          const keyLabel = ['Q', 'W', 'E', 'R'][idx] || `S${idx + 1}`;
           return (
             <button
-              key={spell.id}
+              key={spell.id || `spell-${idx}`}
               type="button"
               onClick={() => setSelectedSpellIndex(idx)}
               className={`group flex flex-col items-center gap-2 p-2 rounded-xl transition-all border cursor-pointer ${
@@ -2203,13 +2211,17 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
               }`}
             >
               <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform bg-zinc-900">
-                <Image
-                  src={getChampionSpellIconUrl(spell.image, version)}
-                  alt={spell.name}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+                {spell.image ? (
+                  <Image
+                    src={getChampionSpellIconUrl(spell.image, version)}
+                    alt={spell.name || ''}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500 font-bold">{keyLabel}</div>
+                )}
               </div>
               <span
                 className={`text-[10px] font-black uppercase tracking-wider ${
@@ -2226,29 +2238,33 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
       {/* Selected Spell Detail Box */}
       <div className="rounded-2xl border border-white/[0.06] bg-black/40 p-4 sm:p-5 space-y-3">
         {selectedSpellIndex === -1 ? (
-          <>
-            <div className="flex items-center gap-3 pb-3 border-b border-white/[0.06]">
-              <span className="rounded-md bg-zinc-800 text-zinc-300 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
-                {t('championWiki.passive')}
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white">
-                {data.passive.name}
-              </h3>
-            </div>
-            <div
-              className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
-              dangerouslySetInnerHTML={{ __html: data.passive.description }}
-            />
-          </>
+          data.passive ? (
+            <>
+              <div className="flex items-center gap-3 pb-3 border-b border-white/[0.06]">
+                <span className="rounded-md bg-zinc-800 text-zinc-300 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
+                  {t('championWiki.passive')}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  {data.passive.name || ''}
+                </h3>
+              </div>
+              <div
+                className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
+                dangerouslySetInnerHTML={{ __html: data.passive.description || '' }}
+              />
+            </>
+          ) : (
+            <p className="text-xs text-zinc-500">Keine Passiv-Informationen verfügbar.</p>
+          )
         ) : selectedSpell ? (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">
                 <span className="rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-xs font-black uppercase tracking-wider">
-                  {['Q', 'W', 'E', 'R'][selectedSpellIndex]}
+                  {['Q', 'W', 'E', 'R'][selectedSpellIndex] || `S${selectedSpellIndex + 1}`}
                 </span>
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  {selectedSpell.name}
+                  {selectedSpell.name || ''}
                 </h3>
               </div>
 
@@ -2280,7 +2296,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
             <div
               className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal"
               dangerouslySetInnerHTML={{
-                __html: selectedSpell.description || selectedSpell.tooltip,
+                __html: selectedSpell.description || selectedSpell.tooltip || '',
               }}
             />
           </>
