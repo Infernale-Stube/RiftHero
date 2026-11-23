@@ -235,25 +235,24 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
     // 2. Query participant performance by position and champion for this patch
     const rawStats = await prisma.$queryRaw<
       Array<{
-        teamPosition: string;
-        championName: string;
+        lane: string;
+        championId: number;
         games: number;
         wins: number;
       }>
     >`
       SELECT
-        p."teamPosition",
-        p."championName",
+        p."lane",
+        p."championId",
         COUNT(*)::int as games,
         SUM(CASE WHEN p.win THEN 1 ELSE 0 END)::int as wins
       FROM match_participants p
       JOIN matches m ON p."matchId" = m.id
       WHERE m."queueId" IN (420, 440)
         AND m."gameVersion" LIKE ${patchFilter}
-        AND p."teamPosition" IS NOT NULL
-        AND p."teamPosition" != ''
-        AND p."championName" IS NOT NULL
-      GROUP BY p."teamPosition", p."championName"
+        AND p."lane" IS NOT NULL
+        AND p."lane" != ''
+      GROUP BY p."lane", p."championId"
       ORDER BY games DESC;
     `;
 
@@ -279,7 +278,7 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       const totalGamesByRole = new Map<string, number>();
 
       for (const row of rawStats) {
-        const canonical = POSITION_MAP[row.teamPosition.toUpperCase()] || 'MID';
+        const canonical = POSITION_MAP[(row.lane || '').toUpperCase()] || 'MID';
         totalGamesByRole.set(canonical, (totalGamesByRole.get(canonical) || 0) + row.games);
         if (byRole[canonical]) {
           byRole[canonical].push(row);
@@ -290,10 +289,12 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       for (const [role, items] of Object.entries(byRole)) {
         if (items.length > 0) {
           const totalRoleGames = totalGamesByRole.get(role) || 1;
-          const computed: MetaChampion[] = items.map((champ) => {
+          const computed: MetaChampion[] = [];
+          for (const champ of items) {
+            const champName = await getChampionNameById(champ.championId);
             const winrateNum = (champ.wins / Math.max(1, champ.games)) * 100;
             const pickrateNum = (champ.games / totalRoleGames) * 100;
-            const bans = banCounts.get(champ.championName) || 0;
+            const bans = banCounts.get(champName) || 0;
             const banrateNum = totalMatchesAnalyzed > 0 ? (bans / totalMatchesAnalyzed) * 100 : 0;
 
             const score = (winrateNum - 40) * 4 + pickrateNum * 1.5;
@@ -306,8 +307,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
                 ? 'A'
                 : 'B';
 
-            return {
-              name: champ.championName,
+            computed.push({
+              name: champName,
               tier,
               winrate: `${winrateNum.toFixed(1)}%`,
               pickrate: `${pickrateNum.toFixed(1)}%`,
@@ -316,8 +317,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
               games: champ.games,
               wins: champ.wins,
               losses: Math.max(0, champ.games - champ.wins),
-            };
-          });
+            });
+          }
 
           // Sort by winrate descending, then games, take top 4
           computed.sort((a, b) => parseFloat(b.winrate) - parseFloat(a.winrate) || b.games - a.games);
@@ -326,15 +327,17 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
       }
 
       // Build Full Tier List across all champions
-      tierList = rawStats.map((item) => {
-        const role = (POSITION_MAP[item.teamPosition.toUpperCase()] || 'MID') as 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+      tierList = [];
+      for (const item of rawStats) {
+        const champName = await getChampionNameById(item.championId);
+        const role = (POSITION_MAP[(item.lane || '').toUpperCase()] || 'MID') as 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
         const wins = item.wins;
         const games = item.games;
         const losses = Math.max(0, games - wins);
         const winrateNum = (wins / Math.max(1, games)) * 100;
         const roleTotal = totalGamesByRole.get(role) || 1;
         const pickrateNum = (games / roleTotal) * 100;
-        const bans = banCounts.get(item.championName) || 0;
+        const bans = banCounts.get(champName) || 0;
         const banrateNum = totalMatchesAnalyzed > 0 ? (bans / totalMatchesAnalyzed) * 100 : 0;
 
         // Composite Performance Score: 50% Winrate + 30% Pickrate + 20% Volume
@@ -353,9 +356,9 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
             ? 'C'
             : 'D';
 
-        return {
+        tierList.push({
           rank: 1,
-          name: item.championName,
+          name: champName,
           role,
           tier,
           winrate: `${winrateNum.toFixed(1)}%`,
@@ -368,8 +371,8 @@ export async function computeAndSaveMetaAnalysis(): Promise<MetaSnapshotData> {
           wins,
           losses,
           score: Math.round(score * 10) / 10,
-        };
-      });
+        });
+      }
 
       // Sort by score descending, assign ranks
       tierList.sort((a, b) => b.score - a.score || b.winrateNum - a.winrateNum);

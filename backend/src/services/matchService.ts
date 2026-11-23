@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
+import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { calculateMatchScores, DeepLolScore } from './scoreService';
 
@@ -79,26 +80,12 @@ export function getPositionSortOrder(p: {
   lane?: string | null;
   role?: string | null;
 }): number {
-  const pos = (p.teamPosition || '').toUpperCase();
-  if (pos === 'TOP') return 1;
-  if (pos === 'JUNGLE') return 2;
-  if (pos === 'MIDDLE' || pos === 'MID') return 3;
-  if (pos === 'BOTTOM' || pos === 'BOT') return 4;
-  if (pos === 'UTILITY' || pos === 'SUPPORT') return 5;
-
-  const lane = (p.lane || '').toUpperCase();
-  const role = (p.role || '').toUpperCase();
-
+  const lane = (p.lane || p.teamPosition || '').toUpperCase();
   if (lane === 'TOP') return 1;
   if (lane === 'JUNGLE') return 2;
   if (lane === 'MIDDLE' || lane === 'MID') return 3;
-  if (lane === 'BOTTOM' || lane === 'BOT') {
-    if (role === 'DUO_SUPPORT' || role === 'SUPPORT') return 5;
-    return 4;
-  }
-  if (role === 'DUO_SUPPORT' || role === 'SUPPORT') return 5;
-  if (role === 'DUO_CARRY') return 4;
-
+  if (lane === 'BOTTOM' || lane === 'BOT') return 4;
+  if (lane === 'UTILITY' || lane === 'SUPPORT') return 5;
   return 6;
 }
 
@@ -108,7 +95,7 @@ function formatParticipant(
   teamKills = 0,
   teamDamage = 0
 ): FormattedMatchParticipant {
-  const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
+  const cs = p.totalMinionsKilled;
   const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
   const kdaCalc = p.deaths === 0 ? p.kills + p.assists : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
   const killParticipation = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
@@ -119,13 +106,13 @@ function formatParticipant(
     riotIdGameName: p.riotIdGameName,
     riotIdTagline: p.riotIdTagline,
     championId: p.championId,
-    championName: p.championName,
+    championName: getChampionNameByIdSync(p.championId),
     champLevel: p.champLevel || 1,
     teamId: p.teamId,
     win: p.win,
-    role: p.role,
-    lane: p.lane,
-    teamPosition: p.teamPosition || null,
+    role: p.lane || null,
+    lane: p.lane || null,
+    teamPosition: p.lane || null,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
@@ -429,7 +416,7 @@ export async function getSummonerChampionStats(
   for (const p of participations) {
     const existing = map.get(p.championId) || {
       championId: p.championId,
-      championName: p.championName,
+      championName: getChampionNameByIdSync(p.championId),
       games: 0,
       wins: 0,
       losses: 0,
@@ -458,7 +445,7 @@ export async function getSummonerChampionStats(
     existing.totalKills += p.kills;
     existing.totalDeaths += p.deaths;
     existing.totalAssists += p.assists;
-    existing.totalCs += (p.totalMinionsKilled + p.neutralMinionsKilled);
+    existing.totalCs += p.totalMinionsKilled;
     existing.totalDuration += p.match.gameDuration;
     existing.totalDamage += p.totalDamageDealtToChampions || 0;
     existing.totalDamageTaken += p.totalDamageTaken || 0;
@@ -476,7 +463,7 @@ export async function getSummonerChampionStats(
     existing.pentaKills += Number(ch.pentaKills || 0);
 
     // Track lane / role
-    const pos = p.teamPosition || p.lane || 'UNKNOWN';
+    const pos = p.lane || 'UNKNOWN';
     if (pos && pos !== 'NONE' && pos !== 'UNKNOWN') {
       existing.roles[pos] = (existing.roles[pos] || 0) + 1;
     }

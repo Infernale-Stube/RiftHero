@@ -43,7 +43,6 @@ model Summoner {
   ranked5sLosses Int       @default(0)
 
   lpSnapshots    SummonerLpSnapshot[]
-  participants   MatchParticipant[]
 
   @@index([gameName, tagLine])
   @@index([region, gameName, tagLine])
@@ -134,74 +133,60 @@ model Match {
 }
 
 model MatchParticipant {
-  id                             String    @id @default(cuid())
-  matchId                        String
-  puuid                          String
-  summonerId                     String?   // Relation to registered summoner if exists
-  riotIdGameName                 String
-  riotIdTagline                  String
-  championId                     Int
-  championName                   String
-  champLevel                     Int       @default(1)
-  teamId                         Int       // 100: Blue, 200: Red
-  win                            Boolean
-  role                           String?
-  lane                           String?
-  teamPosition                   String?   // TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
-  profileIcon                    Int?      @default(29)
+  id                          String    @id @default(cuid())
+  matchId                     String
+  puuid                       String
+  riotIdGameName              String
+  riotIdTagline               String
+  championId                  Int
+  champLevel                  Int       @default(1)
+  teamId                      Int       // 100: Blue, 200: Red
+  win                         Boolean
+  lane                        String?
+  profileIcon                 Int?      @default(29)
 
   // Combat Stats
-  kills                          Int       @default(0)
-  deaths                         Int       @default(0)
-  assists                        Int       @default(0)
-  kda                            Float?    @default(0.0)
-  totalDamageDealtToChampions    Int       @default(0)
-  physicalDamageDealtToChampions Int?      @default(0)
-  magicDamageDealtToChampions    Int?      @default(0)
-  trueDamageDealtToChampions     Int?      @default(0)
-  totalDamageTaken               Int       @default(0)
-  totalHeal                      Int?      @default(0)
-  totalMinionsKilled             Int       @default(0)
-  neutralMinionsKilled           Int       @default(0)
-  visionScore                    Int       @default(0)
-  visionWardsBoughtInGame        Int       @default(0)
-  wardsPlaced                    Int       @default(0)
-  wardsKilled                    Int       @default(0)
-  goldEarned                     Int       @default(0)
-  goldSpent                      Int       @default(0)
+  kills                       Int       @default(0)
+  deaths                      Int       @default(0)
+  assists                     Int       @default(0)
+  kda                         Float?    @default(0.0)
+  totalDamageDealtToChampions Int       @default(0)
+  totalDamageTaken            Int       @default(0)
+  totalMinionsKilled          Int       @default(0)
+  visionScore                 Int       @default(0)
+  visionWardsBoughtInGame     Int       @default(0)
+  wardsPlaced                 Int       @default(0)
+  wardsKilled                 Int       @default(0)
+  goldEarned                  Int       @default(0)
 
   // Items (0-5 Inventory, 6 Trinket)
-  item0                          Int       @default(0)
-  item1                          Int       @default(0)
-  item2                          Int       @default(0)
-  item3                          Int       @default(0)
-  item4                          Int       @default(0)
-  item5                          Int       @default(0)
-  item6                          Int       @default(0)
+  item0                       Int       @default(0)
+  item1                       Int       @default(0)
+  item2                       Int       @default(0)
+  item3                       Int       @default(0)
+  item4                       Int       @default(0)
+  item5                       Int       @default(0)
+  item6                       Int       @default(0)
 
   // Summoner Spells (D, F)
-  summoner1Id                    Int       @default(0)
-  summoner2Id                    Int       @default(0)
+  summoner1Id                 Int       @default(0)
+  summoner2Id                 Int       @default(0)
 
   // Runes / Perks
-  primaryRune                    Int?      // Primary Keystone perk ID
-  primaryStyle                   Int?      // Primary Path style ID
-  secondaryStyle                 Int?      // Secondary Sub-style ID
-  perksJson                      Json?     // Full rune breakdown for deep-dive analysis
+  primaryRune                 Int?      // Primary Keystone perk ID
+  primaryStyle                Int?      // Primary Path style ID
+  secondaryStyle              Int?      // Secondary Sub-style ID
 
   // Prepared for Timeline Deep-Dives, Heatmaps & Tier Lists
-  challengesJson                 Json?     // Granular stats, skillshot hit %, multikills
-  timelineSummaryJson            Json?     // Gold @ 15, CS diff @ 15, kill participation
+  challengesJson              Json?     // Granular stats, skillshot hit %, multikills
+  timelineSummaryJson         Json?     // Gold @ 15, CS diff @ 15, kill participation
 
-  match                          Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  summoner                       Summoner? @relation(fields: [summonerId], references: [id], onDelete: SetNull)
+  match                       Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@unique([matchId, puuid])
   @@index([puuid])
   @@index([championId])
-  @@index([championName])
   @@index([win])
-  @@index([summonerId])
   @@map("match_participants")
 }
 

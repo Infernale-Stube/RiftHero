@@ -123,7 +123,7 @@ export async function getSummonerMasteries(
   // 4. Fallback if still empty: Query player's DB matches so page is never completely blank
   if (!rawMasteries || !Array.isArray(rawMasteries) || rawMasteries.length === 0) {
     const dbStats = await prisma.matchParticipant.groupBy({
-      by: ['championId', 'championName'],
+      by: ['championId'],
       where: { puuid },
       _count: { matchId: true },
       orderBy: { _count: { matchId: 'desc' } },

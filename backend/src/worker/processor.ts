@@ -268,18 +268,8 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       },
     });
 
-    if (existingMatch) {
-      // If match exists and our summoner is already connected, skip
-      if (existingMatch.participants.length > 0) {
-        const p = existingMatch.participants[0];
-        if (!p.summonerId) {
-          await prisma.matchParticipant.update({
-            where: { id: p.id },
-            data: { summonerId: savedSummoner.id },
-          });
-        }
-        continue;
-      }
+    if (existingMatch && existingMatch.participants.length > 0) {
+      continue;
     }
 
     try {
@@ -387,36 +377,26 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             create: {
               matchId,
               puuid: p.puuid,
-              summonerId: isMainPlayer ? savedSummoner.id : null,
               riotIdGameName: participantGameName,
               riotIdTagline: participantTagline,
               championId: p.championId,
-              championName: p.championName,
               champLevel: p.champLevel || 1,
               teamId: p.teamId,
               win: p.win,
-              role: p.role || null,
               lane: p.lane || null,
-              teamPosition: p.teamPosition || null,
               profileIcon: (p as any).profileIcon || 29,
               kills: p.kills,
               deaths: p.deaths,
               assists: p.assists,
               kda: kdaValue,
               totalDamageDealtToChampions: p.totalDamageDealtToChampions,
-              physicalDamageDealtToChampions: p.physicalDamageDealtToChampions || 0,
-              magicDamageDealtToChampions: p.magicDamageDealtToChampions || 0,
-              trueDamageDealtToChampions: p.trueDamageDealtToChampions || 0,
               totalDamageTaken: p.totalDamageTaken,
-              totalHeal: p.totalHeal || 0,
-              totalMinionsKilled: p.totalMinionsKilled,
-              neutralMinionsKilled: p.neutralMinionsKilled,
+              totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
               visionScore: p.visionScore,
               visionWardsBoughtInGame: p.visionWardsBoughtInGame,
               wardsPlaced: p.wardsPlaced,
               wardsKilled: p.wardsKilled,
               goldEarned: p.goldEarned,
-              goldSpent: p.goldSpent,
               item0: p.item0,
               item1: p.item1,
               item2: p.item2,
@@ -429,12 +409,9 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               primaryRune: p.perks?.styles?.[0]?.selections?.[0]?.perk || null,
               primaryStyle: p.perks?.styles?.[0]?.style || null,
               secondaryStyle: p.perks?.styles?.[1]?.style || null,
-              perksJson: p.perks as any || null,
             },
             update: {
-              summonerId: isMainPlayer ? savedSummoner.id : undefined,
               championId: p.championId,
-              championName: p.championName,
               win: p.win,
               kills: p.kills,
               deaths: p.deaths,

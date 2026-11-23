@@ -134,6 +134,10 @@ export async function getChampionNameById(championId: number): Promise<string> {
   return championIdMap.get(championId) || `Champion_${championId}`;
 }
 
+export function getChampionNameByIdSync(championId: number): string {
+  return championIdMap.get(championId) || `Champion_${championId}`;
+}
+
 export function getProfileIconUrl(iconId: number, version = cachedVersion): string {
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${iconId}.png`;
 }

@@ -817,7 +817,7 @@ export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): Assign
       else if (recPos.includes(targetRole)) score += 10;
 
       // Secondary hint from Riot API
-      const apiPos = normalizePosition(p.teamPosition, p.lane, p.role);
+      const apiPos = normalizePosition(p.lane, p.role);
       if (apiPos === targetRole) score += 5;
     }
     if (score > bestScore) {
@@ -837,27 +837,17 @@ export function assignTeamPositions<T extends TeamMemberLike>(team: T[]): Assign
 }
 
 export function normalizePosition(
-  teamPosition?: string | null,
   lane?: string | null,
   role?: string | null
 ): PositionKey | null {
-  const pos = (teamPosition || '').toUpperCase().trim();
-  if (pos === 'TOP') return 'TOP';
-  if (pos === 'JUNGLE') return 'JUNGLE';
-  if (pos === 'MIDDLE' || pos === 'MID') return 'MID';
-  if (pos === 'BOTTOM' || pos === 'BOT') return 'ADC';
-  if (pos === 'UTILITY' || pos === 'SUPPORT') return 'SUPPORT';
-
   const l = (lane || '').toUpperCase().trim();
-  const r = (role || '').toUpperCase().trim();
-
   if (l === 'TOP') return 'TOP';
   if (l === 'JUNGLE') return 'JUNGLE';
   if (l === 'MIDDLE' || l === 'MID') return 'MID';
-  if (l === 'BOTTOM' || l === 'BOT') {
-    if (r === 'DUO_SUPPORT' || r === 'SUPPORT') return 'SUPPORT';
-    return 'ADC';
-  }
+  if (l === 'BOTTOM' || l === 'BOT') return 'ADC';
+  if (l === 'UTILITY' || l === 'SUPPORT') return 'SUPPORT';
+
+  const r = (role || '').toUpperCase().trim();
   if (r === 'DUO_SUPPORT' || r === 'SUPPORT') return 'SUPPORT';
   if (r === 'DUO_CARRY') return 'ADC';
 
@@ -869,17 +859,17 @@ export function getPositionIconUrl(positionKey: PositionKey): string {
 }
 
 export function getParticipantPosition(p: {
-  teamPosition?: string | null;
   lane?: string | null;
   role?: string | null;
+  teamPosition?: string | null;
 }): PositionKey | null {
-  return normalizePosition(p.teamPosition, p.lane, p.role);
+  return normalizePosition(p.lane || p.teamPosition, p.role);
 }
 
 export function getParticipantPositionOrder(p: {
-  teamPosition?: string | null;
   lane?: string | null;
   role?: string | null;
+  teamPosition?: string | null;
 }): number {
   const pos = getParticipantPosition(p);
   return pos ? POSITION_ORDER_MAP[pos] : 6;

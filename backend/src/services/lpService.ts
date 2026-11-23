@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma';
+import { getChampionNameByIdSync } from '../riot/ddragon';
 
 export const TIER_BASE_LP: Record<string, number> = {
   IRON: 0,
@@ -271,16 +272,11 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       puuid: true,
       riotIdGameName: true,
       riotIdTagline: true,
-      championName: true,
+      championId: true,
       profileIcon: true,
       teamId: true,
       win: true,
       matchId: true,
-      summoner: {
-        select: {
-          profileIconId: true,
-        },
-      },
     },
   });
 
@@ -311,7 +307,7 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
         puuid: t.puuid,
         gameName: t.riotIdGameName,
         tagLine: t.riotIdTagline,
-        profileIconId: t.summoner?.profileIconId || t.profileIcon || 29,
+        profileIconId: t.profileIcon || 29,
         championCounts: {},
         games: 0,
         wins: 0,
@@ -327,9 +323,8 @@ export async function getPlayedWithStats(puuid: string, limit = 5): Promise<Play
       stat.losses++;
     }
 
-    if (t.championName) {
-      stat.championCounts[t.championName] = (stat.championCounts[t.championName] || 0) + 1;
-    }
+    const champName = getChampionNameByIdSync(t.championId);
+    stat.championCounts[champName] = (stat.championCounts[champName] || 0) + 1;
   }
 
   // Format and sort by games played (minimum 2 games to be meaningful)

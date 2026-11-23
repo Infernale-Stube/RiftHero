@@ -193,31 +193,22 @@ export async function getMatchDetails(
                 riotIdGameName: p.riotIdName || (p as any).riotIdGameName || p.summonerName || 'Unknown',
                 riotIdTagline: p.riotIdTagline || '',
                 championId: p.championId,
-                championName: p.championName,
                 champLevel: p.champLevel || 1,
                 teamId: p.teamId,
                 win: p.win,
-                role: p.role || null,
                 lane: p.lane || null,
-                teamPosition: p.teamPosition || null,
                 kills: p.kills,
                 deaths: p.deaths,
                 assists: p.assists,
                 kda: kdaValue,
                 totalDamageDealtToChampions: p.totalDamageDealtToChampions,
-                physicalDamageDealtToChampions: p.physicalDamageDealtToChampions || 0,
-                magicDamageDealtToChampions: p.magicDamageDealtToChampions || 0,
-                trueDamageDealtToChampions: p.trueDamageDealtToChampions || 0,
                 totalDamageTaken: p.totalDamageTaken,
-                totalHeal: p.totalHeal || 0,
-                totalMinionsKilled: p.totalMinionsKilled,
-                neutralMinionsKilled: p.neutralMinionsKilled,
+                totalMinionsKilled: (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0),
                 visionScore: p.visionScore,
                 visionWardsBoughtInGame: p.visionWardsBoughtInGame,
                 wardsPlaced: p.wardsPlaced,
                 wardsKilled: p.wardsKilled,
                 goldEarned: p.goldEarned,
-                goldSpent: p.goldSpent,
                 item0: p.item0,
                 item1: p.item1,
                 item2: p.item2,
@@ -230,7 +221,6 @@ export async function getMatchDetails(
                 primaryRune: p.perks?.styles?.[0]?.selections?.[0]?.perk || null,
                 primaryStyle: p.perks?.styles?.[0]?.style || null,
                 secondaryStyle: p.perks?.styles?.[1]?.style || null,
-                perksJson: p.perks as any || null,
               };
             }),
           },
@@ -304,7 +294,7 @@ export async function getMatchDetails(
 
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
-      const cs = p.totalMinionsKilled + p.neutralMinionsKilled;
+      const cs = p.totalMinionsKilled;
       const csPerMinute = durationMinutes > 0 ? Number((cs / durationMinutes).toFixed(1)) : 0;
       const kda = p.deaths === 0 ? p.kills + p.assists : Number(((p.kills + p.assists) / p.deaths).toFixed(2));
       const teamKills = p.teamId === 100 ? blueTotalKills : redTotalKills;
@@ -314,6 +304,7 @@ export async function getMatchDetails(
 
       const lpChange: MatchLpChange | null = lpChangeMap.get(p.puuid) || null;
       const score = matchScores.get(p.puuid);
+      const champName = await getChampionNameById(p.championId);
 
       return {
         id: p.id,
@@ -321,13 +312,13 @@ export async function getMatchDetails(
         riotIdGameName: p.riotIdGameName,
         riotIdTagline: p.riotIdTagline,
         championId: p.championId,
-        championName: p.championName,
+        championName: champName,
         champLevel: p.champLevel,
         teamId: p.teamId,
         win: p.win,
-        role: p.role,
-        lane: p.lane,
-        teamPosition: p.teamPosition,
+        role: p.lane || null,
+        lane: p.lane || null,
+        teamPosition: p.lane || null,
         kills: p.kills,
         deaths: p.deaths,
         assists: p.assists,
@@ -335,11 +326,7 @@ export async function getMatchDetails(
         killParticipation,
         damageShare,
         totalDamageDealtToChampions: p.totalDamageDealtToChampions,
-        physicalDamageDealtToChampions: p.physicalDamageDealtToChampions || 0,
-        magicDamageDealtToChampions: p.magicDamageDealtToChampions || 0,
-        trueDamageDealtToChampions: p.trueDamageDealtToChampions || 0,
         totalDamageTaken: p.totalDamageTaken,
-        totalHeal: p.totalHeal || 0,
         cs,
         csPerMinute,
         visionScore: p.visionScore,
@@ -347,7 +334,6 @@ export async function getMatchDetails(
         wardsKilled: p.wardsKilled,
         controlWards: p.visionWardsBoughtInGame || 0,
         goldEarned: p.goldEarned,
-        goldSpent: p.goldSpent,
         items: [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6],
         spells: [p.summoner1Id, p.summoner2Id],
         primaryRune: p.primaryRune,

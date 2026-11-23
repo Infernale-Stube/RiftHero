@@ -142,7 +142,7 @@ export async function getSummonerProfile(
   let backgroundUrl: string | null = null;
   try {
     const topChamp = await prisma.matchParticipant.groupBy({
-      by: ['championName'],
+      by: ['championId'],
       where: { puuid: summoner.puuid },
       _count: { matchId: true },
       orderBy: {
@@ -153,8 +153,9 @@ export async function getSummonerProfile(
       take: 1,
     });
 
-    if (topChamp.length > 0 && topChamp[0].championName) {
-      backgroundUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${topChamp[0].championName}_0.jpg`;
+    if (topChamp.length > 0 && topChamp[0].championId) {
+      const champName = await getChampionNameById(topChamp[0].championId);
+      backgroundUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg`;
     }
   } catch (err) {
     // fallback
