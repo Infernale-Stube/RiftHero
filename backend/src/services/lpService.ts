@@ -212,11 +212,12 @@ export async function syncParticipantLpForQueue(
   if (tracked.length === 0) {
     // Cold start: No previous LP was tracked for this specific ranked queue.
     // Record the player's MOST RECENT match in this queue as the official starting baseline!
-    // lpDelta is strictly NULL because there was no prior match in this queue to compute a delta from.
+    // If it is a remake, remakes award +/- 0 LP, so lpDelta is 0; otherwise null as there was no prior match.
     const latestParticipant = participants[participants.length - 1];
+    const isRemake = isParticipantMatchRemake(latestParticipant);
 
     console.log(
-      `[LP-Sync] Cold start: Setting baseline on latest match ${latestParticipant.matchId} (id=${latestParticipant.id}): tier=${newTier}, rank=${newRank}, lp=${newLp}, totalLp=${newTotalLp}`
+      `[LP-Sync] Cold start: Setting baseline on latest match ${latestParticipant.matchId} (id=${latestParticipant.id}): tier=${newTier}, rank=${newRank}, lp=${newLp}, totalLp=${newTotalLp}, isRemake=${isRemake}`
     );
 
     await prisma.matchParticipant.update({
@@ -224,7 +225,7 @@ export async function syncParticipantLpForQueue(
         id: latestParticipant.id,
       },
       data: {
-        lpDelta: null,
+        lpDelta: isRemake ? 0 : null,
         postGameLp: newLp ?? 0,
         postGameTier: newTier,
         postGameRank: newRank || 'IV',
@@ -275,9 +276,10 @@ export async function syncParticipantLpForQueue(
 
   // Separate untracked matches into regular matches and remakes
   const nonRemakeUntracked = untracked.filter((p) => !isParticipantMatchRemake(p));
+  const remakeUntracked = untracked.filter((p) => isParticipantMatchRemake(p));
 
   console.log(
-    `[LP-Sync] Queue ${queueId}: untracked matches total=${untracked.length} (regular=${nonRemakeUntracked.length})`
+    `[LP-Sync] Queue ${queueId}: untracked matches total=${untracked.length} (regular=${nonRemakeUntracked.length}, remakes=${remakeUntracked.length})`
   );
 
   if (nonRemakeUntracked.length === 1) {
@@ -304,13 +306,37 @@ export async function syncParticipantLpForQueue(
       },
     });
 
-    // If the latest untracked match was a remake (played after the regular match), update its baseline without delta:
-    const latestMatch = untracked[untracked.length - 1];
-    if (latestMatch.id !== singleMatch.id) {
+    // Remakes in this newly synced batch get lpDelta: 0
+    for (const r of remakeUntracked) {
+      const isBeforeSingle = Number(r.match.gameCreation) < Number(singleMatch.match.gameCreation);
       await prisma.matchParticipant.update({
-        where: { id: latestMatch.id },
+        where: { id: r.id },
         data: {
-          lpDelta: null,
+          lpDelta: 0,
+          postGameLp: isBeforeSingle ? (lastTracked.postGameLp ?? 0) : (newLp ?? 0),
+          postGameTier: isBeforeSingle ? lastTracked.postGameTier : newTier,
+          postGameRank: isBeforeSingle ? (lastTracked.postGameRank || 'IV') : (newRank || 'IV'),
+          postGameTotalLp: isBeforeSingle ? baselineTotalLp : newTotalLp,
+        },
+      });
+    }
+
+    console.log(
+      `[LP-Sync] Successfully updated match ${singleMatch.matchId} with delta=${delta} and ${remakeUntracked.length} remakes with lpDelta=0`
+    );
+    return;
+  }
+
+  if (nonRemakeUntracked.length === 0) {
+    // Only remakes were played in this newly synced batch! Remakes always yield +/- 0 LP
+    console.log(
+      `[LP-Sync] Queue ${queueId}: Only remakes (${remakeUntracked.length}) were played. Setting lpDelta=0 on each new remake.`
+    );
+    for (const r of remakeUntracked) {
+      await prisma.matchParticipant.update({
+        where: { id: r.id },
+        data: {
+          lpDelta: 0,
           postGameLp: newLp ?? 0,
           postGameTier: newTier,
           postGameRank: newRank || 'IV',
@@ -318,31 +344,49 @@ export async function syncParticipantLpForQueue(
         },
       });
     }
-
-    console.log(`[LP-Sync] Successfully updated match ${singleMatch.matchId} with delta=${delta}`);
     return;
   }
 
-  // If multiple regular matches (or only remakes) were downloaded at once:
-  // We cannot know individual game deltas, so lpDelta stays null.
-  // We only set postGameTotalLp on the chronologically latest match to establish the new baseline.
+  // If multiple regular matches were downloaded at once:
+  // We cannot know individual game deltas, so regular matches keep lpDelta: null.
+  // We set postGameTotalLp on the chronologically latest match to establish the new baseline.
+  // Any remakes in this newly synced batch still receive lpDelta: 0!
   const latestMatch = untracked[untracked.length - 1];
   console.log(
-    `[LP-Sync] Queue ${queueId}: Multiple regular untracked matches (${nonRemakeUntracked.length}) or only remakes. Setting baseline on latest match ${latestMatch.matchId} with lpDelta=null`
+    `[LP-Sync] Queue ${queueId}: Multiple regular untracked matches (${nonRemakeUntracked.length}). Setting baseline on latest match ${latestMatch.matchId}`
   );
 
-  await prisma.matchParticipant.update({
-    where: {
-      id: latestMatch.id,
-    },
-    data: {
-      lpDelta: null,
-      postGameLp: newLp ?? 0,
-      postGameTier: newTier,
-      postGameRank: newRank || 'IV',
-      postGameTotalLp: newTotalLp,
-    },
-  });
+  for (const r of remakeUntracked) {
+    await prisma.matchParticipant.update({
+      where: { id: r.id },
+      data: {
+        lpDelta: 0,
+        ...(r.id === latestMatch.id
+          ? {
+              postGameLp: newLp ?? 0,
+              postGameTier: newTier,
+              postGameRank: newRank || 'IV',
+              postGameTotalLp: newTotalLp,
+            }
+          : {}),
+      },
+    });
+  }
+
+  if (!isParticipantMatchRemake(latestMatch)) {
+    await prisma.matchParticipant.update({
+      where: {
+        id: latestMatch.id,
+      },
+      data: {
+        lpDelta: null,
+        postGameLp: newLp ?? 0,
+        postGameTier: newTier,
+        postGameRank: newRank || 'IV',
+        postGameTotalLp: newTotalLp,
+      },
+    });
+  }
 
   console.log(`[LP-Sync] Successfully set new baseline on latest match ${latestMatch.matchId}`);
 }
