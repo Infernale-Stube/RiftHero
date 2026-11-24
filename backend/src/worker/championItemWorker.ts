@@ -6,7 +6,6 @@ import {
   computeAndSaveItemSnapshot,
   ensureItemTableExists,
 } from '../services/itemService';
-import { syncGameMetadata } from '../services/gameMetadataService';
 import { getLatestDDragonVersion } from '../riot/ddragon';
 import { prisma } from '../db/prisma';
 
@@ -32,15 +31,14 @@ export async function syncChampionAndItemData(force = false): Promise<{
 
   isSyncRunning = true;
   try {
-    console.log('🔄 [ChampionItemWorker] Synchronizing Champion, Item, and Game Metadata catalogs...');
-    const [champResult, itemResult, metaResult] = await Promise.all([
+    console.log('🔄 [ChampionItemWorker] Synchronizing Champion and Item catalogs...');
+    const [champResult, itemResult] = await Promise.all([
       syncChampionSnapshot(force),
       computeAndSaveItemSnapshot(force),
-      syncGameMetadata(force),
     ]);
 
     console.log(
-      `⚡ [ChampionItemWorker] Sync complete! Version: ${champResult.version} | ${champResult.championsCount} champions | ${itemResult.totalItems} items | ${metaResult.queuesCount} queues | ${metaResult.mapsCount} maps.`
+      `⚡ [ChampionItemWorker] Sync complete! Version: ${champResult.version} | ${champResult.championsCount} champions | ${itemResult.totalItems} items.`
     );
 
     return {

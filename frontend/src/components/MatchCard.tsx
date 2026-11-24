@@ -31,7 +31,7 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { isRankedQueue, getQueueName, getMapName, getQueueDescription } from '@/lib/gameMetadata';
+import { isRankedQueue, getQueueName } from '@/lib/gameMetadata';
 import PremadeBadge from './PremadeBadge';
 
 interface MatchCardProps {
@@ -193,8 +193,6 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   // Check if ranked queue dynamically from Riot metadata
   const isRankedMatch = isRankedQueue(match.queueId);
   const effectiveQueueName = match.queueName || getQueueName(match.queueId);
-  const effectiveMapName = match.mapName || (match.mapId ? getMapName(match.mapId) : '');
-  const queueDesc = match.queueDescription || getQueueDescription(match.queueId);
 
   const effectiveLpDelta =
     participant.lpDelta ?? match.lpChange?.delta ?? null;
@@ -868,7 +866,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </div>
             <span
               className="text-xs font-bold text-zinc-200 truncate mt-0.5"
-              title={queueDesc ? `${queueDesc}${effectiveMapName ? ` (${effectiveMapName})` : ''}` : effectiveQueueName}
+              title={effectiveQueueName}
             >
               {effectiveQueueName}
             </span>

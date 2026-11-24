@@ -51,8 +51,6 @@ model Summoner {
   ranked5sPeakRank String?
   ranked5sPeakLp   Int?
 
-  lpSnapshots    SummonerLpSnapshot[]
-
   @@index([gameName, tagLine])
   @@index([region, gameName, tagLine])
   @@index([lastFetchedAt(sort: Desc)])
@@ -60,32 +58,11 @@ model Summoner {
   @@map("summoners")
 }
 
-model SummonerLpSnapshot {
-  id           String   @id @default(cuid())
-  summonerId   String
-  queueType    String   // RANKED_SOLO_5x5, RANKED_FLEX_SR
-  tier         String   // IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
-  rank         String   // I, II, III, IV
-  leaguePoints Int      @default(0)
-  totalLp      Int      @default(0) // Continuous ladder point: Iron IV 0LP = 0, Silver IV = 800, etc.
-  wins         Int      @default(0)
-  losses       Int      @default(0)
-  delta        Int?     // LP delta since previous snapshot (+24, -19)
-  recordedAt   DateTime @default(now())
-
-  summoner     Summoner @relation(fields: [summonerId], references: [id], onDelete: Cascade)
-
-  @@index([summonerId, queueType, recordedAt(sort: Desc)])
-  @@map("summoner_lp_snapshots")
-}
-
 model Match {
   id                  String   @id // e.g. EUW1_6999999999
   gameCreation        BigInt
   gameDuration        Int      // seconds
   gameEndTimestamp    BigInt?
-  gameMode            String   // CLASSIC, ARAM, etc.
-  gameType            String   // MATCHED_GAME
   gameVersion         String
   mapId               Int
   queueId             Int      // 420: Solo, 440: Flex, 450: ARAM, 400: Normal Draft
@@ -301,43 +278,9 @@ model Item {
 }
 
 model GameQueue {
-  queueId     Int      @id
-  map         String
-  description String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id   Int    @id
+  name String
 
-  @@index([map])
   @@map("game_queues")
-}
-
-model GameType {
-  gametype    String   @id // e.g. "CUSTOM_GAME", "MATCHED_GAME", "TUTORIAL_GAME"
-  description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("game_types")
-}
-
-model GameMap {
-  mapId       Int      @id // e.g. 11, 12, 30
-  mapName     String
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([mapName])
-  @@map("game_maps")
-}
-
-model GameMode {
-  gameMode    String   @id // e.g. "CLASSIC", "ARAM", "CHERRY"
-  description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("game_modes")
 }
 

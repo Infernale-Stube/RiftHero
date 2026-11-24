@@ -8,10 +8,6 @@ import {
   getQueueName,
 } from '../riot/regions';
 import {
-  getQueueDescription,
-  getMapName,
-  getGameModeDescription,
-  getGameTypeDescription,
   isSummonersRift as checkIsSummonersRift,
 } from './gameMetadataService';
 import { getChampionNameById } from '../riot/ddragon';
@@ -98,14 +94,8 @@ export interface LiveGameData {
   gameStartTime: number;
   gameLength: number;
   mapId: number;
-  mapName?: string;
   queueId: number;
   queueName: string;
-  queueDescription?: string;
-  gameMode: string;
-  gameModeDescription?: string;
-  gameType?: string;
-  gameTypeDescription?: string;
   blueTeam: LiveGameParticipant[];
   redTeam: LiveGameParticipant[];
   bans: BannedChampion[];
@@ -604,14 +594,8 @@ export async function getLiveGame(
       gameStartTime: Number(currentGame.gameStartTime || Date.now()),
       gameLength: Number(currentGame.gameLength || 0),
       mapId: Number(currentGame.mapId || 0),
-      mapName: getMapName(Number(currentGame.mapId || 0)),
       queueId: Number(currentGame.gameQueueConfigId || 0),
       queueName: getQueueName(Number(currentGame.gameQueueConfigId || 0)),
-      queueDescription: getQueueDescription(Number(currentGame.gameQueueConfigId || 0)),
-      gameMode: currentGame.gameMode || 'CLASSIC',
-      gameModeDescription: getGameModeDescription(currentGame.gameMode || 'CLASSIC'),
-      gameType: currentGame.gameType || 'MATCHED_GAME',
-      gameTypeDescription: getGameTypeDescription(currentGame.gameType || 'MATCHED_GAME'),
       blueTeam,
       redTeam,
       bans,

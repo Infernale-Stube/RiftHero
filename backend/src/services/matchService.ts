@@ -1,10 +1,5 @@
 import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
-import {
-  getMapName,
-  getGameModeDescription,
-  getGameTypeDescription,
-} from './gameMetadataService';
 import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { buildScoresFromSavedHeroScores, DeepLolScore } from './scoreService';
@@ -78,11 +73,6 @@ export interface FormattedMatch {
   gameCreation: number;
   gameEndTimestamp?: number;
   mapId?: number;
-  mapName?: string;
-  gameMode?: string;
-  gameModeDescription?: string;
-  gameType?: string;
-  gameTypeDescription?: string;
   queueId: number;
   queueName: string;
   win: boolean;
@@ -328,11 +318,6 @@ export async function getSummonerMatches(
       gameCreation: Number(m.gameCreation),
       gameEndTimestamp,
       mapId: m.mapId,
-      mapName: getMapName(m.mapId),
-      gameMode: m.gameMode,
-      gameModeDescription: getGameModeDescription(m.gameMode),
-      gameType: m.gameType,
-      gameTypeDescription: getGameTypeDescription(m.gameType),
       queueId: m.queueId,
       queueName: getQueueName(m.queueId),
       win: up.win,

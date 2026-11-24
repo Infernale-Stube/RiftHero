@@ -118,9 +118,6 @@ export default function MatchDetailPage() {
     gameDuration,
     gameCreation,
     queueName,
-    mapName,
-    gameModeDescription,
-    queueDescription,
     gameVersion,
     blueTeam,
     redTeam,
@@ -604,20 +601,10 @@ export default function MatchDetailPage() {
               </h1>
               <span
                 className="rounded bg-white/[0.08] px-2 py-0.5 text-xs font-bold uppercase text-amber-300"
-                title={queueDescription || queueName}
+                title={queueName}
               >
                 {queueName}
               </span>
-              {mapName && (
-                <span className="rounded bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-bold text-blue-300">
-                  {mapName}
-                </span>
-              )}
-              {gameModeDescription && (
-                <span className="rounded bg-white/[0.04] border border-white/10 px-2 py-0.5 text-xs font-medium text-slate-300">
-                  {gameModeDescription}
-                </span>
-              )}
               {matchData.lpChange && (
                 <div className="flex items-center gap-1.5 ml-1">
                   <span

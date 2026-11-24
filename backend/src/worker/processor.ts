@@ -348,8 +348,6 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       const matchDataToSave = {
         gameDuration: info.gameDuration,
         gameEndTimestamp: info.gameEndTimestamp ? BigInt(info.gameEndTimestamp) : null,
-        gameMode: info.gameMode,
-        gameType: info.gameType,
         gameVersion: info.gameVersion,
         mapId: info.mapId,
         queueId: info.queueId,

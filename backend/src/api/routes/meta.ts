@@ -5,49 +5,12 @@ import {
   computeAndSaveMetaAnalysis,
   getStoredMetaPatches,
 } from '../../services/metaService';
-import {
-  getAllGameMetadata,
-  syncGameMetadata,
-  getQueue,
-  getMap,
-  getGameMode,
-  getGameType,
-} from '../../services/gameMetadataService';
+import { getAllQueues } from '../../services/gameMetadataService';
 
 export async function metaRoutes(fastify: FastifyInstance) {
-  // Stored / Live Riot Game Metadata: queues, maps, gameModes, gameTypes
-  fastify.get('/meta/game-data', async () => {
-    return getAllGameMetadata();
-  });
-
+  // Game Queues configured in database
   fastify.get('/meta/queues', async () => {
-    return getAllGameMetadata().queues;
-  });
-
-  fastify.get('/meta/maps', async () => {
-    return getAllGameMetadata().maps;
-  });
-
-  fastify.get('/meta/game-modes', async () => {
-    return getAllGameMetadata().gameModes;
-  });
-
-  fastify.get('/meta/game-types', async () => {
-    return getAllGameMetadata().gameTypes;
-  });
-
-  fastify.all('/meta/sync-game-data', async (request, reply) => {
-    try {
-      const result = await syncGameMetadata(true);
-      return {
-        success: true,
-        message: 'Game metadata synchronized successfully with official Riot endpoints',
-        ...result,
-      };
-    } catch (err) {
-      request.log.error(err, 'Failed to sync game metadata');
-      return reply.status(500).send({ error: (err as Error).message });
-    }
+    return getAllQueues();
   });
   // Force refresh precomputed meta analysis (winrates, pickrates, tier lists from matches)
   fastify.all('/meta/refresh', async (request, reply) => {
