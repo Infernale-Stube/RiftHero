@@ -8,7 +8,12 @@ import {
   getQueueName,
 } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
-import { findTeammateCoOccurrences, detectTeamPremades, PremadeGroupInfo } from './premadeService';
+import {
+  findTeammateCoOccurrences,
+  detectTeamPremades,
+  detectMatchPremades,
+  PremadeGroupInfo,
+} from './premadeService';
 
 export interface LiveGameParticipantMastery {
   championLevel: number;
@@ -536,8 +541,11 @@ export async function getLiveGame(
   try {
     const allLivePuuids = [...blueTeam, ...redTeam].map((p) => p.puuid).filter(Boolean);
     const coOccurrenceMap = await findTeammateCoOccurrences(allLivePuuids);
-    const bluePremades = detectTeamPremades(blueTeam, coOccurrenceMap);
-    const redPremades = detectTeamPremades(redTeam, coOccurrenceMap);
+    const { bluePremades, redPremades } = detectMatchPremades(
+      blueTeam,
+      redTeam,
+      coOccurrenceMap
+    );
 
     for (const p of blueTeam) {
       p.premadeGroup = bluePremades.get(p.puuid) || null;

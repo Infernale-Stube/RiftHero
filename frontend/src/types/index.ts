@@ -80,6 +80,7 @@ export interface PremadeGroupInfo {
   size: number; // 2 (Duo), 3 (Trio), 4 (4-Stack), 5 (5-Stack)
   label: string; // 'Duo' | 'Trio' | '4-Stack' | '5-Stack'
   gamesTogether: number;
+  totalGroups?: number;
 }
 
 export interface MatchParticipant {

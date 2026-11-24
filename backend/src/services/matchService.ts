@@ -3,7 +3,12 @@ import { getQueueName, mapQueueFilterToId } from '../riot/regions';
 import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { buildScoresFromSavedHeroScores, DeepLolScore } from './scoreService';
-import { findTeammateCoOccurrences, detectTeamPremades, PremadeGroupInfo } from './premadeService';
+import {
+  findTeammateCoOccurrences,
+  detectTeamPremades,
+  detectMatchPremades,
+  PremadeGroupInfo,
+} from './premadeService';
 
 export interface FormattedMatchParticipant {
   puuid: string;
@@ -254,9 +259,8 @@ export async function getSummonerMatches(
       .filter((p) => p.teamId === 200)
       .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
 
-    // Detect premade groups (Duo, Trio, 4-Stack, 5-Stack) for Blue and Red teams
-    const bluePremades = detectTeamPremades(blueTeam, coOccurrenceMap, m.id);
-    const redPremades = detectTeamPremades(redTeam, coOccurrenceMap, m.id);
+    // Detect premade groups across both teams with non-overlapping groupIds (up to 4 duos)
+    const { bluePremades, redPremades } = detectMatchPremades(blueTeam, redTeam, coOccurrenceMap, m.id);
 
     for (const p of blueTeam) {
       p.premadeGroup = bluePremades.get(p.puuid) || null;

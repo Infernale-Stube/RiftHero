@@ -6,6 +6,7 @@ export interface PremadeGroupInfo {
   size: number; // 2, 3, 4, 5
   label: 'Duo' | 'Trio' | '4-Stack' | '5-Stack';
   gamesTogether: number;
+  totalGroups?: number;
 }
 
 function getPairKey(p1: string, p2: string): string {
@@ -67,7 +68,8 @@ export function detectTeamPremades(
   teamParticipants: Array<{ puuid?: string | null }>,
   coOccurrenceMap: Map<string, { p1: string; p2: string; matchIds: string[] }>,
   currentMatchId?: string,
-  minGames = 2
+  minGames = 2,
+  startGroupId = 1
 ): Map<string, PremadeGroupInfo> {
   const puuids = teamParticipants
     .map((p) => p.puuid)
@@ -104,7 +106,7 @@ export function detectTeamPremades(
   // 2. Find connected components (BFS)
   const visited = new Set<string>();
   const resultMap = new Map<string, PremadeGroupInfo>();
-  let nextGroupId = 1;
+  let nextGroupId = startGroupId;
 
   for (const startPuuid of puuids) {
     if (visited.has(startPuuid)) continue;
@@ -152,4 +154,53 @@ export function detectTeamPremades(
   }
 
   return resultMap;
+}
+
+/**
+ * Detects premades across both teams in a match, assigning unique, non-overlapping
+ * groupIds (e.g. Group 1 & 2 for Blue, Group 3 & 4 for Red) and stamping totalGroups
+ * so the frontend can distinguish between single-duo matches and multi-duo matches.
+ */
+export function detectMatchPremades(
+  blueParticipants: Array<{ puuid?: string | null }>,
+  redParticipants: Array<{ puuid?: string | null }>,
+  coOccurrenceMap: Map<string, { p1: string; p2: string; matchIds: string[] }>,
+  currentMatchId?: string,
+  minGames = 2
+): {
+  bluePremades: Map<string, PremadeGroupInfo>;
+  redPremades: Map<string, PremadeGroupInfo>;
+} {
+  // 1. Detect Blue team premades starting at groupId 1
+  const bluePremades = detectTeamPremades(blueParticipants, coOccurrenceMap, currentMatchId, minGames, 1);
+
+  let maxBlueGroupId = 0;
+  for (const info of bluePremades.values()) {
+    if (info.groupId > maxBlueGroupId) {
+      maxBlueGroupId = info.groupId;
+    }
+  }
+
+  // 2. Detect Red team premades continuing the groupId sequence (e.g. 2, 3, etc.)
+  const redStartId = maxBlueGroupId > 0 ? maxBlueGroupId + 1 : 1;
+  const redPremades = detectTeamPremades(redParticipants, coOccurrenceMap, currentMatchId, minGames, redStartId);
+
+  let maxGroupId = maxBlueGroupId;
+  for (const info of redPremades.values()) {
+    if (info.groupId > maxGroupId) {
+      maxGroupId = info.groupId;
+    }
+  }
+
+  // 3. Stamp totalGroups on all detected groups
+  if (maxGroupId > 0) {
+    for (const info of bluePremades.values()) {
+      info.totalGroups = maxGroupId;
+    }
+    for (const info of redPremades.values()) {
+      info.totalGroups = maxGroupId;
+    }
+  }
+
+  return { bluePremades, redPremades };
 }

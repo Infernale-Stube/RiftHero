@@ -4,7 +4,11 @@ import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../rio
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
-import { findTeammateCoOccurrences, detectTeamPremades } from './premadeService';
+import {
+  findTeammateCoOccurrences,
+  detectTeamPremades,
+  detectMatchPremades,
+} from './premadeService';
 import {
   calculateMatchScores,
   buildScoresFromSavedHeroScores,
@@ -369,8 +373,12 @@ export async function getMatchDetails(
       .map((p) => p.puuid)
       .filter(Boolean);
     const coOccurrenceMap = await findTeammateCoOccurrences(allMatchPuuids);
-    const bluePremades = detectTeamPremades(blueParticipants, coOccurrenceMap, match.id);
-    const redPremades = detectTeamPremades(redParticipants, coOccurrenceMap, match.id);
+    const { bluePremades, redPremades } = detectMatchPremades(
+      blueParticipants,
+      redParticipants,
+      coOccurrenceMap,
+      match.id
+    );
 
     for (const p of blueParticipants) {
       p.premadeGroup = bluePremades.get(p.puuid) || null;
