@@ -121,17 +121,33 @@ export interface LpHistorySummary {
 export const VALID_RANKED_QUEUE_IDS = [420, 440, 710] as const;
 
 /**
+ * Checks whether a match participant's match was a remake.
+ * In League of Legends, remakes end before 300 seconds or have an endOfGameResult containing 'Remake'.
+ */
+export function isParticipantMatchRemake(p: {
+  match: {
+    gameDuration: number;
+    endOfGameResult?: string | null;
+  };
+}): boolean {
+  if (p.match.gameDuration > 0 && p.match.gameDuration < 300) return true;
+  if (p.match.endOfGameResult && p.match.endOfGameResult.toLowerCase().includes('remake')) return true;
+  return false;
+}
+
+/**
  * Synchronize LP gains/losses and post-game rank onto MatchParticipant records.
  * Rules:
  * 1. LP delta is ONLY recorded within the 3 ranked queues (Solo/Duo 420, Flex 440, Ranked 5s 710).
  *    Matches from other game modes (ARAM, Normals, Arena, etc.) played in between have nothing to do
  *    with LP and are completely ignored (they do not count towards untracked matches).
  * 2. On first crawl (cold start / no previous tracked match in this queue), the latest match in this
- *    queue is saved as the baseline (lpDelta: null, postGameTotalLp: currentTotalLp).
- * 3. On subsequent syncs, lpDelta is ONLY recorded if EXACTLY ONE new match was downloaded/played in this queue.
- *    If multiple matches were downloaded at once in this queue, no delta may be assigned because we cannot know
+ *    queue is saved as the baseline (lpDelta: null unless remake which gets 0, postGameTotalLp: currentTotalLp).
+ * 3. On subsequent syncs, lpDelta is recorded if EXACTLY ONE REGULAR match was downloaded/played in this queue.
+ *    Remakes are skipped during this calculation because they always yield +/- 0 LP.
+ *    If multiple regular matches were downloaded at once in this queue, no delta may be assigned because we cannot know
  *    the individual game gains/losses, avoiding bundling multiple games' deltas into one game.
- *    Only the chronologically latest match in this queue updates postGameTotalLp as the new baseline (with lpDelta: null).
+ *    Remakes always receive lpDelta = 0.
  * 4. Older untracked historical matches remain null (no synthetic data fabricated).
  */
 export async function syncParticipantLpForQueue(
@@ -173,6 +189,7 @@ export async function syncParticipantLpForQueue(
           id: true,
           gameCreation: true,
           gameDuration: true,
+          endOfGameResult: true,
         },
       },
     },
@@ -186,6 +203,53 @@ export async function syncParticipantLpForQueue(
   // Strictly sort chronological: oldest first, newest last
   participants.sort((a, b) => Number(a.match.gameCreation) - Number(b.match.gameCreation));
 
+  // Retroactive repair 1: Any remake in ranked queues always awards +/- 0 LP
+  for (const p of participants) {
+    if (isParticipantMatchRemake(p) && p.lpDelta === null) {
+      console.log(`[LP-Sync] Queue ${queueId}: Setting lpDelta=0 on historical remake match ${p.matchId}`);
+      await prisma.matchParticipant.update({
+        where: { id: p.id },
+        data: { lpDelta: 0 },
+      });
+      p.lpDelta = 0;
+    }
+  }
+
+  // Retroactive repair 2: If between two tracked baseline points there were multiple games downloaded,
+  // but all of them were remakes EXCEPT exactly one regular game, that regular game's delta can be recovered!
+  for (let i = 0; i < participants.length; i++) {
+    if (participants[i].postGameTotalLp !== null) {
+      for (let j = i - 1; j >= 0; j--) {
+        if (participants[j].postGameTotalLp !== null) {
+          if (i - j > 1) {
+            const between = participants.slice(j + 1, i);
+            const untrackedRegular = between.filter((b) => !isParticipantMatchRemake(b) && b.lpDelta === null);
+            if (untrackedRegular.length === 1) {
+              const regularMatch = untrackedRegular[0];
+              const recoveredDelta = participants[i].postGameTotalLp! - participants[j].postGameTotalLp!;
+              console.log(
+                `[LP-Sync] Queue ${queueId}: Recovered missing lpDelta=${recoveredDelta} for regular match ${regularMatch.matchId} (skipped remakes between ${participants[j].matchId} and ${participants[i].matchId})`
+              );
+              await prisma.matchParticipant.update({
+                where: { id: regularMatch.id },
+                data: {
+                  lpDelta: recoveredDelta,
+                  postGameTotalLp: participants[i].postGameTotalLp,
+                  postGameLp: participants[i].postGameLp,
+                  postGameTier: participants[i].postGameTier,
+                  postGameRank: participants[i].postGameRank,
+                },
+              });
+              regularMatch.lpDelta = recoveredDelta;
+              regularMatch.postGameTotalLp = participants[i].postGameTotalLp;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
   // Find participants that already have postGameTotalLp tracked (within this queue)
   const tracked = participants.filter((p) => p.postGameTotalLp !== null);
   console.log(
@@ -195,8 +259,9 @@ export async function syncParticipantLpForQueue(
   if (tracked.length === 0) {
     // Cold start: No previous LP was tracked for this specific ranked queue.
     // Record the player's MOST RECENT match in this queue as the official starting baseline!
-    // lpDelta is strictly NULL because there was no prior match in this queue to compute a delta from.
+    // lpDelta is strictly NULL unless it is a remake which gets 0.
     const latestParticipant = participants[participants.length - 1];
+    const isLatestRemake = isParticipantMatchRemake(latestParticipant);
 
     console.log(
       `[LP-Sync] Cold start: Setting baseline on latest match ${latestParticipant.matchId} (id=${latestParticipant.id}): tier=${newTier}, rank=${newRank}, lp=${newLp}, totalLp=${newTotalLp}`
@@ -207,7 +272,7 @@ export async function syncParticipantLpForQueue(
         id: latestParticipant.id,
       },
       data: {
-        lpDelta: null,
+        lpDelta: isLatestRemake ? 0 : null,
         postGameLp: newLp ?? 0,
         postGameTier: newTier,
         postGameRank: newRank || 'IV',
@@ -256,14 +321,23 @@ export async function syncParticipantLpForQueue(
     return;
   }
 
-  if (untracked.length === 1) {
-    // Exactly ONE match was played in this queue since the last tracked state!
-    // The entire LP delta was caused by this specific match (even if the user played ARAM/Normals in between!).
-    const singleMatch = untracked[0];
+  // Separate untracked matches into regular matches and remakes
+  // In League of Legends, remakes always result in +/- 0 LP!
+  const remakeUntracked = untracked.filter((p) => isParticipantMatchRemake(p));
+  const nonRemakeUntracked = untracked.filter((p) => !isParticipantMatchRemake(p));
+
+  console.log(
+    `[LP-Sync] Queue ${queueId}: untracked matches total=${untracked.length} (regular=${nonRemakeUntracked.length}, remakes=${remakeUntracked.length})`
+  );
+
+  if (nonRemakeUntracked.length === 1) {
+    // Exactly ONE regular match was played! Even if untracked.length > 1 because of remakes,
+    // the remakes grant 0 LP, so 100% of the LP delta between baseline and current LP was from this single match!
+    const singleMatch = nonRemakeUntracked[0];
     const delta = newTotalLp - baselineTotalLp;
 
     console.log(
-      `[LP-Sync] Queue ${queueId}: Exactly 1 untracked match (${singleMatch.matchId}). Delta=${delta} (${newTotalLp} - ${baselineTotalLp}). Updating participant ${singleMatch.id}`
+      `[LP-Sync] Queue ${queueId}: Exactly 1 regular untracked match (${singleMatch.matchId}) (skipped ${remakeUntracked.length} remakes). Delta=${delta} (${newTotalLp} - ${baselineTotalLp}). Updating participant ${singleMatch.id}`
     );
 
     await prisma.matchParticipant.update({
@@ -279,17 +353,62 @@ export async function syncParticipantLpForQueue(
       },
     });
 
+    // Update all remakes with lpDelta = 0
+    for (const r of remakeUntracked) {
+      const isBeforeSingle = Number(r.match.gameCreation) < Number(singleMatch.match.gameCreation);
+      await prisma.matchParticipant.update({
+        where: { id: r.id },
+        data: {
+          lpDelta: 0,
+          postGameLp: isBeforeSingle ? (lastTracked.postGameLp ?? 0) : (newLp ?? 0),
+          postGameTier: isBeforeSingle ? lastTracked.postGameTier : newTier,
+          postGameRank: isBeforeSingle ? (lastTracked.postGameRank || 'IV') : (newRank || 'IV'),
+          postGameTotalLp: isBeforeSingle ? baselineTotalLp : newTotalLp,
+        },
+      });
+      console.log(`[LP-Sync] Set lpDelta=0 on remake match ${r.matchId}`);
+    }
+
     console.log(`[LP-Sync] Successfully updated match ${singleMatch.matchId} with delta=${delta}`);
     return;
   }
 
-  // If untracked.length > 1 (multiple matches in THIS queue downloaded at once):
-  // We CANNOT know individual game deltas. Bundling multi-game delta into a match would be wrong!
-  // Therefore, lpDelta stays null for all of them.
-  // We only set postGameTotalLp on the chronologically latest match in this queue to establish the new baseline.
+  if (nonRemakeUntracked.length === 0) {
+    // ALL untracked matches were remakes! Every remake receives lpDelta = 0 and keeps the totalLp baseline.
+    console.log(`[LP-Sync] Queue ${queueId}: All ${remakeUntracked.length} untracked matches were remakes. Setting lpDelta=0 for all.`);
+    for (const r of remakeUntracked) {
+      await prisma.matchParticipant.update({
+        where: { id: r.id },
+        data: {
+          lpDelta: 0,
+          postGameLp: newLp ?? 0,
+          postGameTier: newTier,
+          postGameRank: newRank || 'IV',
+          postGameTotalLp: newTotalLp,
+        },
+      });
+    }
+    return;
+  }
+
+  // If nonRemakeUntracked.length > 1 (multiple regular matches in THIS queue downloaded at once):
+  // We cannot know individual game deltas for the regular matches, so their lpDelta stays null.
+  // Any remakes still receive lpDelta = 0.
+  // Only the chronologically latest match establishes the new baseline.
+  for (const r of remakeUntracked) {
+    await prisma.matchParticipant.update({
+      where: { id: r.id },
+      data: {
+        lpDelta: 0,
+      },
+    });
+    console.log(`[LP-Sync] Set lpDelta=0 on remake match ${r.matchId} among multiple untracked matches`);
+  }
+
   const latestMatch = untracked[untracked.length - 1];
+  const isLatestRemake = isParticipantMatchRemake(latestMatch);
   console.log(
-    `[LP-Sync] Queue ${queueId}: Multiple untracked matches (${untracked.length}). Setting baseline on latest match ${latestMatch.matchId} with lpDelta=null`
+    `[LP-Sync] Queue ${queueId}: Multiple regular untracked matches (${nonRemakeUntracked.length}). Setting baseline on latest match ${latestMatch.matchId}`
   );
 
   await prisma.matchParticipant.update({
@@ -297,7 +416,7 @@ export async function syncParticipantLpForQueue(
       id: latestMatch.id,
     },
     data: {
-      lpDelta: null,
+      lpDelta: isLatestRemake ? 0 : null,
       postGameLp: newLp ?? 0,
       postGameTier: newTier,
       postGameRank: newRank || 'IV',
@@ -635,14 +754,20 @@ export interface MatchLpChange {
  */
 export async function getMatchesLpChanges(
   puuid: string,
-  matches: Array<{ id: string; queueId: number; gameCreation: bigint | number; win: boolean }>
+  matches: Array<{
+    id: string;
+    queueId: number;
+    gameCreation: bigint | number;
+    win: boolean;
+    gameDuration?: number;
+    endOfGameResult?: string | null;
+  }>
 ): Promise<Map<string, MatchLpChange>> {
   const map = new Map<string, MatchLpChange>();
 
   // Only ranked matches receive LP (strictly within the 3 ranked queues)
-  const rankedMatchIds = matches
-    .filter((m) => VALID_RANKED_QUEUE_IDS.includes(m.queueId as any))
-    .map((m) => m.id);
+  const rankedMatches = matches.filter((m) => VALID_RANKED_QUEUE_IDS.includes(m.queueId as any));
+  const rankedMatchIds = rankedMatches.map((m) => m.id);
 
   if (rankedMatchIds.length === 0) return map;
 
@@ -650,7 +775,6 @@ export async function getMatchesLpChanges(
     where: {
       puuid,
       matchId: { in: rankedMatchIds },
-      lpDelta: { not: null },
     },
     select: {
       matchId: true,
@@ -658,13 +782,31 @@ export async function getMatchesLpChanges(
       postGameTier: true,
       postGameRank: true,
       postGameLp: true,
+      match: {
+        select: {
+          gameDuration: true,
+          endOfGameResult: true,
+        },
+      },
     },
   });
 
   for (const p of participants) {
+    const isRemake =
+      (p.match?.gameDuration && p.match.gameDuration > 0 && p.match.gameDuration < 300) ||
+      Boolean(p.match?.endOfGameResult && p.match.endOfGameResult.toLowerCase().includes('remake'));
+
     if (p.lpDelta !== null) {
       map.set(p.matchId, {
         delta: p.lpDelta,
+        tier: p.postGameTier || '',
+        rank: p.postGameRank || '',
+        leaguePoints: p.postGameLp ?? 0,
+      });
+    } else if (isRemake) {
+      // In League of Legends ranked queues, remakes always yield +/- 0 LP
+      map.set(p.matchId, {
+        delta: 0,
         tier: p.postGameTier || '',
         rank: p.postGameRank || '',
         leaguePoints: p.postGameLp ?? 0,
