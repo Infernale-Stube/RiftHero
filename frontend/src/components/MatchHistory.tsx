@@ -55,6 +55,8 @@ export default function MatchHistory({
       dateLabel: string;
       wins: number;
       losses: number;
+      lpDelta: number;
+      hasLpData: boolean;
       matches: FormattedMatch[];
     }> = [];
 
@@ -64,7 +66,16 @@ export default function MatchHistory({
     yesterday.setDate(now.getDate() - 1);
     const yesterdayStr = yesterday.toDateString();
 
-    const groupMap = new Map<string, { wins: number; losses: number; matches: FormattedMatch[] }>();
+    const groupMap = new Map<
+      string,
+      {
+        wins: number;
+        losses: number;
+        lpDelta: number;
+        hasLpData: boolean;
+        matches: FormattedMatch[];
+      }
+    >();
     const order: string[] = [];
 
     matches.forEach((m) => {
@@ -81,7 +92,7 @@ export default function MatchHistory({
       }
 
       if (!groupMap.has(label)) {
-        groupMap.set(label, { wins: 0, losses: 0, matches: [] });
+        groupMap.set(label, { wins: 0, losses: 0, lpDelta: 0, hasLpData: false, matches: [] });
         order.push(label);
       }
 
@@ -94,6 +105,12 @@ export default function MatchHistory({
       } else {
         grp.losses++;
       }
+
+      const delta = m.participant?.lpDelta ?? m.lpChange?.delta ?? null;
+      if (typeof delta === 'number') {
+        grp.lpDelta += delta;
+        grp.hasLpData = true;
+      }
     });
 
     order.forEach((label) => {
@@ -102,6 +119,8 @@ export default function MatchHistory({
         dateLabel: label,
         wins: grp.wins,
         losses: grp.losses,
+        lpDelta: grp.lpDelta,
+        hasLpData: grp.hasLpData,
         matches: grp.matches,
       });
     });
@@ -118,6 +137,22 @@ export default function MatchHistory({
             <span className="text-white text-base tracking-tight">{groupedMatches[0].dateLabel}</span>
             <span className="text-emerald-400 font-bold text-xs">{groupedMatches[0].wins}W</span>
             <span className="text-rose-400 font-bold text-xs">{groupedMatches[0].losses}L</span>
+            {groupedMatches[0].hasLpData && (
+              <>
+                <span className="text-zinc-600 font-normal">·</span>
+                <span
+                  className={`text-xs font-black tracking-tight ${
+                    groupedMatches[0].lpDelta > 0
+                      ? 'text-emerald-400'
+                      : groupedMatches[0].lpDelta < 0
+                      ? 'text-rose-400'
+                      : 'text-zinc-400'
+                  }`}
+                >
+                  {groupedMatches[0].lpDelta > 0 ? `+${groupedMatches[0].lpDelta}` : groupedMatches[0].lpDelta} LP
+                </span>
+              </>
+            )}
           </div>
         ) : (
           <div />
@@ -189,6 +224,22 @@ export default function MatchHistory({
                 <span className="text-white text-base tracking-tight">{group.dateLabel}</span>
                 <span className="text-emerald-400 font-bold text-xs">{group.wins}W</span>
                 <span className="text-rose-400 font-bold text-xs">{group.losses}L</span>
+                {group.hasLpData && (
+                  <>
+                    <span className="text-zinc-600 font-normal">·</span>
+                    <span
+                      className={`text-xs font-black tracking-tight ${
+                        group.lpDelta > 0
+                          ? 'text-emerald-400'
+                          : group.lpDelta < 0
+                          ? 'text-rose-400'
+                          : 'text-zinc-400'
+                      }`}
+                    >
+                      {group.lpDelta > 0 ? `+${group.lpDelta}` : group.lpDelta} LP
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex flex-col gap-2.5">
                 {group.matches.map((match) => (

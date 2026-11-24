@@ -468,6 +468,31 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             },
           });
 
+          // Persist basic summoner profile for every match participant
+          const participantProfileIcon = (p as any).profileIcon || 29;
+          const participantSummonerLevel = (p as any).summonerLevel ? BigInt((p as any).summonerLevel) : BigInt(30);
+
+          if (p.puuid && !isMainPlayer && participantGameName !== 'Unknown') {
+            await prisma.summoner.upsert({
+              where: { puuid: p.puuid },
+              create: {
+                puuid: p.puuid,
+                gameName: participantGameName,
+                tagLine: participantTagline,
+                region,
+                platform,
+                profileIconId: participantProfileIcon,
+                summonerLevel: participantSummonerLevel,
+              },
+              update: {
+                gameName: participantGameName,
+                tagLine: participantTagline || undefined,
+                profileIconId: participantProfileIcon,
+                summonerLevel: participantSummonerLevel,
+              },
+            }).catch(() => {});
+          }
+
           // Collect candidates for snowballing if crawler is active
           if (
             config.enableSnowballCrawler &&
@@ -492,6 +517,8 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               puuid: part.puuid,
               gameName: part.riotIdName || (part as any).riotIdGameName || part.summonerName || 'Unknown',
               tagLine: part.riotIdTagline || '',
+              profileIcon: (part as any).profileIcon || 29,
+              summonerLevel: (part as any).summonerLevel || 30,
             })),
           });
         }
@@ -574,6 +601,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
             puuid: true,
             riotIdGameName: true,
             riotIdTagline: true,
+            profileIcon: true,
             postGameTier: true,
           },
         },
@@ -588,12 +616,24 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
           puuid: p.puuid,
           gameName: p.riotIdGameName,
           tagLine: p.riotIdTagline,
+          profileIcon: p.profileIcon || 29,
+          summonerLevel: 30,
         })),
       });
     }
   }
 
-  const fellowParticipantMap = new Map<string, { puuid: string; gameName: string; tagLine: string; queueId: number }>();
+  const fellowParticipantMap = new Map<
+    string,
+    {
+      puuid: string;
+      gameName: string;
+      tagLine: string;
+      profileIcon: number;
+      summonerLevel: number;
+      queueId: number;
+    }
+  >();
   for (const m of newlyIngestedRankedMatches) {
     for (const p of m.participants) {
       if (p.puuid && p.puuid !== puuid && !fellowParticipantMap.has(p.puuid)) {
@@ -601,6 +641,8 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
           puuid: p.puuid,
           gameName: p.gameName,
           tagLine: p.tagLine,
+          profileIcon: (p as any).profileIcon || 29,
+          summonerLevel: (p as any).summonerLevel || 30,
           queueId: m.queueId,
         });
       }
@@ -615,15 +657,35 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
       where: { puuid: { in: fellowPuuids } },
       select: {
         puuid: true,
+        gameName: true,
+        tagLine: true,
+        profileIconId: true,
+        summonerLevel: true,
+        lastFetchedAt: true,
         soloTier: true,
         soloRank: true,
         soloLp: true,
+        soloWins: true,
+        soloLosses: true,
+        soloPeakTier: true,
+        soloPeakRank: true,
+        soloPeakLp: true,
         flexTier: true,
         flexRank: true,
         flexLp: true,
+        flexWins: true,
+        flexLosses: true,
+        flexPeakTier: true,
+        flexPeakRank: true,
+        flexPeakLp: true,
         ranked5sTier: true,
         ranked5sRank: true,
         ranked5sLp: true,
+        ranked5sWins: true,
+        ranked5sLosses: true,
+        ranked5sPeakTier: true,
+        ranked5sPeakRank: true,
+        ranked5sPeakLp: true,
       },
     });
 
@@ -634,11 +696,14 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
 
     const missingRankPuuids = fellowPuuids.filter((fPuuid) => {
       const dbSummoner = fellowDbMap.get(fPuuid);
+      if (!dbSummoner || !dbSummoner.lastFetchedAt) return true;
+      const isStale = Date.now() - new Date(dbSummoner.lastFetchedAt).getTime() > 15 * 60 * 1000;
+      if (isStale) return true;
       const queueId = fellowParticipantMap.get(fPuuid)!.queueId;
-      if (queueId === 420) return !dbSummoner?.soloTier;
-      if (queueId === 440) return !dbSummoner?.flexTier;
-      if (queueId === 710) return !dbSummoner?.ranked5sTier;
-      return true;
+      if (queueId === 420) return !dbSummoner.soloTier;
+      if (queueId === 440) return !dbSummoner.flexTier;
+      if (queueId === 710) return !dbSummoner.ranked5sTier;
+      return false;
     });
 
     if (missingRankPuuids.length > 0) {
@@ -659,11 +724,43 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
               const fFlex = entries.find((e: any) => e.queueType?.toUpperCase() === 'RANKED_FLEX_SR');
               const f5s = entries.find((e: any) => {
                 const q = e.queueType?.toUpperCase();
-                return q === 'RANKED_PREMADE_5X5' || q === 'RANKED_TEAM_5X5' || q === 'RANKED_5S' || q === 'RANKED_5X5';
+                return (
+                  q === 'RANKED_PREMADE_5X5' ||
+                  q === 'RANKED_TEAM_5X5' ||
+                  q === 'RANKED_5S' ||
+                  q === 'RANKED_5X5' ||
+                  q === 'CHERRY'
+                );
               });
 
               const info = fellowParticipantMap.get(fPuuid);
               if (info) {
+                const prev = fellowDbMap.get(fPuuid);
+                const soloPeak = computePeakRank(
+                  fSolo?.tier || prev?.soloTier,
+                  fSolo?.rank || prev?.soloRank,
+                  fSolo?.leaguePoints ?? prev?.soloLp ?? 0,
+                  prev?.soloPeakTier,
+                  prev?.soloPeakRank,
+                  prev?.soloPeakLp
+                );
+                const flexPeak = computePeakRank(
+                  fFlex?.tier || prev?.flexTier,
+                  fFlex?.rank || prev?.flexRank,
+                  fFlex?.leaguePoints ?? prev?.flexLp ?? 0,
+                  prev?.flexPeakTier,
+                  prev?.flexPeakRank,
+                  prev?.flexPeakLp
+                );
+                const ranked5sPeak = computePeakRank(
+                  f5s?.tier || prev?.ranked5sTier,
+                  f5s?.rank || prev?.ranked5sRank,
+                  f5s?.leaguePoints ?? prev?.ranked5sLp ?? 0,
+                  prev?.ranked5sPeakTier,
+                  prev?.ranked5sPeakRank,
+                  prev?.ranked5sPeakLp
+                );
+
                 await prisma.summoner.upsert({
                   where: { puuid: fPuuid },
                   create: {
@@ -672,49 +769,80 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
                     tagLine: info.tagLine || '',
                     region,
                     platform,
-                    profileIconId: 29,
-                    summonerLevel: BigInt(30),
+                    profileIconId: info.profileIcon || 29,
+                    summonerLevel: BigInt(info.summonerLevel || 30),
                     lastFetchedAt: new Date(),
                     soloTier: fSolo?.tier || null,
                     soloRank: fSolo?.rank || null,
                     soloLp: fSolo?.leaguePoints ?? 0,
                     soloWins: fSolo?.wins ?? 0,
                     soloLosses: fSolo?.losses ?? 0,
+                    soloPeakTier: soloPeak.peakTier,
+                    soloPeakRank: soloPeak.peakRank,
+                    soloPeakLp: soloPeak.peakLp,
                     flexTier: fFlex?.tier || null,
                     flexRank: fFlex?.rank || null,
                     flexLp: fFlex?.leaguePoints ?? 0,
                     flexWins: fFlex?.wins ?? 0,
                     flexLosses: fFlex?.losses ?? 0,
+                    flexPeakTier: flexPeak.peakTier,
+                    flexPeakRank: flexPeak.peakRank,
+                    flexPeakLp: flexPeak.peakLp,
                     ranked5sTier: f5s?.tier || null,
                     ranked5sRank: f5s?.rank || null,
                     ranked5sLp: f5s?.leaguePoints ?? 0,
                     ranked5sWins: f5s?.wins ?? 0,
                     ranked5sLosses: f5s?.losses ?? 0,
+                    ranked5sPeakTier: ranked5sPeak.peakTier,
+                    ranked5sPeakRank: ranked5sPeak.peakRank,
+                    ranked5sPeakLp: ranked5sPeak.peakLp,
                   },
                   update: {
-                    soloTier: fSolo?.tier,
-                    soloRank: fSolo?.rank,
-                    soloLp: fSolo?.leaguePoints,
-                    flexTier: fFlex?.tier,
-                    flexRank: fFlex?.rank,
-                    flexLp: fFlex?.leaguePoints,
-                    ranked5sTier: f5s?.tier,
-                    ranked5sRank: f5s?.rank,
-                    ranked5sLp: f5s?.leaguePoints,
+                    gameName: info.gameName || undefined,
+                    tagLine: info.tagLine || undefined,
+                    region,
+                    platform,
+                    profileIconId: info.profileIcon || undefined,
+                    summonerLevel: info.summonerLevel ? BigInt(info.summonerLevel) : undefined,
+                    lastFetchedAt: new Date(),
+                    soloTier: fSolo?.tier || undefined,
+                    soloRank: fSolo?.rank || undefined,
+                    soloLp: fSolo?.leaguePoints !== undefined ? fSolo.leaguePoints : undefined,
+                    soloWins: fSolo?.wins !== undefined ? fSolo.wins : undefined,
+                    soloLosses: fSolo?.losses !== undefined ? fSolo.losses : undefined,
+                    soloPeakTier: soloPeak.peakTier,
+                    soloPeakRank: soloPeak.peakRank,
+                    soloPeakLp: soloPeak.peakLp,
+                    flexTier: fFlex?.tier || undefined,
+                    flexRank: fFlex?.rank || undefined,
+                    flexLp: fFlex?.leaguePoints !== undefined ? fFlex.leaguePoints : undefined,
+                    flexWins: fFlex?.wins !== undefined ? fFlex.wins : undefined,
+                    flexLosses: fFlex?.losses !== undefined ? fFlex.losses : undefined,
+                    flexPeakTier: flexPeak.peakTier,
+                    flexPeakRank: flexPeak.peakRank,
+                    flexPeakLp: flexPeak.peakLp,
+                    ranked5sTier: f5s?.tier || undefined,
+                    ranked5sRank: f5s?.rank || undefined,
+                    ranked5sLp: f5s?.leaguePoints !== undefined ? f5s.leaguePoints : undefined,
+                    ranked5sWins: f5s?.wins !== undefined ? f5s.wins : undefined,
+                    ranked5sLosses: f5s?.losses !== undefined ? f5s.losses : undefined,
+                    ranked5sPeakTier: ranked5sPeak.peakTier,
+                    ranked5sPeakRank: ranked5sPeak.peakRank,
+                    ranked5sPeakLp: ranked5sPeak.peakLp,
                   },
                 });
 
                 fellowDbMap.set(fPuuid, {
                   puuid: fPuuid,
-                  soloTier: fSolo?.tier || null,
-                  soloRank: fSolo?.rank || null,
-                  soloLp: fSolo?.leaguePoints ?? 0,
-                  flexTier: fFlex?.tier || null,
-                  flexRank: fFlex?.rank || null,
-                  flexLp: fFlex?.leaguePoints ?? 0,
-                  ranked5sTier: f5s?.tier || null,
-                  ranked5sRank: f5s?.rank || null,
-                  ranked5sLp: f5s?.leaguePoints ?? 0,
+                  soloTier: fSolo?.tier || prev?.soloTier || null,
+                  soloRank: fSolo?.rank || prev?.soloRank || null,
+                  soloLp: fSolo?.leaguePoints ?? prev?.soloLp ?? 0,
+                  flexTier: fFlex?.tier || prev?.flexTier || null,
+                  flexRank: fFlex?.rank || prev?.flexRank || null,
+                  flexLp: fFlex?.leaguePoints ?? prev?.flexLp ?? 0,
+                  ranked5sTier: f5s?.tier || prev?.ranked5sTier || null,
+                  ranked5sRank: f5s?.rank || prev?.ranked5sRank || null,
+                  ranked5sLp: f5s?.leaguePoints ?? prev?.ranked5sLp ?? 0,
                 });
               }
             }
