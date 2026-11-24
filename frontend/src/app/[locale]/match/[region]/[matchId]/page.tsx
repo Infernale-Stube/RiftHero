@@ -358,7 +358,7 @@ export default function MatchDetailPage() {
 
                     {/* Player Name, Tag, Role & LP */}
                     <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1.5 truncate">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <Link
                           href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
                           className={`truncate text-sm font-bold hover:text-white transition-colors ${

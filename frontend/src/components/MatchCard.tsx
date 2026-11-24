@@ -554,7 +554,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   ) : null}
 
                   {/* Player Game Name & Champion Name & LP */}
-                  <div className="flex flex-col justify-center min-w-[100px] max-w-[145px] shrink-0">
+                  <div className="flex flex-col justify-center min-w-[105px] max-w-[175px] shrink-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Link
                         href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
@@ -977,9 +977,9 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 : '';
 
               return (
-                <div key={posKey} className="flex items-center gap-2.5">
+                <div key={posKey} className="flex items-center gap-1.5 sm:gap-2.5">
                   {/* Blue Player */}
-                  <div className="flex items-center gap-1.5 w-[95px] sm:w-[110px] min-w-0">
+                  <div className="flex items-center gap-1.5 w-[100px] sm:w-[120px] md:w-[128px] min-w-0">
                     {blueP && (
                       <>
                         <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
@@ -994,7 +994,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                         </div>
                         <Link
                           href={`/${locale}/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
-                          className={`truncate hover:text-white transition-colors ${
+                          className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
                             isBlueCurrent
                               ? 'font-black text-white'
                               : 'text-zinc-400 font-medium'
@@ -1024,7 +1024,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   </div>
 
                   {/* Red Player */}
-                  <div className="flex items-center gap-1.5 w-[95px] sm:w-[110px] min-w-0">
+                  <div className="flex items-center gap-1.5 w-[100px] sm:w-[120px] md:w-[128px] min-w-0">
                     {redP && (
                       <>
                         <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
@@ -1039,7 +1039,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                         </div>
                         <Link
                           href={`/${locale}/summoner/${region}/${encodeURIComponent(redFormatted)}`}
-                          className={`truncate hover:text-white transition-colors ${
+                          className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
                             isRedCurrent
                               ? 'font-black text-white'
                               : 'text-zinc-400 font-medium'
