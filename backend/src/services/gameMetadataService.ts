@@ -1,67 +1,101 @@
 import { prisma } from '../db/prisma';
+import fs from 'fs';
+import path from 'path';
 
 export interface GameQueueItem {
   id: number;
   name: string;
 }
 
-// Fallback defaults for standard queues (used when database table is not yet populated)
-export const DEFAULT_QUEUES: Record<number, string> = {
-  420: 'Ranked Solo/Duo',
-  440: 'Ranked Flex',
-  710: 'Ranked 5s',
-  450: 'ARAM',
-  400: 'Normal Draft',
-  430: 'Normal Blind',
-  490: 'Quickplay',
-  1700: 'Arena',
-  700: 'Clash',
-};
-
 // In-memory cache loaded from the database table `game_queues`
 const queuesCache = new Map<number, string>();
 
-// Initialize in-memory cache with defaults
-for (const [idStr, name] of Object.entries(DEFAULT_QUEUES)) {
-  queuesCache.set(Number(idStr), name);
+/**
+ * Format raw queue descriptions into clean, display-friendly names.
+ */
+function formatQueueName(q: { queueId: number; description?: string | null; map?: string | null }): string {
+  if (!q.description) return q.map || `Queue ${q.queueId}`;
+  let name = q.description.trim();
+  name = name.replace(/^5v5\s+/i, '');
+  name = name.replace(/^3v3\s+/i, '');
+  name = name.replace(/^6v6\s+/i, '');
+  name = name.replace(/\s+games$/i, '');
+  const lower = name.toLowerCase();
+  if (lower === 'ranked solo') return 'Ranked Solo/Duo';
+  if (lower === 'ranked flex') return 'Ranked Flex';
+  if (lower === 'draft pick') return 'Normal Draft';
+  if (lower === 'blind pick') return 'Normal Blind';
+  if (lower === 'normal (quickplay)') return 'Quickplay';
+  if (lower.includes('clash')) {
+    if (lower.includes('aram')) return 'ARAM Clash';
+    return 'Clash';
+  }
+  return name;
 }
 
 /**
  * Loads GameQueue records from PostgreSQL into the in-memory cache.
- * If the table is empty, seeds the default queues once so they appear in Prisma Studio.
+ * If the table is empty, seeds the default queues once from Riot queues data into the database.
  */
 export async function loadQueuesFromDb(): Promise<void> {
   try {
+    const count = await prisma.gameQueue.count();
+
+    if (count === 0) {
+      console.log('[GameQueue] Database table empty. Seeding initial default queues into database...');
+      let seedEntries: Array<{ id: number; name: string }> = [];
+
+      try {
+        const jsonPath = path.resolve(__dirname, '../data/queues.json');
+        if (fs.existsSync(jsonPath)) {
+          const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+          seedEntries = raw.map((q: any) => ({
+            id: Number(q.queueId),
+            name: formatQueueName(q),
+          }));
+        }
+      } catch (readErr: any) {
+        console.warn('[GameQueue] Could not read queues.json for seeding:', readErr?.message || readErr);
+      }
+
+      // Ensure essential standard queues are present
+      const essential = [
+        { id: 420, name: 'Ranked Solo/Duo' },
+        { id: 440, name: 'Ranked Flex' },
+        { id: 710, name: 'Ranked 5s' },
+        { id: 450, name: 'ARAM' },
+        { id: 400, name: 'Normal Draft' },
+        { id: 430, name: 'Normal Blind' },
+        { id: 490, name: 'Quickplay' },
+        { id: 1700, name: 'Arena' },
+        { id: 700, name: 'Clash' },
+      ];
+      for (const item of essential) {
+        if (!seedEntries.some((e) => e.id === item.id)) {
+          seedEntries.push(item);
+        }
+      }
+
+      if (seedEntries.length > 0) {
+        await prisma.gameQueue.createMany({
+          data: seedEntries,
+          skipDuplicates: true,
+        });
+        console.log(`[GameQueue] Successfully seeded ${seedEntries.length} default queues into database.`);
+      }
+    }
+
     const dbQueues = await prisma.gameQueue.findMany({
       orderBy: { id: 'asc' },
     });
 
-    if (dbQueues.length > 0) {
-      queuesCache.clear();
-      for (const q of dbQueues) {
-        queuesCache.set(q.id, q.name);
-      }
-      console.log(`[GameQueue] Loaded ${dbQueues.length} queue(s) from database into cache.`);
-    } else {
-      // Seed initial default queues into the database so the user can view/edit them in Prisma Studio
-      console.log('[GameQueue] Database table empty. Seeding default queues into database...');
-      const seedEntries = Object.entries(DEFAULT_QUEUES).map(([idStr, name]) => ({
-        id: Number(idStr),
-        name,
-      }));
-
-      await prisma.gameQueue.createMany({
-        data: seedEntries,
-        skipDuplicates: true,
-      });
-
-      for (const q of seedEntries) {
-        queuesCache.set(q.id, q.name);
-      }
-      console.log(`[GameQueue] Seeded ${seedEntries.length} default queues into database.`);
+    queuesCache.clear();
+    for (const q of dbQueues) {
+      queuesCache.set(q.id, q.name);
     }
+    console.log(`[GameQueue] Loaded ${dbQueues.length} queue(s) from database into cache.`);
   } catch (err: any) {
-    console.warn('[GameQueue] Notice while loading queues from database (defaults remain active):', err?.message || err);
+    console.warn('[GameQueue] Notice while loading queues from database:', err?.message || err);
   }
 }
 
@@ -69,7 +103,7 @@ export async function loadQueuesFromDb(): Promise<void> {
  * Returns human-readable queue name by queueId (e.g. 420 -> "Ranked Solo/Duo").
  */
 export function getQueueName(queueId: number): string {
-  return queuesCache.get(queueId) || DEFAULT_QUEUES[queueId] || `Queue ${queueId}`;
+  return queuesCache.get(queueId) || (queueId ? `Queue ${queueId}` : 'Queue');
 }
 
 /**
@@ -77,7 +111,7 @@ export function getQueueName(queueId: number): string {
  */
 export function isRankedQueue(queueId: number): boolean {
   if (queueId === 420 || queueId === 440 || queueId === 710) return true;
-  const name = queuesCache.get(queueId) || DEFAULT_QUEUES[queueId];
+  const name = queuesCache.get(queueId);
   if (!name) return false;
   const lower = name.toLowerCase();
   return lower.includes('ranked') || lower.includes('solo') || lower.includes('flex');

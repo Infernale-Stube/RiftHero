@@ -1,33 +1,6 @@
 import { GameQueue } from '@/types';
 
-// Default fallback queue map (id -> display name)
-const DEFAULT_QUEUES: Record<number, string> = {
-  0: 'Custom',
-  400: 'Normal Draft',
-  420: 'Ranked Solo/Duo',
-  430: 'Normal Blind',
-  440: 'Ranked Flex',
-  450: 'ARAM',
-  490: 'Quickplay',
-  700: 'Clash',
-  710: 'Ranked 5v5',
-  720: 'ARAM Clash',
-  830: 'Co-op vs AI (Intro)',
-  840: 'Co-op vs AI (Beginner)',
-  850: 'Co-op vs AI (Intermediate)',
-  900: 'ARURF',
-  1020: 'One for All',
-  1300: 'Nexus Blitz',
-  1400: 'Ultimate Spellbook',
-  1700: 'Arena',
-  1710: 'Arena',
-  1900: 'Pick URF',
-};
-
 const queuesMap = new Map<number, GameQueue>();
-Object.entries(DEFAULT_QUEUES).forEach(([id, name]) => {
-  queuesMap.set(Number(id), { id: Number(id), name });
-});
 
 /**
  * Update or seed in-memory queues (e.g. from /meta/queues).

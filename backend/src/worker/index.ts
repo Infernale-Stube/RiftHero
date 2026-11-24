@@ -10,6 +10,7 @@ import { config } from '../config';
 import { initChampionItemWorker, stopChampionItemWorker } from './championItemWorker';
 import { initMetaWorker, stopMetaWorker } from './metaWorker';
 import { setupWorkerProcess, registerGracefulShutdown } from './workerUtils';
+import { loadQueuesFromDb } from '../services/gameMetadataService';
 
 setupWorkerProcess('AllInOneWorker');
 
@@ -70,6 +71,9 @@ async function main() {
   });
 
   console.log('🚀 [Worker] Workers listening to queues [summoner-high, summoner-low]');
+
+  // Load GameQueue configurations from database
+  await loadQueuesFromDb();
 
   // Initialize Champion & Items Worker
   initChampionItemWorker();

@@ -5,7 +5,6 @@ import { Swords, Loader2, ChevronDown } from 'lucide-react';
 import { FormattedMatch } from '@/types';
 import MatchCard from './MatchCard';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { getQueueName } from '@/lib/gameMetadata';
 
 interface MatchHistoryProps {
   matches: FormattedMatch[];
@@ -43,11 +42,11 @@ export default function MatchHistory({
 
   const queueTabs = [
     { id: 'all', label: locale === 'de' ? 'Alle' : 'All' },
-    { id: 'ranked_solo', label: getQueueName(420) },
-    { id: 'ranked_flex', label: getQueueName(440) },
-    { id: 'ranked_5s', label: getQueueName(710) },
-    { id: 'aram', label: getQueueName(450) },
-    { id: 'arena', label: getQueueName(1700) },
+    { id: 'ranked_solo', label: 'Solo/Duo' },
+    { id: 'ranked_flex', label: 'Flex' },
+    { id: 'ranked_5s', label: '5s' },
+    { id: 'aram', label: 'ARAM' },
+    { id: 'arena', label: 'Arena' },
   ];
 
   // Group matches by day like LoLDB (e.g. "Today 2W 1L", "Yesterday 3W 0L", "Nov 17 6W 1L")
