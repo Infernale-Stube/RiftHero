@@ -270,37 +270,16 @@ export default function MatchHistory({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Top Header: Today's Summary & Quick Stats */}
-      {groupedMatches.length > 0 && (
-        <div className="flex items-center gap-2 text-sm font-black px-1">
-          <span className="text-white text-base tracking-tight">{groupedMatches[0].dateLabel}</span>
-          <span className="text-emerald-400 font-bold text-xs">{groupedMatches[0].wins}W</span>
-          <span className="text-rose-400 font-bold text-xs">{groupedMatches[0].losses}L</span>
-          {groupedMatches[0].hasLpData && (
-            <>
-              <span className="text-zinc-600 font-normal">·</span>
-              <span
-                className={`text-xs font-black tracking-tight ${
-                  groupedMatches[0].lpDelta > 0
-                    ? 'text-emerald-400'
-                    : groupedMatches[0].lpDelta < 0
-                    ? 'text-rose-400'
-                    : 'text-zinc-400'
-                }`}
-              >
-                {groupedMatches[0].lpDelta > 0 ? `+${groupedMatches[0].lpDelta}` : groupedMatches[0].lpDelta} LP
-              </span>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Filter Toolbar with Collapsible Dropdowns */}
-      <div className="relative flex items-center justify-between gap-3 flex-wrap bg-[#0c1015]/90 p-2 rounded-2xl border border-white/[0.06] backdrop-blur-md">
+      <div
+        className={`relative flex items-center justify-between gap-3 flex-wrap bg-[#0c1015]/90 p-2 rounded-2xl border border-white/[0.06] backdrop-blur-md transition-all ${
+          openDropdown ? 'z-50' : 'z-30'
+        }`}
+      >
         {/* Invisible Click-Outside Backdrop */}
         {openDropdown && (
           <div
-            className="fixed inset-0 z-30 bg-transparent"
+            className="fixed inset-0 z-40 bg-transparent"
             onClick={() => {
               setOpenDropdown(null);
               setChampSearch('');
@@ -309,7 +288,7 @@ export default function MatchHistory({
         )}
 
         {/* Filter Dropdown Buttons */}
-        <div className="flex items-center gap-2 flex-wrap z-30">
+        <div className="relative flex items-center gap-2 flex-wrap z-50">
           {/* 1. Queue Dropdown */}
           <div className="relative">
             <button
@@ -333,7 +312,7 @@ export default function MatchHistory({
             </button>
 
             {openDropdown === 'queue' && (
-              <div className="absolute left-0 top-full mt-2 w-56 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-40 scrollbar-thin scrollbar-thumb-white/10">
+              <div className="absolute left-0 top-full mt-2 w-56 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-50 scrollbar-thin scrollbar-thumb-white/10">
                 <button
                   type="button"
                   onClick={() => {
@@ -421,7 +400,7 @@ export default function MatchHistory({
             </button>
 
             {openDropdown === 'role' && (
-              <div className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-40">
+              <div className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-50">
                 {POSITION_OPTIONS.map((pos) => {
                   const isSelected = (selectedRole || 'all').toUpperCase() === pos.id;
                   return (
@@ -510,7 +489,7 @@ export default function MatchHistory({
             </button>
 
             {openDropdown === 'champion' && (
-              <div className="absolute left-0 top-full mt-2 w-64 max-h-80 flex flex-col rounded-xl border border-white/10 bg-[#0d1218] shadow-2xl backdrop-blur-2xl z-40 overflow-hidden">
+              <div className="absolute left-0 top-full mt-2 w-64 max-h-80 flex flex-col rounded-xl border border-white/10 bg-[#0d1218] shadow-2xl backdrop-blur-2xl z-50 overflow-hidden">
                 {/* Search Input */}
                 <div className="p-2 border-b border-white/[0.06] bg-[#0c1015]">
                   <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/10">
@@ -641,7 +620,7 @@ export default function MatchHistory({
             </button>
 
             {openDropdown === 'result' && (
-              <div className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-40">
+              <div className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-[#0d1218] p-1.5 shadow-2xl backdrop-blur-2xl z-50">
                 {RESULT_OPTIONS.map((res) => {
                   const isSelected = (selectedResult || 'all') === res.id;
                   return (
@@ -739,18 +718,10 @@ export default function MatchHistory({
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          {/* First Day's Matches (Header rendered in top bar) */}
-          <div className="flex flex-col gap-2.5">
-            {groupedMatches[0].matches.map((match) => (
-              <MatchCard key={match.matchId} match={match} region={region} />
-            ))}
-          </div>
-
-          {/* Subsequent Days */}
-          {groupedMatches.slice(1).map((group) => (
+        <div className="flex flex-col gap-6 relative z-10">
+          {groupedMatches.map((group) => (
             <div key={group.dateLabel} className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-sm font-black px-1 mt-2">
+              <div className="flex items-center gap-2 text-sm font-black px-1 mt-1">
                 <span className="text-white text-base tracking-tight">{group.dateLabel}</span>
                 <span className="text-emerald-400 font-bold text-xs">{group.wins}W</span>
                 <span className="text-rose-400 font-bold text-xs">{group.losses}L</span>

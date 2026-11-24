@@ -841,6 +841,13 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
           {/* Outcome & Queue & Duration & Surrender / LP */}
           <div className="flex flex-col justify-center min-w-[100px]">
+            {showNewBadge && (
+              <div className="flex items-center mb-0.5">
+                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[9px] font-black text-[#f9b771] shadow-sm tracking-wider uppercase leading-none select-none transition-opacity duration-300">
+                  {t('matches.badgeNew')}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
                 {outcomeText}
@@ -856,11 +863,6 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   }`}
                 >
                   {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
-                </span>
-              )}
-              {showNewBadge && (
-                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[10px] font-bold text-[#f9b771] shadow-sm tracking-wide leading-none select-none transition-opacity duration-300">
-                  {t('matches.badgeNew')}
                 </span>
               )}
             </div>
