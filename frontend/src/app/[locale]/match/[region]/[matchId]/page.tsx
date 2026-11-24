@@ -26,6 +26,7 @@ import { fetchMatchDetails } from '@/lib/api';
 import { MatchDetailResponse, MatchParticipant, TeamMatchDetail } from '@/types';
 import {
   getChampionIconUrl,
+  getChampionIconByIdUrl,
   getItemIconUrl,
   getSpellIconUrl,
   getRuneIconUrl,
@@ -533,25 +534,31 @@ export default function MatchDetailPage() {
                 return (
                   <div
                     key={slotIdx}
-                    className="relative h-6 w-6 overflow-hidden rounded border border-white/10 bg-black/80 flex items-center justify-center shrink-0"
+                    className="group relative h-7 w-7 sm:h-8 sm:w-8 rounded-lg overflow-hidden bg-black/60 shadow-sm shrink-0 flex items-center justify-center border border-white/10"
                     title={isValid ? `Gebannt: ${ban.championName}` : 'Kein Ban'}
                   >
                     {isValid ? (
                       <>
                         <Image
-                          src={getChampionIconUrl(ban.championName)}
+                          src={getChampionIconUrl(ban.championName) || getChampionIconByIdUrl(ban.championId)}
                           alt={ban.championName}
-                          width={24}
-                          height={24}
-                          className="h-full w-full object-cover grayscale opacity-70"
+                          width={32}
+                          height={32}
+                          className="h-full w-full object-cover grayscale brightness-75 contrast-125 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-200"
                           unoptimized
                         />
-                        <div className="absolute inset-0 bg-rose-950/40" />
-                        <div className="absolute inset-x-0 top-1/2 h-[1px] bg-rose-500/80 -rotate-45 pointer-events-none" />
+                        {/* Diagonal Red Ban Line */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
+                        </div>
+                        {/* Ban Icon */}
+                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 flex items-center justify-center pointer-events-none">
+                          <Ban className="h-2 w-2 text-rose-400" />
+                        </div>
                       </>
                     ) : (
                       <div className="flex items-center justify-center w-full h-full bg-white/[0.02]">
-                        <Ban className="h-2.5 w-2.5 text-zinc-600/70" />
+                        <Ban className="h-3 w-3 text-zinc-600/60" />
                       </div>
                     )}
                   </div>

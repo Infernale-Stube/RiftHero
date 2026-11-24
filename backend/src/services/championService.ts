@@ -1235,15 +1235,17 @@ export async function getChampionDetail(
   // Direct database fallback if not yet present in snapshot cache
   if (!cached) {
     const isNum = !isNaN(Number(slug));
-    const dbRow = await prisma.champion.findFirst({
-      where: {
-        OR: [
-          { key: { equals: cleanTarget, mode: 'insensitive' } },
-          { nameEn: { equals: cleanTarget, mode: 'insensitive' } },
-          { nameDe: { equals: cleanTarget, mode: 'insensitive' } },
-          ...(isNum ? [{ id: Number(slug) }] : []),
-        ],
-      },
+    const allRows = await prisma.champion.findMany().catch(() => []);
+    const dbRow = allRows.find((r) => {
+      const k = (r.key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const en = (r.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const de = (r.nameDe || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return (
+        (k && k === cleanTarget) ||
+        (en && en === cleanTarget) ||
+        (de && de === cleanTarget) ||
+        (isNum && r.id === Number(slug))
+      );
     });
 
     if (dbRow) {

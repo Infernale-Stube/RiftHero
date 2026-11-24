@@ -302,11 +302,11 @@ export async function getSummonerMatches(
         {
           teamId: 100,
           bans: [
-            { championId: m.blueBan1 ?? -1 },
-            { championId: m.blueBan2 ?? -1 },
-            { championId: m.blueBan3 ?? -1 },
-            { championId: m.blueBan4 ?? -1 },
-            { championId: m.blueBan5 ?? -1 },
+            { championId: m.blueBan1 ?? -1, championName: m.blueBan1 && m.blueBan1 > 0 ? getChampionNameByIdSync(m.blueBan1) : '' },
+            { championId: m.blueBan2 ?? -1, championName: m.blueBan2 && m.blueBan2 > 0 ? getChampionNameByIdSync(m.blueBan2) : '' },
+            { championId: m.blueBan3 ?? -1, championName: m.blueBan3 && m.blueBan3 > 0 ? getChampionNameByIdSync(m.blueBan3) : '' },
+            { championId: m.blueBan4 ?? -1, championName: m.blueBan4 && m.blueBan4 > 0 ? getChampionNameByIdSync(m.blueBan4) : '' },
+            { championId: m.blueBan5 ?? -1, championName: m.blueBan5 && m.blueBan5 > 0 ? getChampionNameByIdSync(m.blueBan5) : '' },
           ],
           objectives: {
             tower: { kills: m.blueTowerKills },
@@ -320,11 +320,11 @@ export async function getSummonerMatches(
         {
           teamId: 200,
           bans: [
-            { championId: m.redBan1 ?? -1 },
-            { championId: m.redBan2 ?? -1 },
-            { championId: m.redBan3 ?? -1 },
-            { championId: m.redBan4 ?? -1 },
-            { championId: m.redBan5 ?? -1 },
+            { championId: m.redBan1 ?? -1, championName: m.redBan1 && m.redBan1 > 0 ? getChampionNameByIdSync(m.redBan1) : '' },
+            { championId: m.redBan2 ?? -1, championName: m.redBan2 && m.redBan2 > 0 ? getChampionNameByIdSync(m.redBan2) : '' },
+            { championId: m.redBan3 ?? -1, championName: m.redBan3 && m.redBan3 > 0 ? getChampionNameByIdSync(m.redBan3) : '' },
+            { championId: m.redBan4 ?? -1, championName: m.redBan4 && m.redBan4 > 0 ? getChampionNameByIdSync(m.redBan4) : '' },
+            { championId: m.redBan5 ?? -1, championName: m.redBan5 && m.redBan5 > 0 ? getChampionNameByIdSync(m.redBan5) : '' },
           ],
           objectives: {
             tower: { kills: m.redTowerKills },

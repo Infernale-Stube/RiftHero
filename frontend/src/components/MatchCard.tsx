@@ -31,7 +31,6 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
-import SlotLpCounter from './SlotLpCounter';
 
 interface MatchCardProps {
   match: FormattedMatch;
@@ -101,32 +100,49 @@ function ItemSlot({
   );
 }
 
-function BanSlot({ champId }: { champId?: number | null }) {
+function BanSlot({ champId, champName }: { champId?: number | null; champName?: string | null }) {
   const [hasError, setHasError] = useState(false);
-  const isValid = Boolean(champId && champId > 0 && !hasError);
+  const isValid =
+    Boolean(
+      (champId && champId > 0) ||
+        (champName && champName.trim().length > 0 && champName.toLowerCase() !== 'none')
+    ) && !hasError;
+
+  const iconUrl =
+    champName && champName.trim().length > 0 && champName.toLowerCase() !== 'none'
+      ? getChampionIconUrl(champName)
+      : champId && champId > 0
+      ? getChampionIconByIdUrl(champId)
+      : '';
 
   return (
     <div
-      className="relative w-5 h-5 min-w-[20px] max-w-[20px] min-h-[20px] max-h-[20px] rounded overflow-hidden border border-white/10 bg-black/60 shrink-0 shadow-sm flex items-center justify-center"
-      title={isValid ? `Gebannter Champion ID ${champId}` : 'Kein Ban'}
+      className="group relative h-6 w-6 sm:h-7 sm:w-7 rounded-lg overflow-hidden bg-black/60 shadow-sm shrink-0 flex items-center justify-center border border-white/10"
+      title={isValid ? `Gebannter Champion: ${champName || champId}` : 'Kein Ban'}
     >
-      {isValid ? (
+      {isValid && iconUrl ? (
         <>
           <Image
-            src={getChampionIconByIdUrl(champId!)}
-            alt=""
-            width={20}
-            height={20}
-            className="h-full w-full object-cover grayscale opacity-60"
+            src={iconUrl}
+            alt={champName || ''}
+            width={28}
+            height={28}
+            className="h-full w-full object-cover grayscale brightness-75 contrast-125 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-200"
             unoptimized
             onError={() => setHasError(true)}
           />
-          <div className="absolute inset-0 bg-red-500/25 pointer-events-none" />
-          <div className="absolute inset-x-0 top-1/2 h-[1.5px] bg-red-500 -rotate-45 pointer-events-none" />
+          {/* Diagonal Red Ban Line */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[140%] h-[2px] bg-rose-500 rotate-45 shadow-[0_0_4px_rgba(244,63,94,0.9)]" />
+          </div>
+          {/* Corner Ban Icon */}
+          <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-rose-950 flex items-center justify-center pointer-events-none">
+            <Ban className="h-2 w-2 text-rose-400" />
+          </div>
         </>
       ) : (
-        <div className="flex items-center justify-center w-full h-full bg-white/[0.03]">
-          <Ban className="h-2.5 w-2.5 text-zinc-600/70" />
+        <div className="flex items-center justify-center w-full h-full bg-white/[0.02]">
+          <Ban className="h-2.5 w-2.5 text-zinc-600/60" />
         </div>
       )}
     </div>
@@ -246,8 +262,14 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   ) => {
     const sortedSlots = assignTeamPositions(team);
 
-    const rawBans = (teamRawData?.bans || []).map((b: any) => b.championId ?? -1);
-    const bans: number[] = Array.from({ length: 5 }, (_, idx) => rawBans[idx] ?? -1);
+    const rawBans = (teamRawData?.bans || []).map((b: any) => ({
+      championId: typeof b === 'number' ? b : b.championId ?? -1,
+      championName: b.championName || '',
+    }));
+    const bans: Array<{ championId: number; championName: string }> = Array.from(
+      { length: 5 },
+      (_, idx) => rawBans[idx] || { championId: -1, championName: '' }
+    );
     const obj = teamRawData?.objectives || {};
 
     const sideTowers = obj.tower?.kills ?? 0;
@@ -357,10 +379,14 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
             {/* Bans (Always 5 slots per team, with empty slot placeholders) */}
             <div className="flex items-center gap-1.5 ml-2 shrink-0">
-              <span className="text-[11px] text-zinc-500 font-bold">{t('matches.bans')}</span>
+              <span className="text-[10px] sm:text-[11px] text-zinc-500 font-bold uppercase tracking-wider">{t('matches.bans')}</span>
               <div className="flex items-center gap-1 shrink-0">
                 {[0, 1, 2, 3, 4].map((slotIdx) => (
-                  <BanSlot key={slotIdx} champId={bans[slotIdx]} />
+                  <BanSlot
+                    key={slotIdx}
+                    champId={bans[slotIdx]?.championId}
+                    champName={bans[slotIdx]?.championName}
+                  />
                 ))}
               </div>
             </div>
@@ -834,13 +860,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                       : 'text-zinc-400'
                   }`}
                 >
-                  <SlotLpCounter
-                    value={effectiveLpDelta}
-                    showSign={true}
-                    suffix=" LP"
-                    durationMs={750}
-                    animate={Boolean(isNewMatch)}
-                  />
+                  {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
                 </span>
               )}
               {showNewBadge && (
