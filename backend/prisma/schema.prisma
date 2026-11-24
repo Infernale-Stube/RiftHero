@@ -193,6 +193,7 @@ model MatchParticipant {
 
 model Champion {
   id                  Int      @id // champion numeric ID, e.g. 266
+  key                 String   @default("") // DDragon key / string id, e.g. "Aatrox", "LeeSin", "KogMaw", "MonkeyKing"
   nameDe              String
   nameEn              String
   titleDe             String
@@ -208,8 +209,18 @@ model Champion {
   difficulty          Int      @default(5)
   classes             String[]
   releaseDate         String?
+  partype             String   @default("Mana")
   patch               String   @default("")
   version             String   @default("")
+
+  // Localized abilities (Q, W, E, R), passive, and skins persisted directly in the database
+  spellsDe            Json?
+  spellsEn            Json?
+  passiveDe           Json?
+  passiveEn           Json?
+  skins               Json?
+  allytips            String[] @default([])
+  enemytips           String[] @default([])
 
   // Base Stats (discrete numeric columns in database)
   hp                  Float    @default(0)
@@ -236,6 +247,7 @@ model Champion {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  @@index([key])
   @@index([nameDe])
   @@index([nameEn])
   @@map("champions")

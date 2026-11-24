@@ -142,9 +142,41 @@ export function getProfileIconUrl(iconId: number, version = cachedVersion): stri
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${iconId}.png`;
 }
 
+const CHAMPION_NAME_MAP: Record<string, string> = {
+  Wukong: 'MonkeyKing',
+  FiddleSticks: 'Fiddlesticks',
+  LeBlanc: 'Leblanc',
+  "Cho'Gath": 'Chogath',
+  "Kai'Sa": 'Kaisa',
+  "Kha'Zix": 'Khazix',
+  "Vel'Koz": 'Velkoz',
+  "Bel'Veth": 'Belveth',
+  "K'Sante": 'KSante',
+  "Kog'Maw": 'KogMaw',
+  "Lee Sin": 'LeeSin',
+  "Master Yi": 'MasterYi',
+  "Miss Fortune": 'MissFortune',
+  "Dr. Mundo": 'DrMundo',
+  "Jarvan IV": 'JarvanIV',
+  "Tahm Kench": 'TahmKench',
+  "Twisted Fate": 'TwistedFate',
+  "Xin Zhao": 'XinZhao',
+  "Aurelion Sol": 'AurelionSol',
+  "Rek'Sai": 'RekSai',
+  'Renata Glasc': 'Renata',
+  'Nunu & Willump': 'Nunu',
+};
+
+export function normalizeChampionName(championName: string): string {
+  if (!championName) return 'Aatrox';
+  if (CHAMPION_NAME_MAP[championName]) return CHAMPION_NAME_MAP[championName];
+  const stripped = championName.replace(/['’.\s&_-]/g, '');
+  if (CHAMPION_NAME_MAP[stripped]) return CHAMPION_NAME_MAP[stripped];
+  return stripped || championName;
+}
+
 export function getChampionIconUrl(championName: string, version = cachedVersion): string {
-  let cleanName = championName;
-  if (cleanName === 'FiddleSticks') cleanName = 'Fiddlesticks';
+  const cleanName = normalizeChampionName(championName);
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${cleanName}.png`;
 }
 

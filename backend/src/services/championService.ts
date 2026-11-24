@@ -662,6 +662,7 @@ export async function buildChampionRostersAndDetails(
             details[key][cleanId] = {
               id: champ.id,
               key: champ.key,
+              championId: Number(champ.key),
               name: champ.name,
               title: champ.title,
               blurb: champ.blurb || champ.lore || '',
@@ -699,6 +700,8 @@ export async function buildChampionRostersAndDetails(
               role: posMeta?.role || loldbChamp?.role || champ.tags?.[0] || 'Mid',
               positions: posMeta?.positions || posMeta?.recommendedPositions || loldbChamp?.recommendedPositions || champ.tags || ['Mid'],
               classes: posMeta?.classes || (loldbChamp?.class ? [loldbChamp.class] : champ.tags) || [],
+              allytips: champ.allytips || [],
+              enemytips: champ.enemytips || [],
               releaseDate: storePrice.releaseDate,
               storeData: storePrice,
               meta: null,
@@ -805,10 +808,21 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
           const attackSpeed = stats.attackspeed ?? 0;
           const attackSpeedPerLevel = stats.attackspeedperlevel ?? 0;
 
+          const key = c.id; // DDragon ID (e.g. "Aatrox", "LeeSin", "KogMaw", "MasterYi", "MonkeyKing")
+          const partype = dataDe?.partype || dataEn?.partype || c.partype || 'Mana';
+          const spellsDe = dataDe?.spells || null;
+          const spellsEn = dataEn?.spells || null;
+          const passiveDe = dataDe?.passive || null;
+          const passiveEn = dataEn?.passive || null;
+          const skins = (dataDe?.skins && dataDe.skins.length > 0) ? dataDe.skins : (dataEn?.skins || null);
+          const allytips = dataDe?.allytips || dataEn?.allytips || [];
+          const enemytips = dataDe?.enemytips || dataEn?.enemytips || [];
+
           return prisma.champion.upsert({
             where: { id: champId },
             create: {
               id: champId,
+              key,
               nameDe,
               nameEn,
               titleDe,
@@ -824,8 +838,16 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               difficulty: c.difficulty ?? 5,
               classes: c.classes || [],
               releaseDate: c.releaseDate || null,
+              partype,
               patch,
               version: ddragonVersion,
+              spellsDe: spellsDe as any,
+              spellsEn: spellsEn as any,
+              passiveDe: passiveDe as any,
+              passiveEn: passiveEn as any,
+              skins: skins as any,
+              allytips,
+              enemytips,
               hp,
               hpPerLevel,
               mp,
@@ -850,6 +872,7 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               updatedAt: now,
             },
             update: {
+              key,
               nameDe,
               nameEn,
               titleDe,
@@ -865,8 +888,16 @@ export async function syncChampionSnapshot(force = false): Promise<ChampionSnaps
               difficulty: c.difficulty ?? 5,
               classes: c.classes || [],
               releaseDate: c.releaseDate || null,
+              partype,
               patch,
               version: ddragonVersion,
+              spellsDe: spellsDe as any,
+              spellsEn: spellsEn as any,
+              passiveDe: passiveDe as any,
+              passiveEn: passiveEn as any,
+              skins: skins as any,
+              allytips,
+              enemytips,
               hp,
               hpPerLevel,
               mp,
@@ -940,8 +971,10 @@ export async function loadActiveChampionSnapshot(
 
       for (const row of rows) {
         const champKey = String(row.id);
-        const cleanNameDe = row.nameDe.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanNameEn = row.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const ddragonKey = (row.key && row.key.trim().length > 0) ? row.key.trim() : (row.nameEn || '').replace(/[^a-zA-Z0-9]/g, '');
+        const cleanDDragon = ddragonKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanNameDe = (row.nameDe || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanNameEn = (row.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
         const stats = {
           hp: row.hp,
@@ -966,8 +999,28 @@ export async function loadActiveChampionSnapshot(
           attackspeedperlevel: row.attackSpeedPerLevel,
         };
 
+        const defaultSkin = {
+          id: '0',
+          num: 0,
+          name: 'default',
+          rarity: 'Regular',
+          rarityColor: '#2E8D4C',
+          releaseDate: row.releaseDate || '2012-01-01',
+          releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
+          cost: 0,
+          price: 0,
+          currency: 'RP',
+          isLegacy: false,
+        };
+
+        const rawSpellsDe = Array.isArray(row.spellsDe) && (row.spellsDe as any[]).length > 0 ? (row.spellsDe as any[]) : (Array.isArray(row.spellsEn) ? (row.spellsEn as any[]) : []);
+        const rawSpellsEn = Array.isArray(row.spellsEn) && (row.spellsEn as any[]).length > 0 ? (row.spellsEn as any[]) : rawSpellsDe;
+        const passiveDe = (row.passiveDe as any) || (row.passiveEn as any) || null;
+        const passiveEn = (row.passiveEn as any) || (row.passiveDe as any) || null;
+        const skins = Array.isArray(row.skins) && (row.skins as any[]).length > 0 ? (row.skins as any[]) : [defaultSkin];
+
         const champDe = {
-          id: row.nameEn,
+          id: ddragonKey,
           key: champKey,
           championId: row.id,
           name: row.nameDe,
@@ -982,32 +1035,18 @@ export async function loadActiveChampionSnapshot(
           classes: row.classes || [],
           releaseDate: row.releaseDate || '',
           stats,
-          spells: [],
-          skins: [
-            {
-              id: '0',
-              num: 0,
-              name: 'default',
-              rarity: 'Regular',
-              rarityColor: '#2E8D4C',
-              releaseDate: row.releaseDate || '2012-01-01',
-              releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
-              cost: 0,
-              price: 0,
-              currency: 'RP',
-              isLegacy: false,
-            },
-          ],
-          passive: null,
-          partype: 'Mana',
+          spells: rawSpellsDe,
+          skins,
+          passive: passiveDe,
+          partype: row.partype || 'Mana',
           info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
-          allytips: [],
-          enemytips: [],
+          allytips: row.allytips || [],
+          enemytips: row.enemytips || [],
           meta: null,
         };
 
         const champEn = {
-          id: row.nameEn,
+          id: ddragonKey,
           key: champKey,
           championId: row.id,
           name: row.nameEn,
@@ -1022,27 +1061,13 @@ export async function loadActiveChampionSnapshot(
           classes: row.classes || [],
           releaseDate: row.releaseDate || '',
           stats,
-          spells: [],
-          skins: [
-            {
-              id: '0',
-              num: 0,
-              name: 'default',
-              rarity: 'Regular',
-              rarityColor: '#2E8D4C',
-              releaseDate: row.releaseDate || '2012-01-01',
-              releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
-              cost: 0,
-              price: 0,
-              currency: 'RP',
-              isLegacy: false,
-            },
-          ],
-          passive: null,
-          partype: 'Mana',
+          spells: rawSpellsEn,
+          skins,
+          passive: passiveEn,
+          partype: row.partype || 'Mana',
           info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
-          allytips: [],
-          enemytips: [],
+          allytips: row.allytips || [],
+          enemytips: row.enemytips || [],
           meta: null,
         };
 
@@ -1050,12 +1075,28 @@ export async function loadActiveChampionSnapshot(
         rosters.en.push(champEn);
 
         details.de[champKey] = champDe;
+        details.de[cleanDDragon] = champDe;
         details.de[cleanNameDe] = champDe;
         details.de[cleanNameEn] = champDe;
 
         details.en[champKey] = champEn;
+        details.en[cleanDDragon] = champEn;
         details.en[cleanNameDe] = champEn;
         details.en[cleanNameEn] = champEn;
+
+        // Custom aliases for special names
+        if (cleanDDragon === 'monkeyking' || cleanNameEn === 'wukong') {
+          details.de['wukong'] = champDe;
+          details.en['wukong'] = champEn;
+          details.de['monkeyking'] = champDe;
+          details.en['monkeyking'] = champEn;
+        }
+        if (cleanDDragon === 'nunu' || cleanNameEn.includes('nunu')) {
+          details.de['nunu'] = champDe;
+          details.en['nunu'] = champEn;
+          details.de['nunuwillump'] = champDe;
+          details.en['nunuwillump'] = champEn;
+        }
       }
 
       rosters.de.sort((a, b) => a.name.localeCompare(b.name));
@@ -1189,6 +1230,91 @@ export async function getChampionDetail(
   let cached = snapshot.championDetails?.[langKey]?.[cleanTarget];
   if (!cached) {
     cached = snapshot.championDetails?.de?.[cleanTarget] || snapshot.championDetails?.en?.[cleanTarget];
+  }
+
+  // Direct database fallback if not yet present in snapshot cache
+  if (!cached) {
+    const isNum = !isNaN(Number(slug));
+    const dbRow = await prisma.champion.findFirst({
+      where: {
+        OR: [
+          { key: { equals: cleanTarget, mode: 'insensitive' } },
+          { nameEn: { equals: cleanTarget, mode: 'insensitive' } },
+          { nameDe: { equals: cleanTarget, mode: 'insensitive' } },
+          ...(isNum ? [{ id: Number(slug) }] : []),
+        ],
+      },
+    });
+
+    if (dbRow) {
+      const champKey = String(dbRow.id);
+      const ddragonKey = (dbRow.key && dbRow.key.trim().length > 0) ? dbRow.key.trim() : (dbRow.nameEn || '').replace(/[^a-zA-Z0-9]/g, '');
+      const rawSpellsDe = Array.isArray(dbRow.spellsDe) && (dbRow.spellsDe as any[]).length > 0 ? (dbRow.spellsDe as any[]) : (Array.isArray(dbRow.spellsEn) ? (dbRow.spellsEn as any[]) : []);
+      const rawSpellsEn = Array.isArray(dbRow.spellsEn) && (dbRow.spellsEn as any[]).length > 0 ? (dbRow.spellsEn as any[]) : rawSpellsDe;
+      const passiveDe = (dbRow.passiveDe as any) || (dbRow.passiveEn as any) || null;
+      const passiveEn = (dbRow.passiveEn as any) || (dbRow.passiveDe as any) || null;
+      const defaultSkin = {
+        id: '0',
+        num: 0,
+        name: 'default',
+        rarity: 'Regular',
+        rarityColor: '#2E8D4C',
+        releaseDate: dbRow.releaseDate || '2012-01-01',
+        releaseYear: dbRow.releaseDate ? parseInt(dbRow.releaseDate.slice(0, 4), 10) || 2012 : 2012,
+        cost: 0,
+        price: 0,
+        currency: 'RP',
+        isLegacy: false,
+      };
+      const skins = Array.isArray(dbRow.skins) && (dbRow.skins as any[]).length > 0 ? (dbRow.skins as any[]) : [defaultSkin];
+
+      cached = {
+        id: ddragonKey,
+        key: champKey,
+        championId: dbRow.id,
+        name: langKey === 'de' ? dbRow.nameDe : dbRow.nameEn,
+        title: langKey === 'de' ? dbRow.titleDe : dbRow.titleEn,
+        blurb: (langKey === 'de' ? dbRow.blurbDe : dbRow.blurbEn) || '',
+        lore: (langKey === 'de' ? dbRow.loreDe : dbRow.loreEn) || '',
+        image: dbRow.image,
+        role: dbRow.role || 'Mid',
+        positions: dbRow.positions || [],
+        tags: dbRow.tags || [],
+        difficulty: dbRow.difficulty ?? 5,
+        classes: dbRow.classes || [],
+        releaseDate: dbRow.releaseDate || '',
+        stats: {
+          hp: dbRow.hp,
+          hpperlevel: dbRow.hpPerLevel,
+          mp: dbRow.mp,
+          mpperlevel: dbRow.mpPerLevel,
+          movespeed: dbRow.moveSpeed,
+          armor: dbRow.armor,
+          armorperlevel: dbRow.armorPerLevel,
+          spellblock: dbRow.spellBlock,
+          spellblockperlevel: dbRow.spellBlockPerLevel,
+          attackrange: dbRow.attackRange,
+          hpregen: dbRow.hpRegen,
+          hpregenperlevel: dbRow.hpRegenPerLevel,
+          mpregen: dbRow.mpRegen,
+          mpregenperlevel: dbRow.mpRegenPerLevel,
+          crit: dbRow.crit,
+          critperlevel: dbRow.critPerLevel,
+          attackdamage: dbRow.attackDamage,
+          attackdamageperlevel: dbRow.attackDamagePerLevel,
+          attackspeed: dbRow.attackSpeed,
+          attackspeedperlevel: dbRow.attackSpeedPerLevel,
+        },
+        spells: langKey === 'de' ? rawSpellsDe : rawSpellsEn,
+        skins,
+        passive: langKey === 'de' ? passiveDe : passiveEn,
+        partype: dbRow.partype || 'Mana',
+        info: { attack: 5, defense: 5, magic: 5, difficulty: dbRow.difficulty ?? 5 },
+        allytips: dbRow.allytips || [],
+        enemytips: dbRow.enemytips || [],
+        meta: null,
+      };
+    }
   }
 
   if (cached) {

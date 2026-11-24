@@ -141,19 +141,81 @@ export function normalizeChampionNameForDDragon(championName?: string | null): s
   if (!championName) return 'Aatrox';
   const mapping: Record<string, string> = {
     Wukong: 'MonkeyKing',
+    wukong: 'MonkeyKing',
     FiddleSticks: 'Fiddlesticks',
+    fiddlesticks: 'Fiddlesticks',
     LeBlanc: 'Leblanc',
+    leblanc: 'Leblanc',
     "Cho'Gath": 'Chogath',
+    "cho'gath": 'Chogath',
+    chogath: 'Chogath',
     "Kai'Sa": 'Kaisa',
+    "kai'sa": 'Kaisa',
+    kaisa: 'Kaisa',
     "Kha'Zix": 'Khazix',
+    "kha'zix": 'Khazix',
+    khazix: 'Khazix',
     "Vel'Koz": 'Velkoz',
+    "vel'koz": 'Velkoz',
+    velkoz: 'Velkoz',
     "Bel'Veth": 'Belveth',
+    "bel'veth": 'Belveth',
+    belveth: 'Belveth',
     "K'Sante": 'KSante',
+    "k'sante": 'KSante',
+    ksante: 'KSante',
+    "Kog'Maw": 'KogMaw',
+    "kog'maw": 'KogMaw',
+    kogmaw: 'KogMaw',
+    "Lee Sin": 'LeeSin',
+    "lee sin": 'LeeSin',
+    leesin: 'LeeSin',
+    "Master Yi": 'MasterYi',
+    "master yi": 'MasterYi',
+    masteryi: 'MasterYi',
+    "Miss Fortune": 'MissFortune',
+    "miss fortune": 'MissFortune',
+    missfortune: 'MissFortune',
+    "Dr. Mundo": 'DrMundo',
+    "dr. mundo": 'DrMundo',
+    "Dr Mundo": 'DrMundo',
+    "dr mundo": 'DrMundo',
+    drmundo: 'DrMundo',
+    "Jarvan IV": 'JarvanIV',
+    "jarvan iv": 'JarvanIV',
+    jarvaniv: 'JarvanIV',
+    "Tahm Kench": 'TahmKench',
+    "tahm kench": 'TahmKench',
+    tahmkench: 'TahmKench',
+    "Twisted Fate": 'TwistedFate',
+    "twisted fate": 'TwistedFate',
+    twistedfate: 'TwistedFate',
+    "Xin Zhao": 'XinZhao',
+    "xin zhao": 'XinZhao',
+    xinzhao: 'XinZhao',
+    "Aurelion Sol": 'AurelionSol',
+    "aurelion sol": 'AurelionSol',
+    aurelionsol: 'AurelionSol',
+    "Rek'Sai": 'RekSai',
+    "rek'sai": 'RekSai',
+    reksai: 'RekSai',
     'Renata Glasc': 'Renata',
+    'renata glasc': 'Renata',
     RenataGlasc: 'Renata',
+    renataglasc: 'Renata',
     'Nunu & Willump': 'Nunu',
+    'nunu & willump': 'Nunu',
+    'Nunu and Willump': 'Nunu',
+    nunu: 'Nunu',
   };
-  return mapping[championName] || championName;
+
+  if (mapping[championName]) return mapping[championName];
+
+  // Fallback: strip spaces, apostrophes, and dots
+  const stripped = championName.replace(/['’.\s&_-]/g, '');
+  if (mapping[stripped]) return mapping[stripped];
+
+  return stripped.length > 0 ? stripped : championName;
 }
 
 export function getProfileIconUrl(iconId: number, version?: string): string {

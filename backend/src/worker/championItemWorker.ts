@@ -73,14 +73,16 @@ export function initChampionItemWorker(intervalMs = CHAMPION_ITEM_WORKER_INTERVA
       const latestVersion = await getLatestDDragonVersion();
 
       const champCount = await prisma.champion.count();
-      const champSample = await prisma.champion.findFirst({ select: { version: true } });
+      const champSample = await prisma.champion.findFirst({ select: { version: true, key: true, spellsDe: true } });
       const itemCount = await prisma.item.count();
       const itemSample = await prisma.item.findFirst({ select: { version: true } });
 
       const champNeedsUpdate =
         champCount === 0 ||
         !champSample ||
-        champSample.version !== latestVersion;
+        champSample.version !== latestVersion ||
+        !champSample.key ||
+        !champSample.spellsDe;
 
       const itemNeedsUpdate =
         itemCount === 0 ||

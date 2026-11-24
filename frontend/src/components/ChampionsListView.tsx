@@ -21,6 +21,7 @@ import {
   getChampionIconUrl,
   getPositionIconUrl,
   getDDragonVersion,
+  normalizeChampionNameForDDragon,
   PositionKey,
 } from '@/lib/ddragon';
 import { fetchChampionsRosterApi, ChampionRosterItem } from '@/lib/api';
@@ -154,7 +155,8 @@ export default function ChampionsListView() {
     const list = champions.filter((champ) => {
       if (!champ) return false;
       const champId = champ.id || '';
-      const posMeta = champId ? championPositionsMap[champId] : null;
+      const normId = normalizeChampionNameForDDragon(champ.id || champ.name);
+      const posMeta = championPositionsMap[normId] || (champId ? championPositionsMap[champId] : null);
 
       // Lane filter
       if (selectedLane !== 'ALL') {
@@ -219,7 +221,12 @@ export default function ChampionsListView() {
   }, [champions, selectedLane, selectedClass, searchQuery, sortBy]);
 
   // Helper metadata for hovered champion
-  const hoveredMeta = hoveredChampion ? championPositionsMap[hoveredChampion.champ.id] : null;
+  const hoveredNormId = hoveredChampion
+    ? normalizeChampionNameForDDragon(hoveredChampion.champ.id || hoveredChampion.champ.name)
+    : '';
+  const hoveredMeta = hoveredNormId
+    ? championPositionsMap[hoveredNormId] || championPositionsMap[hoveredChampion?.champ.id || '']
+    : null;
   const hoveredPrimaryPos = hoveredMeta?.recommendedPositions?.[0] || hoveredMeta?.role || 'Top';
   const hoveredPrimaryClass = hoveredMeta?.class || hoveredChampion?.champ.tags?.[0] || 'Fighter';
   const hoveredPosKey: PositionKey = (() => {
@@ -447,8 +454,9 @@ export default function ChampionsListView() {
           <div className="flex flex-wrap gap-2 sm:gap-2.5">
             {filteredChampions.map((champ) => {
               const champId = champ.id || '';
-              const slug = champId.toLowerCase();
-              const meta = champId ? championPositionsMap[champId] : null;
+              const normId = normalizeChampionNameForDDragon(champ.id || champ.name);
+              const slug = normId.toLowerCase();
+              const meta = championPositionsMap[normId] || (champId ? championPositionsMap[champId] : null);
               const primaryPos = meta?.recommendedPositions?.[0] || meta?.role || 'Top';
 
               // Map position to PositionKey
@@ -483,7 +491,7 @@ export default function ChampionsListView() {
                     {/* Champion Avatar Icon Tile (analog to item tile) */}
                     <div className="relative h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-xl border border-white/[0.1] bg-black/60 group-hover:border-amber-400/60 group-hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all">
                       <Image
-                        src={getChampionIconUrl(champ.id, version)}
+                        src={getChampionIconUrl(normId || champ.id, version)}
                         alt={champ.name}
                         fill
                         sizes="64px"
