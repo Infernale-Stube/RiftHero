@@ -178,42 +178,21 @@ export function getClusterForPlatform(platform: string): RegionalCluster {
   return 'europe';
 }
 
-export const QUEUE_NAMES: Record<number, string> = {
-  420: 'Ranked Solo/Duo',
-  440: 'Ranked Flex',
-  710: 'Ranked 5s',
-  450: 'ARAM',
-  400: 'Normal Draft',
-  430: 'Normal Blind',
-  490: 'Quickplay',
-  1700: 'Arena',
-  700: 'Clash',
-};
+import {
+  getQueueName as getQueueNameFromMetadata,
+  mapQueueFilterToId as mapQueueFilterToIdFromMetadata,
+} from '../services/gameMetadataService';
 
-export function getQueueName(queueId: number): string {
-  return QUEUE_NAMES[queueId] || `Queue ${queueId}`;
-}
+// Dynamic proxy to support legacy direct indexing: QUEUE_NAMES[queueId]
+export const QUEUE_NAMES: Record<number, string> = new Proxy({} as Record<number, string>, {
+  get: (_target, prop) => {
+    const qId = Number(prop);
+    if (!isNaN(qId)) {
+      return getQueueNameFromMetadata(qId);
+    }
+    return undefined;
+  },
+});
 
-export function mapQueueFilterToId(filter?: string): number[] | undefined {
-  if (!filter || filter === 'all') return undefined;
-  switch (filter.toLowerCase()) {
-    case 'ranked_solo':
-    case 'solo':
-      return [420];
-    case 'ranked_flex':
-    case 'flex':
-      return [440];
-    case 'ranked_5s':
-    case 'ranked5s':
-    case 'ranked_premade_5x5':
-      return [710];
-    case 'aram':
-      return [450];
-    case 'arena':
-      return [1700];
-    case 'normals':
-      return [400, 430, 490];
-    default:
-      return undefined;
-  }
-}
+export const getQueueName = getQueueNameFromMetadata;
+export const mapQueueFilterToId = mapQueueFilterToIdFromMetadata;

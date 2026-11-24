@@ -12,6 +12,7 @@ import {
   ItemsRosterResponse,
   ItemRosterItem,
   SummonerSearchResult,
+  GameMetadataBundle,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -465,6 +466,20 @@ export async function searchSummonersApi(
   } catch (err) {
     console.error('Failed to search summoners:', err);
     return [];
+  }
+}
+
+export async function fetchGameMetadata(): Promise<GameMetadataBundle | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/meta/game-data`, {
+      cache: 'default',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch game metadata from API:', err);
+    return null;
   }
 }
 

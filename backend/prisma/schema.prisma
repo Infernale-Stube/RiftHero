@@ -300,3 +300,44 @@ model Item {
   @@map("items")
 }
 
+model GameQueue {
+  queueId     Int      @id
+  map         String
+  description String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([map])
+  @@map("game_queues")
+}
+
+model GameType {
+  gametype    String   @id // e.g. "CUSTOM_GAME", "MATCHED_GAME", "TUTORIAL_GAME"
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("game_types")
+}
+
+model GameMap {
+  mapId       Int      @id // e.g. 11, 12, 30
+  mapName     String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mapName])
+  @@map("game_maps")
+}
+
+model GameMode {
+  gameMode    String   @id // e.g. "CLASSIC", "ARAM", "CHERRY"
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("game_modes")
+}
+

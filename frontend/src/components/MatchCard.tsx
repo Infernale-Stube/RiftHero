@@ -31,6 +31,7 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { isRankedQueue, getQueueName, getMapName, getQueueDescription } from '@/lib/gameMetadata';
 import PremadeBadge from './PremadeBadge';
 
 interface MatchCardProps {
@@ -189,17 +190,11 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const isRemake = Boolean(match.isRemake || gameDuration < 300 || participant.gameEndedInEarlySurrender);
   const isSurrender = Boolean(match.isSurrender || participant.gameEndedInSurrender || participant.gameEndedInEarlySurrender);
 
-  // Check if ranked queue (Ranked Solo/Duo = 420, Ranked Flex = 440, Ranked 5s = 710)
-  const isRankedMatch =
-    match.queueId === 420 ||
-    match.queueId === 440 ||
-    match.queueId === 710 ||
-    Boolean(
-      match.queueName &&
-        (match.queueName.toLowerCase().includes('ranked') ||
-          match.queueName.toLowerCase().includes('solo') ||
-          match.queueName.toLowerCase().includes('flex'))
-    );
+  // Check if ranked queue dynamically from Riot metadata
+  const isRankedMatch = isRankedQueue(match.queueId);
+  const effectiveQueueName = match.queueName || getQueueName(match.queueId);
+  const effectiveMapName = match.mapName || (match.mapId ? getMapName(match.mapId) : '');
+  const queueDesc = match.queueDescription || getQueueDescription(match.queueId);
 
   const effectiveLpDelta =
     participant.lpDelta ?? match.lpChange?.delta ?? null;
@@ -871,8 +866,11 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 </span>
               )}
             </div>
-            <span className="text-xs font-bold text-zinc-200 truncate mt-0.5">
-              {queueName}
+            <span
+              className="text-xs font-bold text-zinc-200 truncate mt-0.5"
+              title={queueDesc ? `${queueDesc}${effectiveMapName ? ` (${effectiveMapName})` : ''}` : effectiveQueueName}
+            >
+              {effectiveQueueName}
             </span>
             <span className="text-xs text-zinc-400 mt-0.5 font-medium">
               {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime, locale)}

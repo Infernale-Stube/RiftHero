@@ -13,6 +13,7 @@ import {
 import { config } from '../config';
 import { syncParticipantLpForQueue, computePeakRank } from '../services/lpService';
 import { calculateMatchScores } from '../services/scoreService';
+import { isRankedQueue, getRankedQueueIds } from '../services/gameMetadataService';
 
 function withTimeout<T>(promise: Promise<T>, ms = 2500): Promise<T> {
   return Promise.race([
@@ -509,7 +510,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
           }
         }
 
-        if ([420, 440, 710].includes(info.queueId)) {
+        if (isRankedQueue(info.queueId)) {
           newlyIngestedRankedMatches.push({
             matchId,
             queueId: info.queueId,
@@ -591,7 +592,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
   if (newlyIngestedRankedMatches.length === 0) {
     const latestDbMatch = await prisma.match.findFirst({
       where: {
-        queueId: { in: [420, 440, 710] },
+        queueId: { in: getRankedQueueIds() },
         participants: { some: { puuid } },
       },
       orderBy: { gameCreation: 'desc' },

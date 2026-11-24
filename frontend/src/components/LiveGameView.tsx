@@ -21,6 +21,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import LiveGameWinProbability from './LiveGameWinProbability';
 import PremadeBadge from './PremadeBadge';
 import { calculateLiveGameWinProbability } from '@/lib/winProbability';
+import { getQueueName, getMapName } from '@/lib/gameMetadata';
 
 interface LiveGameViewProps {
   region: string;
@@ -551,7 +552,10 @@ export default function LiveGameView({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
           </span>
-          <span className="font-bold text-slate-200">{game.queueName || t('live.liveGame')}</span>
+          <span className="font-bold text-slate-200">
+            {game.queueName || getQueueName(game.queueId) || t('live.liveGame')}
+            {(game.mapName || (game.mapId ? getMapName(game.mapId) : '')) ? ` · ${game.mapName || getMapName(game.mapId)}` : ''}
+          </span>
           {startTimeFormatted && (
             <span className="text-zinc-400 font-medium">
               • {t('live.started')} {startTimeFormatted}

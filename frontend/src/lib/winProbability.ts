@@ -1,5 +1,6 @@
 import { LiveGameParticipant, LiveGameWinProbability } from '@/types';
 import { TIER_BASE_LP, DIVISION_OFFSET_LP } from './utils';
+import { isSummonersRift as checkIsSummonersRift } from './gameMetadata';
 
 export function getPlayerMmr(p: LiveGameParticipant | null | undefined): number | null {
   if (!p || !p.rank || !p.rank.tier) return null;
@@ -155,7 +156,7 @@ export function calculateLiveGameWinProbability(
   }
 
   // 5. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
-  const isSummonersRift = mapId === 11 || [420, 440, 400, 430].includes(queueId || 0);
+  const isSummonersRift = checkIsSummonersRift(mapId, queueId);
   const sideAdvantage = isSummonersRift ? 1.2 : 0;
 
   // 6. Total Blue Winrate

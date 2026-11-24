@@ -158,13 +158,52 @@ export interface TeamTotals {
   damage: number;
 }
 
+export interface GameQueue {
+  queueId: number;
+  map: string;
+  description: string | null;
+  notes: string | null;
+}
+
+export interface GameType {
+  gametype: string;
+  description: string;
+}
+
+export interface GameMap {
+  mapId: number;
+  mapName: string;
+  notes?: string | null;
+}
+
+export interface GameMode {
+  gameMode: string;
+  description: string;
+}
+
+export interface GameMetadataBundle {
+  queues: GameQueue[];
+  gameTypes: GameType[];
+  maps: GameMap[];
+  gameModes: GameMode[];
+  lastUpdated: number;
+}
+
 export interface FormattedMatch {
   matchId: string;
   gameDuration: number;
   gameCreation: number;
   gameEndTimestamp?: number;
+  mapId?: number;
+  mapName?: string;
+  gameMode?: string;
+  gameModeDescription?: string;
+  gameType?: string;
+  gameTypeDescription?: string;
   queueId: number;
   queueName: string;
+  queueDescription?: string;
+  queueMap?: string;
   win: boolean;
   isRemake?: boolean;
   isSurrender?: boolean;
@@ -389,9 +428,14 @@ export interface LiveGameData {
   gameStartTime: number;
   gameLength: number;
   mapId: number;
+  mapName?: string;
   queueId: number;
   queueName: string;
+  queueDescription?: string;
   gameMode: string;
+  gameModeDescription?: string;
+  gameType?: string;
+  gameTypeDescription?: string;
   blueTeam: LiveGameParticipant[];
   redTeam: LiveGameParticipant[];
   bans: BannedChampion[];
@@ -436,10 +480,17 @@ export interface MatchDetailResponse {
   gameDuration: number;
   gameCreation: number;
   gameEndTimestamp?: number;
+  mapId: number;
+  mapName: string;
   gameMode: string;
+  gameModeDescription?: string;
+  gameType?: string;
+  gameTypeDescription?: string;
   gameVersion: string;
   queueId: number;
   queueName: string;
+  queueDescription?: string;
+  queueMap?: string;
   blueTeam: TeamMatchDetail;
   redTeam: TeamMatchDetail;
   participants: MatchParticipant[];

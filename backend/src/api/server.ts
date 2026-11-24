@@ -11,6 +11,7 @@ import { championsRoutes } from './routes/champions';
 import { itemRoutes } from './routes/items';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
+import { initGameMetadataScheduler } from '../services/gameMetadataService';
 import { initChampionItemWorker } from '../worker/championItemWorker';
 import { initMetaWorker } from '../worker/metaWorker';
 
@@ -69,6 +70,9 @@ async function start() {
 
     // Start periodic League of Legends DDragon version checker (every 30m)
     initDDragonScheduler();
+
+    // Start periodic Riot Game Metadata synchronizer (queues, maps, gameModes, gameTypes)
+    initGameMetadataScheduler();
 
     // 1. Champion & Items Worker: keeps champion and item catalogs (DDragon + LoLDB) fresh
     initChampionItemWorker();

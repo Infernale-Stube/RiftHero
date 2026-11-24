@@ -31,7 +31,7 @@ logs/
 *.log
 
 # Docker data mounts (if mounted locally)
-data/
+/data/
 mail-data/
 mail-state/
 mail-logs/

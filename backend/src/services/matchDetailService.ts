@@ -1,6 +1,15 @@
 import { prisma } from '../db/prisma';
 import { getRiotClient } from '../riot/client';
-import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../riot/regions';
+import { getClusterForPlatform, getClusterForRegion } from '../riot/regions';
+import {
+  getQueueName,
+  getQueueDescription,
+  getQueueMap,
+  getMapName,
+  getGameModeDescription,
+  getGameTypeDescription,
+  isRankedQueue,
+} from './gameMetadataService';
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
@@ -71,10 +80,17 @@ export interface MatchDetailResponse {
   gameDuration: number;
   gameCreation: number;
   gameEndTimestamp?: number;
+  mapId: number;
+  mapName: string;
   gameMode: string;
+  gameModeDescription?: string;
+  gameType?: string;
+  gameTypeDescription?: string;
   gameVersion: string;
   queueId: number;
   queueName: string;
+  queueDescription?: string;
+  queueMap?: string;
   blueTeam: TeamMatchDetail;
   redTeam: TeamMatchDetail;
   participants: any[];
@@ -265,9 +281,9 @@ export async function getMatchDetails(
   const blueTotalDamage = participants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
   const redTotalDamage = participants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
-  // Resolve genuine match-to-match LP changes for participants if ranked (strictly the 3 ranked queues)
+  // Resolve genuine match-to-match LP changes for participants if ranked
   const lpChangeMap = new Map<string, MatchLpChange>();
-  if ([420, 440, 710].includes(match.queueId)) {
+  if (isRankedQueue(match.queueId)) {
     await Promise.all(
       participants.map(async (p) => {
         try {
@@ -516,10 +532,17 @@ export async function getMatchDetails(
     gameEndTimestamp: match.gameEndTimestamp
       ? Number(match.gameEndTimestamp)
       : Number(match.gameCreation) + match.gameDuration * 1000,
+    mapId: match.mapId,
+    mapName: getMapName(match.mapId),
     gameMode: match.gameMode,
+    gameModeDescription: getGameModeDescription(match.gameMode),
+    gameType: match.gameType,
+    gameTypeDescription: getGameTypeDescription(match.gameType),
     gameVersion: match.gameVersion,
     queueId: match.queueId,
     queueName: getQueueName(match.queueId),
+    queueDescription: getQueueDescription(match.queueId),
+    queueMap: getQueueMap(match.queueId),
     blueTeam,
     redTeam,
     participants: formattedParticipants,

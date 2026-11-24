@@ -6,6 +6,7 @@ import { Search, Trophy, Swords, Zap, Shield, Coins } from 'lucide-react';
 import { ChampionStatSummary } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { getChampionIconUrl } from '@/lib/ddragon';
+import { getQueueName } from '@/lib/gameMetadata';
 
 interface ChampionStatsViewProps {
   stats: ChampionStatSummary[];
@@ -30,11 +31,12 @@ export default function ChampionStatsView({
 
   const queueOptions = [
     { id: 'all', label: locale === 'de' ? 'Alle Queues' : 'All Queues' },
-    { id: '420', label: 'Solo/Duo' },
-    { id: '440', label: 'Flex' },
-    { id: '710', label: 'Ranked 5s' },
-    { id: '450', label: 'ARAM' },
-    { id: '400', label: 'Normal Draft' },
+    { id: '420', label: getQueueName(420) },
+    { id: '440', label: getQueueName(440) },
+    { id: '710', label: getQueueName(710) },
+    { id: '450', label: getQueueName(450) },
+    { id: '400', label: getQueueName(400) },
+    { id: '1700', label: getQueueName(1700) },
   ];
 
   // Filter & Sort
