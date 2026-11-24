@@ -314,7 +314,9 @@ export async function getSummonerMatches(
     currentFormatted.score = matchScores.get(up.puuid);
     currentFormatted.premadeGroup = (isCurrentBlue ? bluePremades : redPremades).get(up.puuid) || null;
 
-    const isRemake = m.gameDuration < 300;
+    const isRemake =
+      m.gameDuration <= 330 ||
+      Boolean(m.endOfGameResult && m.endOfGameResult.toLowerCase().includes('remake'));
     const isSurrender = false;
     const gameEndTimestamp = m.gameEndTimestamp
       ? Number(m.gameEndTimestamp)

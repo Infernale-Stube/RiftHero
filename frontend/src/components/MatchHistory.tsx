@@ -99,7 +99,7 @@ export default function MatchHistory({
 
       const grp = groupMap.get(label)!;
       grp.matches.push(m);
-      if (m.isRemake || m.gameDuration < 300) {
+      if (m.isRemake || m.gameDuration <= 330) {
         // Remakes do not count towards wins or losses
       } else if (m.win) {
         grp.wins++;

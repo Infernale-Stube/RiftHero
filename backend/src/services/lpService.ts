@@ -120,9 +120,11 @@ export interface LpHistorySummary {
 
 export const VALID_RANKED_QUEUE_IDS = [420, 440, 710] as const;
 
+export const REMAKE_MAX_DURATION_SECONDS = 330; // 5.5 minutes (safely covers up to 5min remake window + vote/nexus delay)
+
 /**
  * Checks whether a match participant's match was a remake.
- * In League of Legends, remakes end before 300 seconds or have an endOfGameResult containing 'Remake'.
+ * In League of Legends, remakes end within ~5 minutes (<= 330 seconds) or have an endOfGameResult containing 'Remake'.
  */
 export function isParticipantMatchRemake(p: {
   match: {
@@ -130,7 +132,7 @@ export function isParticipantMatchRemake(p: {
     endOfGameResult?: string | null;
   };
 }): boolean {
-  if (p.match.gameDuration > 0 && p.match.gameDuration < 300) return true;
+  if (p.match.gameDuration > 0 && p.match.gameDuration <= REMAKE_MAX_DURATION_SECONDS) return true;
   if (p.match.endOfGameResult && p.match.endOfGameResult.toLowerCase().includes('remake')) return true;
   return false;
 }
@@ -793,7 +795,7 @@ export async function getMatchesLpChanges(
 
   for (const p of participants) {
     const isRemake =
-      (p.match?.gameDuration && p.match.gameDuration > 0 && p.match.gameDuration < 300) ||
+      (p.match?.gameDuration && p.match.gameDuration > 0 && p.match.gameDuration <= REMAKE_MAX_DURATION_SECONDS) ||
       Boolean(p.match?.endOfGameResult && p.match.endOfGameResult.toLowerCase().includes('remake'));
 
     if (p.lpDelta !== null) {

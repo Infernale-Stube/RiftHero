@@ -187,7 +187,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const gameEndTime = gameEndTimestamp || (gameCreation + gameDuration * 1000);
 
   const durationMinutes = Math.max(gameDuration / 60, 1);
-  const isRemake = Boolean(match.isRemake || gameDuration < 300 || participant.gameEndedInEarlySurrender);
+  const isRemake = Boolean(match.isRemake || gameDuration <= 330 || participant.gameEndedInEarlySurrender);
   const isSurrender = Boolean(match.isSurrender || participant.gameEndedInSurrender || participant.gameEndedInEarlySurrender);
 
   // Check if ranked queue dynamically from Riot metadata
