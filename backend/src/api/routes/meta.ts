@@ -5,12 +5,12 @@ import {
   computeAndSaveMetaAnalysis,
   getStoredMetaPatches,
 } from '../../services/metaService';
-import { getAllQueues } from '../../services/gameMetadataService';
+import { getDbQueues } from '../../services/gameMetadataService';
 
 export async function metaRoutes(fastify: FastifyInstance) {
   // Game Queues configured in database
   fastify.get('/meta/queues', async () => {
-    return getAllQueues();
+    return await getDbQueues();
   });
   // Force refresh precomputed meta analysis (winrates, pickrates, tier lists from matches)
   fastify.all('/meta/refresh', async (request, reply) => {

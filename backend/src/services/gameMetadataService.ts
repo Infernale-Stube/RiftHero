@@ -34,69 +34,55 @@ function formatQueueName(q: { queueId: number; description?: string | null; map?
 }
 
 /**
- * Loads GameQueue records from PostgreSQL into the in-memory cache.
- * If the table is empty, seeds the default queues once from Riot queues data into the database.
+ * Fetches all GameQueue records directly from PostgreSQL, seeds clean defaults if empty,
+ * and updates the in-memory cache.
  */
-export async function loadQueuesFromDb(): Promise<void> {
+export async function getDbQueues(): Promise<GameQueueItem[]> {
   try {
-    const count = await prisma.gameQueue.count();
-
-    if (count === 0) {
-      console.log('[GameQueue] Database table empty. Seeding initial default queues into database...');
-      let seedEntries: Array<{ id: number; name: string }> = [];
-
-      try {
-        const jsonPath = path.resolve(__dirname, '../data/queues.json');
-        if (fs.existsSync(jsonPath)) {
-          const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-          seedEntries = raw.map((q: any) => ({
-            id: Number(q.queueId),
-            name: formatQueueName(q),
-          }));
-        }
-      } catch (readErr: any) {
-        console.warn('[GameQueue] Could not read queues.json for seeding:', readErr?.message || readErr);
-      }
-
-      // Ensure essential standard queues are present
-      const essential = [
-        { id: 420, name: 'Ranked Solo/Duo' },
-        { id: 440, name: 'Ranked Flex' },
-        { id: 710, name: 'Ranked 5s' },
-        { id: 450, name: 'ARAM' },
-        { id: 400, name: 'Normal Draft' },
-        { id: 430, name: 'Normal Blind' },
-        { id: 490, name: 'Quickplay' },
-        { id: 1700, name: 'Arena' },
-        { id: 700, name: 'Clash' },
-      ];
-      for (const item of essential) {
-        if (!seedEntries.some((e) => e.id === item.id)) {
-          seedEntries.push(item);
-        }
-      }
-
-      if (seedEntries.length > 0) {
-        await prisma.gameQueue.createMany({
-          data: seedEntries,
-          skipDuplicates: true,
-        });
-        console.log(`[GameQueue] Successfully seeded ${seedEntries.length} default queues into database.`);
-      }
-    }
-
-    const dbQueues = await prisma.gameQueue.findMany({
+    let dbQueues = await prisma.gameQueue.findMany({
       orderBy: { id: 'asc' },
     });
+
+    if (dbQueues.length === 0) {
+      console.log('[GameQueue] Database table empty. Seeding initial default queues into database...');
+      const initialDefaultQueues: GameQueueItem[] = [
+        { id: 420, name: 'Solo/Duo' },
+        { id: 440, name: 'Flex' },
+        { id: 710, name: '5s' },
+        { id: 450, name: 'ARAM' },
+        { id: 1700, name: 'Arena' },
+        { id: 400, name: 'Normal' },
+        { id: 490, name: 'Quickplay' },
+        { id: 700, name: 'Clash' },
+      ];
+
+      await prisma.gameQueue.createMany({
+        data: initialDefaultQueues,
+        skipDuplicates: true,
+      });
+
+      dbQueues = await prisma.gameQueue.findMany({
+        orderBy: { id: 'asc' },
+      });
+      console.log(`[GameQueue] Successfully seeded ${dbQueues.length} default queues into database.`);
+    }
 
     queuesCache.clear();
     for (const q of dbQueues) {
       queuesCache.set(q.id, q.name);
     }
-    console.log(`[GameQueue] Loaded ${dbQueues.length} queue(s) from database into cache.`);
+    return dbQueues;
   } catch (err: any) {
-    console.warn('[GameQueue] Notice while loading queues from database:', err?.message || err);
+    console.warn('[GameQueue] Notice while querying gameQueue from database:', err?.message || err);
+    return getAllQueues();
   }
+}
+
+/**
+ * Loads GameQueue records from PostgreSQL into the in-memory cache.
+ */
+export async function loadQueuesFromDb(): Promise<void> {
+  await getDbQueues();
 }
 
 /**

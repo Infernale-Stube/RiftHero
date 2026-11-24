@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Search, Trophy, Swords, Zap, Shield, Coins } from 'lucide-react';
-import { ChampionStatSummary } from '@/types';
+import { ChampionStatSummary, GameQueue } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { getChampionIconUrl } from '@/lib/ddragon';
+import { fetchGameQueues } from '@/lib/api';
 
 interface ChampionStatsViewProps {
   stats: ChampionStatSummary[];
   activeQueue: string;
   onQueueChange: (queue: string) => void;
   isLoading?: boolean;
+  availableQueues?: GameQueue[];
 }
 
 type SortField = 'games' | 'winrate' | 'kda' | 'cs' | 'damage' | 'gold';
@@ -22,21 +24,38 @@ export default function ChampionStatsView({
   activeQueue,
   onQueueChange,
   isLoading = false,
+  availableQueues,
 }: ChampionStatsViewProps) {
   const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('games');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const queueOptions = [
-    { id: 'all', label: locale === 'de' ? 'Alle Queues' : 'All Queues' },
-    { id: '420', label: 'Ranked Solo/Duo' },
-    { id: '440', label: 'Ranked Flex' },
-    { id: '710', label: 'Ranked 5s' },
-    { id: '450', label: 'ARAM' },
-    { id: '400', label: 'Normal Draft' },
-    { id: '1700', label: 'Arena' },
-  ];
+  const [internalQueues, setInternalQueues] = useState<GameQueue[]>([]);
+
+  useEffect(() => {
+    if (!availableQueues || availableQueues.length === 0) {
+      let isMounted = true;
+      fetchGameQueues().then((q) => {
+        if (isMounted && q && q.length > 0) {
+          setInternalQueues(q);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [availableQueues]);
+
+  const activeQueuesList = (availableQueues && availableQueues.length > 0) ? availableQueues : internalQueues;
+
+  const queueOptions = useMemo(() => {
+    const opts = [{ id: 'all', label: locale === 'de' ? 'Alle Queues' : 'All Queues' }];
+    for (const q of activeQueuesList) {
+      opts.push({ id: String(q.id), label: q.name });
+    }
+    return opts;
+  }, [activeQueuesList, locale]);
 
   // Filter & Sort
   const filteredAndSortedStats = useMemo(() => {

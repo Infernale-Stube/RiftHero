@@ -7,7 +7,7 @@ import ChampionStatsView from '@/components/ChampionStatsView';
 import { useSummonerContext } from '../SummonerContext';
 
 export default function SummonerChampionsPage() {
-  const { region, tag, profileData, refreshTimestamp } = useSummonerContext();
+  const { region, tag, profileData, refreshTimestamp, gameQueues } = useSummonerContext();
   const [champStats, setChampStats] = useState<ChampionStatSummary[]>([]);
   const [activeQueue, setActiveQueue] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -50,6 +50,7 @@ export default function SummonerChampionsPage() {
         activeQueue={activeQueue}
         onQueueChange={(queue) => setActiveQueue(queue)}
         isLoading={isLoading}
+        availableQueues={gameQueues}
       />
     </div>
   );

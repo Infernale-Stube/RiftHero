@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { fetchSummonerProfile, fetchLiveGame } from '@/lib/api';
-import { SummonerProfileResponse, LiveGameResponse } from '@/types';
+import { fetchSummonerProfile, fetchLiveGame, fetchGameQueues } from '@/lib/api';
+import { SummonerProfileResponse, LiveGameResponse, GameQueue } from '@/types';
+import { setQueues } from '@/lib/gameMetadata';
 import SummonerHeader from '@/components/SummonerHeader';
 import AutoRefreshWatcher from '@/components/AutoRefreshWatcher';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -29,6 +30,20 @@ export default function SummonerLayout({
   const [liveData, setLiveData] = useState<LiveGameResponse | null>(null);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
+  const [gameQueues, setGameQueues] = useState<GameQueue[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchGameQueues().then((queues) => {
+      if (isMounted && queues && queues.length > 0) {
+        setGameQueues(queues);
+        setQueues(queues);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshTimestamp]);
 
   const profileDataRef = useRef(profileData);
   profileDataRef.current = profileData;
@@ -169,6 +184,7 @@ export default function SummonerLayout({
         reloadProfile: loadProfile,
         reloadLiveGame: loadLiveGame,
         refreshTimestamp,
+        gameQueues,
       }}
     >
       <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 space-y-4">

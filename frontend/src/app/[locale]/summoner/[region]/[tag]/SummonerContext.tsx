@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import { SummonerProfileResponse, LiveGameResponse } from '@/types';
+import { SummonerProfileResponse, LiveGameResponse, GameQueue } from '@/types';
 
 export interface SummonerContextValue {
   region: string;
@@ -14,6 +14,7 @@ export interface SummonerContextValue {
   reloadProfile: (isSilent?: boolean) => Promise<void>;
   reloadLiveGame: (isSilent?: boolean) => Promise<LiveGameResponse | null>;
   refreshTimestamp: number;
+  gameQueues: GameQueue[];
 }
 
 export const SummonerContext = createContext<SummonerContextValue | null>(null);

@@ -25,7 +25,7 @@ export default function SummonerMatchesPage() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { region, tag, profileData, refreshTimestamp } = useSummonerContext();
+  const { region, tag, profileData, refreshTimestamp, gameQueues } = useSummonerContext();
 
   // Legacy tab redirects
   useEffect(() => {
@@ -235,6 +235,7 @@ export default function SummonerMatchesPage() {
           hasMore={matches.length < totalMatches}
           isLoadingMore={isLoadingMore}
           onLoadMore={handleLoadMore}
+          availableQueues={gameQueues}
         />
       </div>
     </div>

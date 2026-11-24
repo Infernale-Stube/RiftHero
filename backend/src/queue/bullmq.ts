@@ -72,10 +72,11 @@ export async function enqueueHighPrioritySummoner(data: SummonerJobData): Promis
   const existingJob = await highPriorityQueue.getJob(jobId);
   if (existingJob) {
     const state = await existingJob.getState();
-    if (state === 'active' || state === 'waiting' || state === 'delayed') {
+    const isZombie = state === 'active' && Date.now() - (existingJob.processedOn || existingJob.timestamp || 0) > 90000;
+    if ((state === 'active' || state === 'waiting' || state === 'delayed') && !isZombie) {
       return existingJob;
     }
-    // Completed or failed job: MUST be removed so BullMQ permits adding a fresh job with this jobId!
+    // Completed, failed, or zombie job: MUST be removed so BullMQ permits adding a fresh job with this jobId!
     try {
       await existingJob.remove();
     } catch {
@@ -157,6 +158,13 @@ export async function getSummonerJobStatus(
   const highJob = await highPriorityQueue.getJob(jobId);
   if (highJob) {
     const state = await highJob.getState();
+    const isZombie = state === 'active' && Date.now() - (highJob.processedOn || highJob.timestamp || 0) > 90000;
+    if (isZombie) {
+      try {
+        await highJob.remove();
+      } catch {}
+      return 'not_found';
+    }
     if (state === 'active') return 'active';
     if (state === 'waiting' || state === 'delayed') return 'waiting';
     if (state === 'completed') {
@@ -185,6 +193,13 @@ export async function getSummonerJobStatus(
   const lowJob = await lowPriorityQueue.getJob(jobId);
   if (lowJob) {
     const state = await lowJob.getState();
+    const isZombie = state === 'active' && Date.now() - (lowJob.processedOn || lowJob.timestamp || 0) > 120000;
+    if (isZombie) {
+      try {
+        await lowJob.remove();
+      } catch {}
+      return 'not_found';
+    }
     if (state === 'active') return 'active';
     if (state === 'waiting' || state === 'delayed') return 'waiting';
     if (state === 'completed') {

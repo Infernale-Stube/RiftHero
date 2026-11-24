@@ -473,7 +473,7 @@ export async function fetchGameQueues(): Promise<GameQueue[]> {
   const baseUrl = getApiBaseUrl();
   try {
     const res = await fetch(`${baseUrl}/meta/queues`, {
-      cache: 'default',
+      cache: 'no-store',
     });
     if (!res.ok) return [];
     return await res.json();

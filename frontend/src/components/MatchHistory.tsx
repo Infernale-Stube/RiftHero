@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Swords, Loader2, ChevronDown } from 'lucide-react';
-import { FormattedMatch } from '@/types';
+import { FormattedMatch, GameQueue } from '@/types';
 import MatchCard from './MatchCard';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { fetchGameQueues } from '@/lib/api';
 
 interface MatchHistoryProps {
   matches: FormattedMatch[];
@@ -16,16 +17,8 @@ interface MatchHistoryProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  availableQueues?: GameQueue[];
 }
-
-const QUEUE_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'ranked_solo', label: 'Solo/Duo' },
-  { id: 'ranked_flex', label: 'Flex' },
-  { id: 'ranked_5s', label: '5s' },
-  { id: 'aram', label: 'ARAM' },
-  { id: 'arena', label: 'Arena' },
-];
 
 export default function MatchHistory({
   matches,
@@ -37,17 +30,45 @@ export default function MatchHistory({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  availableQueues,
 }: MatchHistoryProps) {
   const { t, locale } = useTranslation();
 
-  const queueTabs = [
-    { id: 'all', label: locale === 'de' ? 'Alle' : 'All' },
-    { id: 'ranked_solo', label: 'Solo/Duo' },
-    { id: 'ranked_flex', label: 'Flex' },
-    { id: 'ranked_5s', label: '5s' },
-    { id: 'aram', label: 'ARAM' },
-    { id: 'arena', label: 'Arena' },
-  ];
+  const [internalQueues, setInternalQueues] = useState<GameQueue[]>([]);
+
+  useEffect(() => {
+    if (!availableQueues || availableQueues.length === 0) {
+      let isMounted = true;
+      fetchGameQueues().then((q) => {
+        if (isMounted && q && q.length > 0) {
+          setInternalQueues(q);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [availableQueues]);
+
+  const activeQueuesList = (availableQueues && availableQueues.length > 0) ? availableQueues : internalQueues;
+
+  const queueTabs = useMemo(() => {
+    const tabs = [{ id: 'all', label: locale === 'de' ? 'Alle' : 'All' }];
+    for (const q of activeQueuesList) {
+      tabs.push({ id: String(q.id), label: q.name });
+    }
+    return tabs;
+  }, [activeQueuesList, locale]);
+
+  const isTabActive = (tabId: string) => {
+    if (activeQueue === tabId) return true;
+    if (tabId === '420' && (activeQueue === 'ranked_solo' || activeQueue === 'solo')) return true;
+    if (tabId === '440' && (activeQueue === 'ranked_flex' || activeQueue === 'flex')) return true;
+    if (tabId === '710' && (activeQueue === 'ranked_5s' || activeQueue === '5s')) return true;
+    if (tabId === '450' && activeQueue === 'aram') return true;
+    if (tabId === '1700' && activeQueue === 'arena') return true;
+    return false;
+  };
 
   // Group matches by day like LoLDB (e.g. "Today 2W 1L", "Yesterday 3W 0L", "Nov 17 6W 1L")
   const groupedMatches = useMemo(() => {
@@ -158,15 +179,15 @@ export default function MatchHistory({
           <div />
         )}
 
-        <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04]">
+        <div className="flex items-center gap-3 max-w-full">
+          <div className="inline-flex rounded-lg bg-black/40 p-1 border border-white/[0.04] overflow-x-auto max-w-full scrollbar-none">
             {queueTabs.map((tab) => {
-              const isActive = activeQueue === tab.id;
+              const isActive = isTabActive(tab.id);
               return (
                 <button
                   key={tab.id}
                   onClick={() => onQueueChange(tab.id)}
-                  className={`relative rounded-[7px] px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`relative shrink-0 rounded-[7px] px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                     isActive
                       ? 'bg-white/[0.07] text-white after:absolute after:inset-x-[30%] after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-orange-400'
                       : 'text-zinc-500 hover:text-zinc-200'
