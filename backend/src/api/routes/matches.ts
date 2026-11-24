@@ -12,12 +12,19 @@ export async function matchRoutes(fastify: FastifyInstance) {
     async (
       request: FastifyRequest<{
         Params: { region: string; tag: string };
-        Querystring: { queue?: string; limit?: string; offset?: string };
+        Querystring: {
+          queue?: string;
+          championId?: string;
+          role?: string;
+          result?: 'win' | 'loss' | 'all';
+          limit?: string;
+          offset?: string;
+        };
       }>,
       reply: FastifyReply
     ) => {
       const { region: rawRegion, tag } = request.params;
-      const { queue, limit, offset } = request.query;
+      const { queue, championId, role, result, limit, offset } = request.query;
       const { gameName, tagLine } = parseRiotIdTag(tag);
       const region = normalizeRegion(rawRegion);
 
@@ -37,14 +44,18 @@ export async function matchRoutes(fastify: FastifyInstance) {
 
       const take = limit ? Math.min(parseInt(limit, 10), 50) : 10;
       const skip = offset ? parseInt(offset, 10) : 0;
+      const parsedChampId = championId ? parseInt(championId, 10) : undefined;
 
-      const result = await getSummonerMatches(summoner.puuid, {
+      const matchesResult = await getSummonerMatches(summoner.puuid, {
         queueFilter: queue,
+        championId: isNaN(parsedChampId as number) ? undefined : parsedChampId,
+        role,
+        result,
         limit: take,
         offset: skip,
       });
 
-      return result;
+      return matchesResult;
     }
   );
 

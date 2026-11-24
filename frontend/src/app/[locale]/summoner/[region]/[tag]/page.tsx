@@ -43,6 +43,9 @@ export default function SummonerMatchesPage() {
   const [totalMatches, setTotalMatches] = useState<number>(0);
   const [champStats, setChampStats] = useState<ChampionStatSummary[]>([]);
   const [activeQueue, setActiveQueue] = useState<string>('all');
+  const [selectedChampionId, setSelectedChampionId] = useState<number | undefined>(undefined);
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [selectedResult, setSelectedResult] = useState<'win' | 'loss' | 'all'>('all');
 
   const [lpHistory, setLpHistory] = useState<LpHistorySummary | null>(null);
   const [playedWith, setPlayedWith] = useState<PlayedWithTeammate[]>([]);
@@ -58,13 +61,24 @@ export default function SummonerMatchesPage() {
   const storageKey = region && tag ? `rifthero_seen_matches_${region.toLowerCase()}_${tag.toLowerCase()}` : '';
 
   const loadMatchesAndStats = useCallback(
-    async (queue: string, isSilent = false) => {
+    async (
+      queue: string,
+      champId?: number,
+      role?: string,
+      result?: 'win' | 'loss' | 'all',
+      isSilent = false
+    ) => {
       if (!region || !tag) return;
       const shouldShowSkeleton = !isSilent && !hasMatchesRef.current;
       if (shouldShowSkeleton) setIsLoadingMatches(true);
       try {
         const [matchesRes, statsRes, lpHRes, playedRes] = await Promise.all([
-          fetchSummonerMatches(region, tag, queue, 10, 0),
+          fetchSummonerMatches(region, tag, queue, 10, 0, {
+            queue,
+            championId: champId,
+            role,
+            result,
+          }),
           fetchChampionStats(region, tag, queue),
           fetchLpHistory(region, tag, 'RANKED_SOLO_5x5'),
           fetchPlayedWith(region, tag, 5),
@@ -134,12 +148,12 @@ export default function SummonerMatchesPage() {
     [region, tag, storageKey]
   );
 
-  // Initial load when profile becomes available or when queue tab changes
+  // Initial load when profile becomes available
   useEffect(() => {
     if (profileData?.summoner) {
-      loadMatchesAndStats(activeQueue);
+      loadMatchesAndStats(activeQueue, selectedChampionId, selectedRole, selectedResult);
     }
-  }, [profileData?.summoner?.id, activeQueue, loadMatchesAndStats]);
+  }, [profileData?.summoner?.id]);
 
   // Check if returning from a finished live game redirect to refresh matches immediately
   useEffect(() => {
@@ -148,11 +162,11 @@ export default function SummonerMatchesPage() {
         const flag = sessionStorage.getItem('rifthero_auto_refresh_after_live');
         if (flag === 'true') {
           sessionStorage.removeItem('rifthero_auto_refresh_after_live');
-          loadMatchesAndStats(activeQueue, true);
+          loadMatchesAndStats(activeQueue, selectedChampionId, selectedRole, selectedResult, true);
         }
       } catch {}
     }
-  }, [activeQueue, loadMatchesAndStats]);
+  }, [activeQueue, selectedChampionId, selectedRole, selectedResult, loadMatchesAndStats]);
 
   // Silent in-place refresh when background sync finishes (zero layout jump or flash!)
   const isFirstRender = useRef(true);
@@ -161,14 +175,19 @@ export default function SummonerMatchesPage() {
       isFirstRender.current = false;
       return;
     }
-    loadMatchesAndStats(activeQueue, true);
-  }, [refreshTimestamp, activeQueue, loadMatchesAndStats]);
+    loadMatchesAndStats(activeQueue, selectedChampionId, selectedRole, selectedResult, true);
+  }, [refreshTimestamp]);
 
   const handleLoadMore = async () => {
     if (isLoadingMore || matches.length >= totalMatches) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetchSummonerMatches(region, tag, activeQueue, 10, matches.length);
+      const res = await fetchSummonerMatches(region, tag, activeQueue, 10, matches.length, {
+        queue: activeQueue,
+        championId: selectedChampionId,
+        role: selectedRole,
+        result: selectedResult,
+      });
       const moreMatches = res.matches || [];
       if (typeof window !== 'undefined' && storageKey) {
         try {
@@ -229,13 +248,39 @@ export default function SummonerMatchesPage() {
           matches={matches}
           region={region}
           activeQueue={activeQueue}
-          onQueueChange={(queue) => setActiveQueue(queue)}
+          onQueueChange={(queue) => {
+            setActiveQueue(queue);
+            loadMatchesAndStats(queue, selectedChampionId, selectedRole, selectedResult);
+          }}
+          selectedChampionId={selectedChampionId}
+          onChampionChange={(champId) => {
+            setSelectedChampionId(champId);
+            loadMatchesAndStats(activeQueue, champId, selectedRole, selectedResult);
+          }}
+          selectedRole={selectedRole}
+          onRoleChange={(role) => {
+            setSelectedRole(role);
+            loadMatchesAndStats(activeQueue, selectedChampionId, role, selectedResult);
+          }}
+          selectedResult={selectedResult}
+          onResultChange={(res) => {
+            setSelectedResult(res);
+            loadMatchesAndStats(activeQueue, selectedChampionId, selectedRole, res);
+          }}
+          onResetFilters={() => {
+            setActiveQueue('all');
+            setSelectedChampionId(undefined);
+            setSelectedRole('all');
+            setSelectedResult('all');
+            loadMatchesAndStats('all', undefined, 'all', 'all');
+          }}
           isLoading={isLoadingMatches}
           total={totalMatches}
           hasMore={matches.length < totalMatches}
           isLoadingMore={isLoadingMore}
           onLoadMore={handleLoadMore}
           availableQueues={gameQueues}
+          champStats={champStats}
         />
       </div>
     </div>

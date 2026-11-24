@@ -165,11 +165,14 @@ export async function getSummonerMatches(
   puuid: string,
   options: {
     queueFilter?: string;
+    championId?: number;
+    role?: string;
+    result?: 'win' | 'loss' | 'all';
     limit?: number;
     offset?: number;
   } = {}
 ): Promise<{ matches: FormattedMatch[]; total: number }> {
-  const { queueFilter, limit = 10, offset = 0 } = options;
+  const { queueFilter, championId, role, result, limit = 10, offset = 0 } = options;
   const queueIds = mapQueueFilterToId(queueFilter);
 
   const matchWhere: any = {};
@@ -177,19 +180,36 @@ export async function getSummonerMatches(
     matchWhere.queueId = { in: queueIds };
   }
 
+  const participantWhere: any = {
+    puuid,
+    match: matchWhere,
+  };
+
+  if (championId && championId > 0) {
+    participantWhere.championId = championId;
+  }
+
+  if (role && role.toLowerCase() !== 'all') {
+    const r = role.toUpperCase();
+    if (r === 'MID') participantWhere.teamPosition = 'MIDDLE';
+    else if (r === 'BOT' || r === 'ADC') participantWhere.teamPosition = 'BOTTOM';
+    else if (r === 'SUP' || r === 'SUPPORT') participantWhere.teamPosition = 'UTILITY';
+    else participantWhere.teamPosition = r;
+  }
+
+  if (result === 'win') {
+    participantWhere.win = true;
+  } else if (result === 'loss') {
+    participantWhere.win = false;
+  }
+
   // Find participants matching the target puuid
   const [total, userParticipations] = await Promise.all([
     prisma.matchParticipant.count({
-      where: {
-        puuid,
-        match: matchWhere,
-      },
+      where: participantWhere,
     }),
     prisma.matchParticipant.findMany({
-      where: {
-        puuid,
-        match: matchWhere,
-      },
+      where: participantWhere,
       include: {
         match: {
           include: {

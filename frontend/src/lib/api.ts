@@ -76,16 +76,28 @@ export async function triggerSummonerRefresh(
   return await res.json();
 }
 
+export interface MatchFilters {
+  queue?: string;
+  championId?: number;
+  role?: string;
+  result?: 'win' | 'loss' | 'all';
+}
+
 export async function fetchSummonerMatches(
   region: string,
   tag: string,
   queue?: string,
   limit = 10,
-  offset = 0
+  offset = 0,
+  filters?: MatchFilters
 ): Promise<{ matches: FormattedMatch[]; total: number }> {
   const baseUrl = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (queue && queue !== 'all') params.set('queue', queue);
+  const effectiveQueue = filters?.queue ?? queue;
+  if (effectiveQueue && effectiveQueue !== 'all') params.set('queue', effectiveQueue);
+  if (filters?.championId && filters.championId > 0) params.set('championId', filters.championId.toString());
+  if (filters?.role && filters.role !== 'all') params.set('role', filters.role);
+  if (filters?.result && filters.result !== 'all') params.set('result', filters.result);
   params.set('limit', limit.toString());
   params.set('offset', offset.toString());
 
