@@ -19,6 +19,7 @@ import { getRankEmblemUrl, TIER_COLORS } from './RankBadge';
 import { getWinrateColor, calculateTeamAverageRank } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import LiveGameWinProbability from './LiveGameWinProbability';
+import PremadeBadge from './PremadeBadge';
 import { calculateLiveGameWinProbability } from '@/lib/winProbability';
 
 interface LiveGameViewProps {
@@ -418,6 +419,7 @@ export default function LiveGameView({
                     {t('live.you')}
                   </span>
                 )}
+                <PremadeBadge group={p.premadeGroup} />
               </div>
 
               {/* Line 2: Champion Name & Plain Text Mastery Values */}

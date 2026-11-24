@@ -75,6 +75,13 @@ export interface MatchLpChange {
   leaguePoints?: number;
 }
 
+export interface PremadeGroupInfo {
+  groupId: number; // 1, 2, ...
+  size: number; // 2 (Duo), 3 (Trio), 4 (4-Stack), 5 (5-Stack)
+  label: string; // 'Duo' | 'Trio' | '4-Stack' | '5-Stack'
+  gamesTogether: number;
+}
+
 export interface MatchParticipant {
   puuid: string;
   riotIdGameName: string;
@@ -123,6 +130,7 @@ export interface MatchParticipant {
   pentaKills?: number;
   gameEndedInSurrender?: boolean;
   gameEndedInEarlySurrender?: boolean;
+  premadeGroup?: PremadeGroupInfo | null;
 }
 
 export interface DeepLolScore {
@@ -340,6 +348,7 @@ export interface LiveGameParticipant {
     winrate: number;
   } | null;
   mastery?: LiveGameParticipantMastery | null;
+  premadeGroup?: PremadeGroupInfo | null;
 }
 
 export interface BannedChampion {

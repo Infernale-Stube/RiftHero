@@ -3,6 +3,7 @@ import { getQueueName, mapQueueFilterToId } from '../riot/regions';
 import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { buildScoresFromSavedHeroScores, DeepLolScore } from './scoreService';
+import { findTeammateCoOccurrences, detectTeamPremades, PremadeGroupInfo } from './premadeService';
 
 export interface FormattedMatchParticipant {
   puuid: string;
@@ -50,6 +51,7 @@ export interface FormattedMatchParticipant {
   pentaKills?: number;
   gameEndedInSurrender?: boolean;
   gameEndedInEarlySurrender?: boolean;
+  premadeGroup?: PremadeGroupInfo | null;
 }
 
 export interface TeamTotals {
@@ -210,6 +212,17 @@ export async function getSummonerMatches(
     }))
   );
 
+  // Batch query teammate co-occurrences for all participants across matches to detect duos/trios/stacks
+  const allParticipantPuuids = new Set<string>();
+  for (const up of userParticipations) {
+    if (Array.isArray(up.match?.participants)) {
+      for (const p of up.match.participants) {
+        if (p.puuid) allParticipantPuuids.add(p.puuid);
+      }
+    }
+  }
+  const coOccurrenceMap = await findTeammateCoOccurrences(Array.from(allParticipantPuuids));
+
   const matches: FormattedMatch[] = userParticipations.map((up) => {
     const m = up.match;
     const durationMinutes = m.gameDuration / 60;
@@ -240,6 +253,17 @@ export async function getSummonerMatches(
     const redTeam = formattedParticipants
       .filter((p) => p.teamId === 200)
       .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
+
+    // Detect premade groups (Duo, Trio, 4-Stack, 5-Stack) for Blue and Red teams
+    const bluePremades = detectTeamPremades(blueTeam, coOccurrenceMap, m.id);
+    const redPremades = detectTeamPremades(redTeam, coOccurrenceMap, m.id);
+
+    for (const p of blueTeam) {
+      p.premadeGroup = bluePremades.get(p.puuid) || null;
+    }
+    for (const p of redTeam) {
+      p.premadeGroup = redPremades.get(p.puuid) || null;
+    }
 
     const blueTeamTotals: TeamTotals = {
       kills: blueTotalKills,
@@ -273,6 +297,7 @@ export async function getSummonerMatches(
     const matchLpChange = lpMap.get(m.id) || null;
     currentFormatted.lpChange = matchLpChange;
     currentFormatted.score = matchScores.get(up.puuid);
+    currentFormatted.premadeGroup = (isCurrentBlue ? bluePremades : redPremades).get(up.puuid) || null;
 
     const isRemake = m.gameDuration < 300;
     const isSurrender = false;

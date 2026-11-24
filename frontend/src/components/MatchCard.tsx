@@ -31,6 +31,7 @@ import {
 } from '@/lib/ddragon';
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import PremadeBadge from './PremadeBadge';
 
 interface MatchCardProps {
   match: FormattedMatch;
@@ -564,6 +565,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                       >
                         {p.riotIdGameName}
                       </Link>
+                      <PremadeBadge group={p.premadeGroup} />
                       {p.lpDelta !== null && p.lpDelta !== undefined ? (
                         <span
                           className={`text-[10px] font-black tracking-tight shrink-0 ${
@@ -1001,6 +1003,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                         >
                           {blueP.riotIdGameName}
                         </Link>
+                        <PremadeBadge group={blueP.premadeGroup} compact />
                       </>
                     )}
                   </div>
@@ -1045,6 +1048,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                         >
                           {redP.riotIdGameName}
                         </Link>
+                        <PremadeBadge group={redP.premadeGroup} compact />
                       </>
                     )}
                   </div>

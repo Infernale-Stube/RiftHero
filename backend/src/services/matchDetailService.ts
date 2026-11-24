@@ -4,6 +4,7 @@ import { getQueueName, getClusterForPlatform, getClusterForRegion } from '../rio
 import { getChampionNameById } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
 import { getPositionSortOrder } from './matchService';
+import { findTeammateCoOccurrences, detectTeamPremades } from './premadeService';
 import {
   calculateMatchScores,
   buildScoresFromSavedHeroScores,
@@ -351,6 +352,7 @@ export async function getMatchDetails(
         lpChange,
         heroScore: p.heroScore ?? score?.score ?? null,
         score,
+        premadeGroup: null as any,
       };
     })
   );
@@ -361,6 +363,24 @@ export async function getMatchDetails(
   const redParticipants = formattedParticipants
     .filter((p) => p.teamId === 200)
     .sort((a, b) => getPositionSortOrder(a) - getPositionSortOrder(b));
+
+  try {
+    const allMatchPuuids = [...blueParticipants, ...redParticipants]
+      .map((p) => p.puuid)
+      .filter(Boolean);
+    const coOccurrenceMap = await findTeammateCoOccurrences(allMatchPuuids);
+    const bluePremades = detectTeamPremades(blueParticipants, coOccurrenceMap, match.id);
+    const redPremades = detectTeamPremades(redParticipants, coOccurrenceMap, match.id);
+
+    for (const p of blueParticipants) {
+      p.premadeGroup = bluePremades.get(p.puuid) || null;
+    }
+    for (const p of redParticipants) {
+      p.premadeGroup = redPremades.get(p.puuid) || null;
+    }
+  } catch (err: any) {
+    console.warn('[MatchDetailService] Failed to detect premades:', err?.message || err);
+  }
 
   const formatBans = async (rawBans: Array<number | null>) => {
     const bans = [];

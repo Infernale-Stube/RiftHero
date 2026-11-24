@@ -44,6 +44,7 @@ import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
 import ScoreTimelineChart from '@/components/ScoreTimelineChart';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import PremadeBadge from '@/components/PremadeBadge';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function MatchDetailPage() {
@@ -366,6 +367,7 @@ export default function MatchDetailPage() {
                         >
                           {p.riotIdGameName}
                         </Link>
+                        <PremadeBadge group={p.premadeGroup} />
                         {pos && (
                           <span className="flex items-center gap-1 rounded bg-white/[0.08] border border-white/10 px-1.5 py-0.5 text-[9px] font-black text-amber-300 shrink-0">
                             <Image

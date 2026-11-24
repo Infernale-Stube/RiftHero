@@ -8,6 +8,7 @@ import {
   getQueueName,
 } from '../riot/regions';
 import { getChampionNameById } from '../riot/ddragon';
+import { findTeammateCoOccurrences, detectTeamPremades, PremadeGroupInfo } from './premadeService';
 
 export interface LiveGameParticipantMastery {
   championLevel: number;
@@ -45,6 +46,7 @@ export interface LiveGameParticipant {
     winrate: number;
   } | null;
   mastery?: LiveGameParticipantMastery | null;
+  premadeGroup?: PremadeGroupInfo | null;
 }
 
 export interface BannedChampion {
@@ -528,6 +530,23 @@ export async function getLiveGame(
     } else {
       redTeam.push(formatted);
     }
+  }
+
+  // 3d. Detect Premades / Groups (Duo, Trio, 4-Stack, 5-Stack) for each team
+  try {
+    const allLivePuuids = [...blueTeam, ...redTeam].map((p) => p.puuid).filter(Boolean);
+    const coOccurrenceMap = await findTeammateCoOccurrences(allLivePuuids);
+    const bluePremades = detectTeamPremades(blueTeam, coOccurrenceMap);
+    const redPremades = detectTeamPremades(redTeam, coOccurrenceMap);
+
+    for (const p of blueTeam) {
+      p.premadeGroup = bluePremades.get(p.puuid) || null;
+    }
+    for (const p of redTeam) {
+      p.premadeGroup = redPremades.get(p.puuid) || null;
+    }
+  } catch (err: any) {
+    console.warn('[LiveGame] Failed to detect premades:', err?.message || err);
   }
 
   // 4. Resolve bans (support both currentGame.bans and currentGame.bannedChampions)
