@@ -469,9 +469,13 @@ export default function LiveGameView({
                   >
                     {p.championStats.winrate}%
                   </span>
-                  <span className="text-[10px] text-zinc-400 font-medium">
-                    {p.championStats.games}G ({p.championStats.wins}W {p.championStats.losses}L)
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-medium">
+                    <span>{p.championStats.games}G</span>
+                    <span>(</span>
+                    <span className="font-bold text-emerald-400">{p.championStats.wins}W</span>
+                    <span className="font-bold text-rose-400">{p.championStats.losses}L</span>
+                    <span>)</span>
+                  </div>
                 </div>
               ) : (
                 <span className="text-[11px] text-zinc-500 font-semibold mt-0.5">
@@ -505,9 +509,15 @@ export default function LiveGameView({
                         {p.rank.winrate}%
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-400">
-                      {p.rank.leaguePoints} LP · {p.rank.wins + p.rank.losses}G ({p.rank.wins}W {p.rank.losses}L)
-                    </span>
+                    <div className="flex items-center justify-end gap-1 text-[10px] text-zinc-400 font-medium">
+                      <span>{p.rank.leaguePoints} LP</span>
+                      <span className="text-zinc-600">·</span>
+                      <span>{p.rank.wins + p.rank.losses}G</span>
+                      <span>(</span>
+                      <span className="font-bold text-emerald-400">{p.rank.wins}W</span>
+                      <span className="font-bold text-rose-400">{p.rank.losses}L</span>
+                      <span>)</span>
+                    </div>
                   </div>
                 </>
               ) : (
