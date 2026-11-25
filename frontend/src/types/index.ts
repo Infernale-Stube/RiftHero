@@ -387,7 +387,28 @@ export interface LiveGameWinProbability {
     mmrAdvantage?: number;
     wrAdvantage?: number;
     champAdvantage?: number;
+    matchupAdvantage?: number;
+    blueAvgMatchupWinrate?: number | null;
+    redAvgMatchupWinrate?: number | null;
+    matchupCount?: number;
+    matchupTier?: string | null;
   };
+}
+
+export interface LiveGameLaneMatchup {
+  role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+  lolalyticsRole: string;
+  blueChampionId: number;
+  blueChampionName: string;
+  redChampionId: number;
+  redChampionName: string;
+  blueWinrate: number | null;
+  redWinrate: number | null;
+  games: number | null;
+  favoredSide: 'blue' | 'red' | 'even' | null;
+  tier: string;
+  requestedTier: string;
+  patch: string | null;
 }
 
 export interface LiveGameData {
@@ -400,6 +421,8 @@ export interface LiveGameData {
   blueTeam: LiveGameParticipant[];
   redTeam: LiveGameParticipant[];
   bans: BannedChampion[];
+  avgMatchTier?: string;
+  laneMatchups?: LiveGameLaneMatchup[];
   winProbability?: LiveGameWinProbability;
 }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Radio, RefreshCw, Ban, Copy, Check } from 'lucide-react';
+import { Radio, RefreshCw, Ban, Copy, Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import { LiveGameResponse, LiveGameParticipant } from '@/types';
 import {
   getChampionIconUrl,
@@ -114,7 +114,14 @@ export default function LiveGameView({
       return game.winProbability;
     }
     try {
-      return calculateLiveGameWinProbability(game.blueTeam, game.redTeam, game.mapId, game.queueId);
+      return calculateLiveGameWinProbability(
+        game.blueTeam,
+        game.redTeam,
+        game.mapId,
+        game.queueId,
+        game.laneMatchups || [],
+        game.avgMatchTier
+      );
     } catch (err) {
       console.error('Failed to calculate win probability:', err);
       return null;
@@ -610,18 +617,42 @@ export default function LiveGameView({
         <div className="flex-1 min-w-0">
           {renderTeamHeader(true)}
         </div>
-        <div className="hidden lg:block w-10 shrink-0" />
+        <div className="hidden lg:block w-28 shrink-0" />
         <div className="flex-1 min-w-0">
           {renderTeamHeader(false)}
         </div>
       </div>
 
-      {/* 5 Lane Matchups with Role Icon in the Center */}
+      {/* 5 Lane Matchups with Role Icon & CounterPick Advantage in the Center */}
       <div className="flex flex-col gap-3 w-full">
         {POSITION_KEYS_ORDER.map((posKey, i) => {
           const blueSlot = sortedBlueSlots[i];
           const redSlot = sortedRedSlots[i];
           const role = blueSlot?.role || redSlot?.role || posKey;
+          const laneMatchup = game.laneMatchups?.find((m) => m.role === role) || null;
+          const hasMatchup = Boolean(laneMatchup && laneMatchup.blueWinrate !== null && laneMatchup.redWinrate !== null);
+          const tierLabel = laneMatchup?.tier
+            ? laneMatchup.tier.replace('_plus', '+').toUpperCase()
+            : '';
+          const favoredChampSlug =
+            laneMatchup?.favoredSide === 'red'
+              ? laneMatchup.redChampionName
+              : laneMatchup?.blueChampionName || blueSlot?.participant?.championName || '';
+          const counterPickHref =
+            laneMatchup && favoredChampSlug
+              ? `/${locale}/counterpicks?champion=${encodeURIComponent(favoredChampSlug)}&tier=${encodeURIComponent(laneMatchup.tier)}&role=${encodeURIComponent(laneMatchup.lolalyticsRole)}`
+              : null;
+          const matchupTooltip =
+            hasMatchup && laneMatchup
+              ? `${laneMatchup.blueChampionName} (${laneMatchup.blueWinrate?.toFixed(1)}%) vs ${laneMatchup.redChampionName} (${laneMatchup.redWinrate?.toFixed(1)}%) · ${tierLabel}${laneMatchup.games ? ` · ${laneMatchup.games.toLocaleString()} Games` : ''}`
+              : role;
+
+          const matchupColorClass =
+            laneMatchup?.favoredSide === 'blue'
+              ? 'border-cyan-500/35 bg-cyan-950/35 text-cyan-300'
+              : laneMatchup?.favoredSide === 'red'
+              ? 'border-rose-500/35 bg-rose-950/35 text-rose-300'
+              : 'border-white/10 bg-black/50 text-zinc-300';
 
           return (
             <div key={posKey} className="flex flex-col lg:flex-row lg:items-center gap-3 w-full">
@@ -630,27 +661,54 @@ export default function LiveGameView({
                 {renderPlayerCard(blueSlot?.participant || null, true)}
               </div>
 
-              {/* Center Role Icon Divider (Desktop) */}
-              <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-10 my-auto">
+              {/* Center Role Icon + Lane Matchup Divider (Desktop) */}
+              <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-28 my-auto gap-1.5">
                 <div
-                  className="flex h-10 w-10 items-center justify-center"
+                  className="flex h-8 w-8 items-center justify-center"
                   title={role}
                 >
                   <Image
                     src={getPositionIconUrl(role)}
                     alt={role}
-                    width={24}
-                    height={24}
-                    className="h-6 w-6 object-contain filter brightness-110 drop-shadow"
+                    width={22}
+                    height={22}
+                    className="h-5 w-5 object-contain filter brightness-110 drop-shadow"
                     unoptimized
                   />
                 </div>
+
+                {hasMatchup && laneMatchup && (
+                  <Link
+                    href={counterPickHref || `/${locale}/counterpicks`}
+                    title={matchupTooltip}
+                    className={`w-full rounded-xl border px-2 py-1 text-center transition-all hover:scale-[1.03] ${matchupColorClass}`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-[11px] font-black leading-tight tabular-nums">
+                      {laneMatchup.favoredSide === 'blue' && (
+                        <ArrowLeft className="h-3 w-3 text-cyan-400 shrink-0" />
+                      )}
+                      <span className={laneMatchup.favoredSide === 'blue' ? 'text-cyan-300' : 'text-zinc-300'}>
+                        {laneMatchup.blueWinrate?.toFixed(1)}%
+                      </span>
+                      <span className="text-zinc-600">/</span>
+                      <span className={laneMatchup.favoredSide === 'red' ? 'text-rose-300' : 'text-zinc-300'}>
+                        {laneMatchup.redWinrate?.toFixed(1)}%
+                      </span>
+                      {laneMatchup.favoredSide === 'red' && (
+                        <ArrowRight className="h-3 w-3 text-rose-400 shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400 mt-0.5 truncate">
+                      {tierLabel}
+                    </div>
+                  </Link>
+                )}
               </div>
 
-              {/* Mobile Role Divider */}
+              {/* Mobile Role & Matchup Divider */}
               <div className="flex lg:hidden items-center justify-center gap-2 py-1">
                 <div className="h-[1px] flex-1 bg-white/10" />
-                <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                <div className="flex items-center gap-2 px-2 py-0.5 text-xs font-bold text-zinc-300 uppercase tracking-wider">
                   <Image
                     src={getPositionIconUrl(role)}
                     alt={role}
@@ -660,6 +718,26 @@ export default function LiveGameView({
                     unoptimized
                   />
                   <span>{role}</span>
+                  {hasMatchup && laneMatchup && (
+                    <Link
+                      href={counterPickHref || `/${locale}/counterpicks`}
+                      title={matchupTooltip}
+                      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-black normal-case tracking-normal ${matchupColorClass}`}
+                    >
+                      {laneMatchup.favoredSide === 'blue' && (
+                        <ArrowLeft className="h-3 w-3 text-cyan-400 shrink-0" />
+                      )}
+                      <span>
+                        {laneMatchup.blueWinrate?.toFixed(1)}% / {laneMatchup.redWinrate?.toFixed(1)}%
+                      </span>
+                      {laneMatchup.favoredSide === 'red' && (
+                        <ArrowRight className="h-3 w-3 text-rose-400 shrink-0" />
+                      )}
+                      <span className="text-[9px] font-semibold uppercase text-zinc-400 ml-0.5">
+                        ({tierLabel})
+                      </span>
+                    </Link>
+                  )}
                 </div>
                 <div className="h-[1px] flex-1 bg-white/10" />
               </div>

@@ -1,4 +1,4 @@
-import { LiveGameParticipant, LiveGameWinProbability } from '@/types';
+import { LiveGameParticipant, LiveGameWinProbability, LiveGameLaneMatchup } from '@/types';
 import { TIER_BASE_LP, DIVISION_OFFSET_LP } from './utils';
 import { isSummonersRift as checkIsSummonersRift } from './gameMetadata';
 
@@ -20,7 +20,9 @@ export function calculateLiveGameWinProbability(
   blueTeam: LiveGameParticipant[] = [],
   redTeam: LiveGameParticipant[] = [],
   mapId?: number,
-  queueId?: number
+  queueId?: number,
+  laneMatchups: LiveGameLaneMatchup[] = [],
+  avgMatchTier?: string
 ): LiveGameWinProbability {
   const safeBlueTeam = Array.isArray(blueTeam) ? blueTeam.filter(Boolean) : [];
   const safeRedTeam = Array.isArray(redTeam) ? redTeam.filter(Boolean) : [];
@@ -155,13 +157,33 @@ export function calculateLiveGameWinProbability(
     masteryAdvantage = Math.max(-7, Math.min(7, Math.round(masteryDelta * 0.07 * 10) / 10));
   }
 
-  // 5. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
+  // 5. Lane Matchups (CounterPick data at avg match rank)
+  const validMatchups = laneMatchups.filter((m) => m.blueWinrate !== null);
+  let matchupAdvantage = 0;
+  let blueAvgMatchupWinrate: number | null = null;
+  let redAvgMatchupWinrate: number | null = null;
+  if (validMatchups.length > 0) {
+    const avgBlueLaneWr =
+      validMatchups.reduce((acc, m) => acc + (m.blueWinrate ?? 50), 0) / validMatchups.length;
+    blueAvgMatchupWinrate = Math.round(avgBlueLaneWr * 10) / 10;
+    redAvgMatchupWinrate = Math.round((100 - blueAvgMatchupWinrate) * 10) / 10;
+    const avgEdge = avgBlueLaneWr - 50;
+    matchupAdvantage = Math.max(-6, Math.min(6, Math.round(avgEdge * 0.6 * 10) / 10));
+  }
+
+  // 6. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
   const isSummonersRift = checkIsSummonersRift(mapId, queueId);
   const sideAdvantage = isSummonersRift ? 1.2 : 0;
 
-  // 6. Total Blue Winrate
+  // 7. Total Blue Winrate
   const rawBlue =
-    50 + mmrAdvantage + wrAdvantage + champAdvantage + masteryAdvantage + sideAdvantage;
+    50 +
+    mmrAdvantage +
+    wrAdvantage +
+    champAdvantage +
+    masteryAdvantage +
+    matchupAdvantage +
+    sideAdvantage;
   const clampedBlue = Math.max(20, Math.min(80, rawBlue));
   const blueWinrate = Math.round(clampedBlue * 10) / 10;
   const redWinrate = Math.round((100 - blueWinrate) * 10) / 10;
@@ -202,6 +224,11 @@ export function calculateLiveGameWinProbability(
       mmrAdvantage,
       wrAdvantage,
       champAdvantage,
+      matchupAdvantage,
+      blueAvgMatchupWinrate,
+      redAvgMatchupWinrate,
+      matchupCount: validMatchups.length,
+      matchupTier: avgMatchTier || null,
     },
   };
 }

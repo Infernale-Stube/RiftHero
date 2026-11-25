@@ -12,6 +12,7 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Crosshair,
 } from 'lucide-react';
 import { LiveGameWinProbability as WinProbType, LiveGameParticipant } from '@/types';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -68,6 +69,11 @@ export default function LiveGameWinProbability({
     blueAvgMasteryLevel = null,
     redAvgMasteryLevel = null,
     masteryAdvantage = 0,
+    matchupAdvantage = 0,
+    blueAvgMatchupWinrate = null,
+    redAvgMatchupWinrate = null,
+    matchupCount = 0,
+    matchupTier = null,
   } = factors;
 
   const mmrAdvantage =
@@ -315,7 +321,7 @@ export default function LiveGameWinProbability({
         {/* Breakdown Factors (Always visible or toggleable) */}
         {showDetails && (
           <div className="mt-2 pt-3 border-t border-white/[0.06] animate-fadeIn">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5">
               {/* Factor 1: Rank & MMR */}
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-zinc-400 mb-1.5">
@@ -423,7 +429,36 @@ export default function LiveGameWinProbability({
                 </div>
               </div>
 
-              {/* Factor 5: Map & Side Bias */}
+              {/* Factor 5: Lane Matchups */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-zinc-400 mb-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Crosshair className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>{t('live.matchupFactor')}</span>
+                  </div>
+                  {renderAdvantageBadge(matchupAdvantage)}
+                </div>
+                <div className="text-xs font-bold text-slate-200">
+                  {blueAvgMatchupWinrate !== null && redAvgMatchupWinrate !== null ? (
+                    <span>
+                      {blueAvgMatchupWinrate.toFixed(1)}% vs {redAvgMatchupWinrate.toFixed(1)}%
+                    </span>
+                  ) : (
+                    t('live.noData')
+                  )}
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">
+                  {matchupCount > 0
+                    ? t('live.matchupSubtitle', {
+                        tier: (matchupTier || 'all').replace('_plus', '+').toUpperCase(),
+                        count: matchupCount,
+                      })
+                    : t('live.noData')}
+                  {renderAdvantageDelta(matchupAdvantage)}
+                </div>
+              </div>
+
+              {/* Factor 6: Map & Side Bias */}
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-zinc-400 mb-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-semibold">

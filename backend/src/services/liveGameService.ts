@@ -11,12 +11,14 @@ import {
   isSummonersRift as checkIsSummonersRift,
 } from './gameMetadataService';
 import { getChampionNameById } from '../riot/ddragon';
+import championPositionsRaw from '../riot/championPositions.json';
 import {
   findTeammateCoOccurrences,
   detectTeamPremades,
   detectMatchPremades,
   PremadeGroupInfo,
 } from './premadeService';
+import { CounterMatchupStats, ensureCounterPickTableExists } from './counterPickService';
 
 export interface LiveGameParticipantMastery {
   championLevel: number;
@@ -86,7 +88,30 @@ export interface LiveGameWinProbability {
     mmrAdvantage?: number;
     wrAdvantage?: number;
     champAdvantage?: number;
+    matchupAdvantage?: number;
+    blueAvgMatchupWinrate?: number | null;
+    redAvgMatchupWinrate?: number | null;
+    matchupCount?: number;
+    matchupTier?: string | null;
   };
+}
+
+export type LiveLaneRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+
+export interface LiveGameLaneMatchup {
+  role: LiveLaneRole;
+  lolalyticsRole: string;
+  blueChampionId: number;
+  blueChampionName: string;
+  redChampionId: number;
+  redChampionName: string;
+  blueWinrate: number | null;
+  redWinrate: number | null;
+  games: number | null;
+  favoredSide: 'blue' | 'red' | 'even' | null;
+  tier: string;
+  requestedTier: string;
+  patch: string | null;
 }
 
 export interface LiveGameData {
@@ -99,6 +124,8 @@ export interface LiveGameData {
   blueTeam: LiveGameParticipant[];
   redTeam: LiveGameParticipant[];
   bans: BannedChampion[];
+  avgMatchTier?: string;
+  laneMatchups?: LiveGameLaneMatchup[];
   winProbability?: LiveGameWinProbability;
 }
 
@@ -580,11 +607,22 @@ export async function getLiveGame(
     }
   }
 
+  const mapId = Number(currentGame.mapId || 0);
+  const queueId = Number(currentGame.gameQueueConfigId || 0);
+  const { avgMatchTier, laneMatchups } = await computeLiveLaneMatchups(
+    blueTeam,
+    redTeam,
+    mapId,
+    queueId
+  );
+
   const winProbability = calculateLiveGameWinProbability(
     blueTeam,
     redTeam,
-    Number(currentGame.mapId || 0),
-    Number(currentGame.gameQueueConfigId || 0)
+    mapId,
+    queueId,
+    laneMatchups,
+    avgMatchTier
   );
 
   return {
@@ -593,22 +631,358 @@ export async function getLiveGame(
       gameId: Number(currentGame.gameId),
       gameStartTime: Number(currentGame.gameStartTime || Date.now()),
       gameLength: Number(currentGame.gameLength || 0),
-      mapId: Number(currentGame.mapId || 0),
-      queueId: Number(currentGame.gameQueueConfigId || 0),
-      queueName: getQueueName(Number(currentGame.gameQueueConfigId || 0)),
+      mapId,
+      queueId,
+      queueName: getQueueName(queueId),
       blueTeam,
       redTeam,
       bans,
+      avgMatchTier,
+      laneMatchups,
       winProbability,
     },
   };
+}
+
+const LIVE_LANE_ROLES: LiveLaneRole[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+
+const ROLE_TO_LOLALYTICS: Record<LiveLaneRole, string> = {
+  TOP: 'top',
+  JUNGLE: 'jungle',
+  MID: 'middle',
+  ADC: 'bottom',
+  SUPPORT: 'support',
+};
+
+const TIER_BASE_LP: Record<string, number> = {
+  IRON: 0,
+  BRONZE: 400,
+  SILVER: 800,
+  GOLD: 1200,
+  PLATINUM: 1600,
+  EMERALD: 2000,
+  DIAMOND: 2400,
+  MASTER: 2800,
+  GRANDMASTER: 3200,
+  CHALLENGER: 3600,
+};
+
+const DIVISION_OFFSET_LP: Record<string, number> = {
+  IV: 0,
+  III: 100,
+  II: 200,
+  I: 300,
+};
+
+function getParticipantMmr(p: LiveGameParticipant | null | undefined): number | null {
+  if (!p || !p.rank || !p.rank.tier) return null;
+  const tier = (p.rank.tier || '').toUpperCase();
+  if (!tier || tier === 'UNRANKED') return null;
+  const base = TIER_BASE_LP[tier];
+  if (base === undefined) return null;
+  if (tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER') {
+    return base + (p.rank.leaguePoints || 0);
+  }
+  const div = (p.rank.rank || 'IV').toUpperCase();
+  const divOffset = DIVISION_OFFSET_LP[div] ?? 0;
+  return base + divOffset + (p.rank.leaguePoints || 0);
+}
+
+function mmrToCounterPickTier(mmr: number | null): string {
+  if (mmr === null) return 'all';
+  if (mmr < 400) return 'iron';
+  if (mmr < 800) return 'bronze';
+  if (mmr < 1200) return 'silver';
+  if (mmr < 1600) return 'gold';
+  if (mmr < 2000) return 'platinum';
+  if (mmr < 2400) return 'emerald';
+  if (mmr < 2800) return 'diamond';
+  if (mmr < 3200) return 'master';
+  if (mmr < 3600) return 'grandmaster';
+  return 'challenger';
+}
+
+function getTierFallbackChain(tier: string): string[] {
+  switch (tier) {
+    case 'challenger':
+      return ['challenger', 'master_plus', 'diamond_plus', 'all'];
+    case 'grandmaster':
+      return ['grandmaster', 'master_plus', 'diamond_plus', 'all'];
+    case 'master':
+      return ['master', 'master_plus', 'diamond_plus', 'all'];
+    case 'diamond':
+      return ['diamond', 'diamond_plus', 'all'];
+    case 'emerald':
+      return ['emerald', 'emerald_plus', 'all'];
+    case 'platinum':
+      return ['platinum', 'platinum_plus', 'all'];
+    case 'gold':
+      return ['gold', 'gold_plus', 'all'];
+    case 'silver':
+    case 'bronze':
+    case 'iron':
+      return [tier, 'all'];
+    default:
+      return ['all'];
+  }
+}
+
+function roleStringToLiveLane(raw?: string | null): LiveLaneRole | null {
+  const up = (raw || '').toUpperCase().trim();
+  if (up === 'TOP') return 'TOP';
+  if (up === 'JUNGLE' || up === 'JGL') return 'JUNGLE';
+  if (up === 'MID' || up === 'MIDDLE') return 'MID';
+  if (up === 'ADC' || up === 'BOT' || up === 'BOTTOM' || up === 'CARRY') return 'ADC';
+  if (up === 'SUPPORT' || up === 'SUP' || up === 'UTILITY') return 'SUPPORT';
+  return null;
+}
+
+const backendChampPosMap = new Map<
+  string,
+  { role?: string; recommendedPositions?: string[] }
+>();
+for (const [k, v] of Object.entries(championPositionsRaw as Record<string, any>)) {
+  const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+  backendChampPosMap.set(cleanKey, v);
+  if (v?.name) {
+    backendChampPosMap.set(String(v.name).toLowerCase().replace(/[^a-z0-9]/g, ''), v);
+  }
+}
+
+function assignLiveTeamSlots(team: LiveGameParticipant[]): Map<LiveLaneRole, LiveGameParticipant> {
+  const result = new Map<LiveLaneRole, LiveGameParticipant>();
+  if (!team || team.length === 0) return result;
+
+  if (team.length !== 5) {
+    const order = (p: LiveGameParticipant) => {
+      const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const pos = roleStringToLiveLane(backendChampPosMap.get(clean)?.role);
+      const idx = pos ? LIVE_LANE_ROLES.indexOf(pos) : 99;
+      return idx;
+    };
+    const sorted = [...team].sort((a, b) => order(a) - order(b));
+    LIVE_LANE_ROLES.forEach((role, idx) => {
+      if (sorted[idx]) result.set(role, sorted[idx]);
+    });
+    return result;
+  }
+
+  const assigned = new Map<LiveGameParticipant, LiveLaneRole>();
+  const unassignedPlayers = [...team];
+  const unassignedRoles = new Set<LiveLaneRole>(LIVE_LANE_ROLES);
+
+  const smitePlayers = unassignedPlayers.filter((p) => p.spell1Id === 11 || p.spell2Id === 11);
+  if (smitePlayers.length === 1) {
+    const jgl = smitePlayers[0];
+    assigned.set(jgl, 'JUNGLE');
+    unassignedRoles.delete('JUNGLE');
+    unassignedPlayers.splice(unassignedPlayers.indexOf(jgl), 1);
+  } else if (smitePlayers.length > 1) {
+    const jgl =
+      smitePlayers.find((p) => {
+        const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return roleStringToLiveLane(backendChampPosMap.get(clean)?.role) === 'JUNGLE';
+      }) || smitePlayers[0];
+    assigned.set(jgl, 'JUNGLE');
+    unassignedRoles.delete('JUNGLE');
+    unassignedPlayers.splice(unassignedPlayers.indexOf(jgl), 1);
+  }
+
+  const remRoles = Array.from(unassignedRoles);
+  const getPermutations = <P,>(arr: P[]): P[][] => {
+    if (arr.length <= 1) return [arr];
+    const out: P[][] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+      for (const p of getPermutations(rest)) out.push([arr[i], ...p]);
+    }
+    return out;
+  };
+
+  const perms = getPermutations(remRoles);
+  let bestPerm = perms[0] || remRoles;
+  let bestScore = -1;
+
+  for (const perm of perms) {
+    let score = 0;
+    for (let i = 0; i < unassignedPlayers.length; i++) {
+      const p = unassignedPlayers[i];
+      const targetRole = perm[i];
+      const clean = (p.championName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cInfo = backendChampPosMap.get(clean);
+      const mainPos = roleStringToLiveLane(cInfo?.role);
+      const recPos = (cInfo?.recommendedPositions || []).map(roleStringToLiveLane);
+
+      if (mainPos === targetRole) score += 20;
+      else if (recPos.includes(targetRole)) score += 10;
+
+      const apiPos = roleStringToLiveLane(p.teamPosition);
+      if (apiPos === targetRole) score += 5;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestPerm = perm;
+    }
+  }
+
+  for (let i = 0; i < unassignedPlayers.length; i++) {
+    assigned.set(unassignedPlayers[i], bestPerm[i]);
+  }
+
+  for (const role of LIVE_LANE_ROLES) {
+    const member = team.find((m) => assigned.get(m) === role);
+    if (member) result.set(role, member);
+  }
+
+  return result;
+}
+
+async function computeLiveLaneMatchups(
+  blueTeam: LiveGameParticipant[],
+  redTeam: LiveGameParticipant[],
+  mapId: number,
+  queueId: number
+): Promise<{ avgMatchTier: string; laneMatchups: LiveGameLaneMatchup[] }> {
+  const allMmrs = [...blueTeam, ...redTeam]
+    .map(getParticipantMmr)
+    .filter((m): m is number => m !== null);
+  const avgMmr =
+    allMmrs.length > 0
+      ? Math.round(allMmrs.reduce((a, b) => a + b, 0) / allMmrs.length)
+      : null;
+
+  const avgMatchTier = mmrToCounterPickTier(avgMmr);
+
+  if (!checkIsSummonersRift(mapId, queueId)) {
+    return { avgMatchTier, laneMatchups: [] };
+  }
+
+  const blueSlots = assignLiveTeamSlots(blueTeam);
+  const redSlots = assignLiveTeamSlots(redTeam);
+
+  const allChampionIds = Array.from(
+    new Set(
+      [...blueTeam, ...redTeam]
+        .map((p) => p.championId)
+        .filter((id) => typeof id === 'number' && id > 0)
+    )
+  );
+
+  const tierChain = getTierFallbackChain(avgMatchTier);
+  const lolalyticsRoles = LIVE_LANE_ROLES.map((r) => ROLE_TO_LOLALYTICS[r]);
+
+  const rowMap = new Map<string, { patch: string; matchups: Record<string, CounterMatchupStats | null> }>();
+
+  if (allChampionIds.length > 0) {
+    try {
+      await ensureCounterPickTableExists();
+      const rows = await prisma.counterPick.findMany({
+        where: {
+          slot: { in: ['current', 'previous'] },
+          championId: { in: allChampionIds },
+          tier: { in: tierChain },
+          role: { in: lolalyticsRoles },
+        },
+        select: {
+          slot: true,
+          patch: true,
+          championId: true,
+          tier: true,
+          role: true,
+          matchups: true,
+        },
+      });
+
+      for (const r of rows) {
+        rowMap.set(`${r.slot}:${r.championId}:${r.tier}:${r.role}`, {
+          patch: r.patch,
+          matchups: (r.matchups as Record<string, CounterMatchupStats | null>) || {},
+        });
+      }
+    } catch (err: any) {
+      console.warn('[LiveGame] CounterPick lookup failed:', err?.message);
+    }
+  }
+
+  const laneMatchups: LiveGameLaneMatchup[] = [];
+
+  for (const role of LIVE_LANE_ROLES) {
+    const bluePlayer = blueSlots.get(role);
+    const redPlayer = redSlots.get(role);
+    if (!bluePlayer || !redPlayer) continue;
+
+    const lolalyticsRole = ROLE_TO_LOLALYTICS[role];
+    let blueWinrate: number | null = null;
+    let games: number | null = null;
+    let tierUsed = avgMatchTier;
+    let patchUsed: string | null = null;
+
+    outer: for (const slot of ['current', 'previous'] as const) {
+      for (const tierCandidate of tierChain) {
+        const blueRow = rowMap.get(
+          `${slot}:${bluePlayer.championId}:${tierCandidate}:${lolalyticsRole}`
+        );
+        const blueVsRed = blueRow?.matchups?.[String(redPlayer.championId)];
+        if (blueVsRed && typeof blueVsRed.vsWr === 'number') {
+          blueWinrate = Math.round(blueVsRed.vsWr * 10) / 10;
+          games = typeof blueVsRed.games === 'number' ? blueVsRed.games : null;
+          tierUsed = tierCandidate;
+          patchUsed = blueRow?.patch || null;
+          break outer;
+        }
+
+        const redRow = rowMap.get(
+          `${slot}:${redPlayer.championId}:${tierCandidate}:${lolalyticsRole}`
+        );
+        const redVsBlue = redRow?.matchups?.[String(bluePlayer.championId)];
+        if (redVsBlue && typeof redVsBlue.vsWr === 'number') {
+          blueWinrate = Math.round((100 - redVsBlue.vsWr) * 10) / 10;
+          games = typeof redVsBlue.games === 'number' ? redVsBlue.games : null;
+          tierUsed = tierCandidate;
+          patchUsed = redRow?.patch || null;
+          break outer;
+        }
+      }
+    }
+
+    const redWinrate =
+      blueWinrate !== null ? Math.round((100 - blueWinrate) * 10) / 10 : null;
+    const favoredSide: 'blue' | 'red' | 'even' | null =
+      blueWinrate === null
+        ? null
+        : blueWinrate >= 50.5
+        ? 'blue'
+        : redWinrate !== null && redWinrate >= 50.5
+        ? 'red'
+        : 'even';
+
+    laneMatchups.push({
+      role,
+      lolalyticsRole,
+      blueChampionId: bluePlayer.championId,
+      blueChampionName: bluePlayer.championName,
+      redChampionId: redPlayer.championId,
+      redChampionName: redPlayer.championName,
+      blueWinrate,
+      redWinrate,
+      games,
+      favoredSide,
+      tier: tierUsed,
+      requestedTier: avgMatchTier,
+      patch: patchUsed,
+    });
+  }
+
+  return { avgMatchTier, laneMatchups };
 }
 
 export function calculateLiveGameWinProbability(
   blueTeam: LiveGameParticipant[],
   redTeam: LiveGameParticipant[],
   mapId?: number,
-  queueId?: number
+  queueId?: number,
+  laneMatchups: LiveGameLaneMatchup[] = [],
+  avgMatchTier?: string
 ): LiveGameWinProbability {
   const TIER_BASE_LP: Record<string, number> = {
     IRON: 0,
@@ -777,13 +1151,33 @@ export function calculateLiveGameWinProbability(
     masteryAdvantage = Math.max(-7, Math.min(7, Math.round(masteryDelta * 0.07 * 10) / 10));
   }
 
-  // 5. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
+  // 5. Lane Matchup Advantage (from CounterPick data at avg match rank)
+  const validMatchups = laneMatchups.filter((m) => m.blueWinrate !== null);
+  let matchupAdvantage = 0;
+  let blueAvgMatchupWinrate: number | null = null;
+  let redAvgMatchupWinrate: number | null = null;
+  if (validMatchups.length > 0) {
+    const avgBlueLaneWr =
+      validMatchups.reduce((acc, m) => acc + (m.blueWinrate ?? 50), 0) / validMatchups.length;
+    blueAvgMatchupWinrate = Math.round(avgBlueLaneWr * 10) / 10;
+    redAvgMatchupWinrate = Math.round((100 - blueAvgMatchupWinrate) * 10) / 10;
+    const avgEdge = avgBlueLaneWr - 50;
+    matchupAdvantage = Math.max(-6, Math.min(6, Math.round(avgEdge * 0.6 * 10) / 10));
+  }
+
+  // 6. Map & Side Advantage (Summoner's Rift has ~51.2% Blue bias)
   const isSummonersRift = checkIsSummonersRift(mapId, queueId);
   const sideAdvantage = isSummonersRift ? 1.2 : 0;
 
-  // 6. Total Blue Winrate
+  // 7. Total Blue Winrate
   const rawBlue =
-    50 + mmrAdvantage + wrAdvantage + champAdvantage + masteryAdvantage + sideAdvantage;
+    50 +
+    mmrAdvantage +
+    wrAdvantage +
+    champAdvantage +
+    masteryAdvantage +
+    matchupAdvantage +
+    sideAdvantage;
   const clampedBlue = Math.max(20, Math.min(80, rawBlue));
   const blueWinrate = Math.round(clampedBlue * 10) / 10;
   const redWinrate = Math.round((100 - blueWinrate) * 10) / 10;
@@ -824,6 +1218,11 @@ export function calculateLiveGameWinProbability(
       mmrAdvantage,
       wrAdvantage,
       champAdvantage,
+      matchupAdvantage,
+      blueAvgMatchupWinrate,
+      redAvgMatchupWinrate,
+      matchupCount: validMatchups.length,
+      matchupTier: avgMatchTier || null,
     },
   };
 }

@@ -272,6 +272,8 @@ export interface TranslationDictionary {
     winrateFactor: string;
     champFactor: string;
     masteryFactor: string;
+    matchupFactor: string;
+    matchupSubtitle: string;
     mapFactor: string;
     blueLead: string;
     redLead: string;
@@ -758,7 +760,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       draftBans: 'Gebannte Champions',
       you: 'DU',
       winProbability: 'Siegwahrscheinlichkeit',
-      winProbabilitySubtitle: 'Berechnet aus MMR, Siegraten, Champion-Meisterschaft & Karten-Vorteil',
+      winProbabilitySubtitle: 'Berechnet aus MMR, Siegraten, Champion-Meisterschaft, Lane-Matchups & Karten-Vorteil',
       blueFavored: 'Blaues Team favorisiert',
       redFavored: 'Rotes Team favorisiert',
       evenMatch: 'Ausgeglichenes Duell',
@@ -766,6 +768,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       winrateFactor: 'Ø Ranked Winrate',
       champFactor: 'Champion-Erfahrung',
       masteryFactor: 'Champion-Mastery',
+      matchupFactor: 'Lane-Matchups',
+      matchupSubtitle: 'Ø {tier} CounterPicks ({count}/5 Lanes)',
       mapFactor: 'Karten-Vorteil',
       blueLead: 'Blau führt',
       redLead: 'Rot führt',
@@ -1250,7 +1254,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       draftBans: 'Champion Bans',
       you: 'YOU',
       winProbability: 'Win Probability',
-      winProbabilitySubtitle: 'Calculated from MMR, win rates, champion mastery & map advantage',
+      winProbabilitySubtitle: 'Calculated from MMR, win rates, champion mastery, lane matchups & map advantage',
       blueFavored: 'Blue Team Favored',
       redFavored: 'Red Team Favored',
       evenMatch: 'Even Matchup',
@@ -1258,6 +1262,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
       winrateFactor: 'Avg. Ranked Winrate',
       champFactor: 'Champion Experience',
       masteryFactor: 'Champion Mastery',
+      matchupFactor: 'Lane Matchups',
+      matchupSubtitle: 'Avg {tier} CounterPicks ({count}/5 Lanes)',
       mapFactor: 'Map Advantage',
       blueLead: 'Blue leads',
       redLead: 'Red leads',
