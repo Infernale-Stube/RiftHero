@@ -5,7 +5,7 @@
 }
 
 # =========================================================================
-# 1. RiftHero Web & Next.js Frontend (rifthero.gg, www.rifthero.gg)
+# 1. RiftHero Web & Next.js Frontend (rifthero.lol, www.rifthero.lol)
 # =========================================================================
 {$APP_DOMAIN}, www.{$APP_DOMAIN} {
 	# Block known exploit & vulnerability scanner probes immediately at proxy level
@@ -29,7 +29,7 @@
 }
 
 # =========================================================================
-# 2. RiftHero Pure REST API (api.rifthero.gg)
+# 2. RiftHero Pure REST API (api.rifthero.lol)
 # =========================================================================
 {$API_DOMAIN} {
 	@blocked_scanners {

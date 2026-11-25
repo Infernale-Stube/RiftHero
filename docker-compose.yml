@@ -326,18 +326,18 @@ services:
 # =========================================================================
 volumes:
   caddy-data:
-    name: ${CADDY_DATA_VOLUME}
+    name: rifthero-caddy-data
   caddy-config:
-    name: ${CADDY_CONFIG_VOLUME}
+    name: rifthero-caddy-config
   postgres-data:
-    name: ${POSTGRES_DATA_VOLUME}
+    name: rifthero-postgres-data
   redis-data:
-    name: ${REDIS_DATA_VOLUME}
+    name: rifthero-redis-data
   mail-data:
-    name: ${MAIL_DATA_VOLUME}
+    name: rifthero-mail-data
   mail-state:
-    name: ${MAIL_STATE_VOLUME}
+    name: rifthero-mail-state
   mail-logs:
-    name: ${MAIL_LOGS_VOLUME}
+    name: rifthero-mail-logs
   backups-data:
-    name: ${BACKUPS_DATA_VOLUME}
+    name: rifthero-backups-data

@@ -21,7 +21,7 @@ flowchart TD
     Client -->|HTTPS :443| Caddy
     Caddy -->|/api/*| API
     Caddy -->|/*| Frontend
-    Caddy -->|mail.rifthero.gg| Mailserver
+    Caddy -->|mail.rifthero.lol| Mailserver
 
     Frontend -->|Queries /api| API
     API -->|Read & Filter| PG
@@ -106,7 +106,7 @@ cp .env.example .env
 Trage deinen **Riot Games Production API Key** ein:
 ```ini
 RIOT_API_KEY=RGAPI-dein-production-key-hier
-APP_DOMAIN=rifthero.gg
+APP_DOMAIN=rifthero.lol
 ACME_EMAIL=deine-email@domain.de
 ```
 
@@ -127,8 +127,8 @@ Docker startet:
 7. `mailserver` (docker-mailserver)
 
 ### 3. Zugriff
-* **Frontend**: `http://localhost:3000` (oder via Domain `https://rifthero.gg`)
-* **REST API**: `http://localhost:4000/api` (oder `https://api.rifthero.gg`)
+* **Frontend**: `http://localhost:3000` (oder via Domain `https://rifthero.lol`)
+* **REST API**: `http://localhost:4000/api` (oder `https://api.rifthero.lol`)
 * **API Health**: `http://localhost:4000/api/health`
 
 ---
@@ -163,7 +163,7 @@ docker compose logs -f caddy
 
 ### Mail-Account im Mailserver anlegen:
 ```bash
-docker compose exec mailserver setup email add postmaster@rifthero.gg meinPasswort123
+docker compose exec mailserver setup email add postmaster@rifthero.lol meinPasswort123
 ```
 
 ### Datenbank manuell inspizieren:

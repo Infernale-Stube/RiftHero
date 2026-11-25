@@ -5,12 +5,12 @@ This directory is mounted to `/tmp/docker-mailserver` inside the mailserver cont
 ### Useful Commands:
 Add an email account:
 ```bash
-docker compose exec mailserver setup email add postmaster@rifthero.gg <password>
+docker compose exec mailserver setup email add postmaster@rifthero.lol <password>
 ```
 
 Add an alias:
 ```bash
-docker compose exec mailserver setup alias add support@rifthero.gg postmaster@rifthero.gg
+docker compose exec mailserver setup alias add support@rifthero.lol postmaster@rifthero.lol
 ```
 
 Generate DKIM keys:

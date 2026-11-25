@@ -60,12 +60,6 @@ export const config = {
   get redisUrl(): string {
     return requireEnv('REDIS_URL');
   },
-  get redisHost(): string {
-    return requireEnv('REDIS_HOST');
-  },
-  get redisPort(): number {
-    return requireInt('REDIS_PORT');
-  },
 
   // Riot API Production Key & Limits
   get riotApiKey(): string {
