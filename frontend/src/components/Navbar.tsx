@@ -77,13 +77,14 @@ export default function Navbar() {
     };
   }, [drawerOpen]);
 
-  const navItems = [
-    {
-      href: `/${locale}`,
-      label: t('nav.home') || 'Startseite',
-      icon: Home,
-      isActive: isHome,
-    },
+  const homeNavItem = {
+    href: `/${locale}`,
+    label: t('nav.home') || 'Startseite',
+    icon: Home,
+    isActive: isHome,
+  };
+
+  const secondaryNavItems = [
     {
       href: `/${locale}/champions`,
       label: t('nav.champions') || 'Champions',
@@ -108,7 +109,9 @@ export default function Navbar() {
       icon: Crosshair,
       isActive: Boolean(pathname?.includes('/counterpicks')),
     },
-  ];
+  ].sort((a, b) => a.label.localeCompare(b.label, locale));
+
+  const navItems = [homeNavItem, ...secondaryNavItems];
 
   return (
     <>
