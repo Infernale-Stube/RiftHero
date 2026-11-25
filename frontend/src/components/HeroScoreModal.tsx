@@ -161,8 +161,13 @@ export default function HeroScoreModal({
           weight: breakdown.objectives.weight,
           contribution: breakdown.objectives.score * breakdown.objectives.weight,
           subMetrics: [
-            `${breakdown.highlights.objectiveTakedowns} ${t('matchDetail.objTakedowns')}`,
-          ],
+            breakdown.highlights.objectiveTakedowns > 0
+              ? `${breakdown.highlights.objectiveTakedowns} ${t('matchDetail.objTakedowns')}`
+              : `${breakdown.highlights.teamObjectiveControl ?? 50}% ${t('matchDetail.teamObjControl')}`,
+            breakdown.highlights.objectiveTakedowns > 0 && breakdown.highlights.teamObjectiveControl !== undefined
+              ? `${breakdown.highlights.teamObjectiveControl}% ${t('matchDetail.teamObjControl')}`
+              : undefined,
+          ].filter((v): v is string => Boolean(v)),
         },
         {
           key: 'vision',

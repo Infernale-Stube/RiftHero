@@ -2,7 +2,7 @@ import { prisma } from '../db/prisma';
 import { getQueueName, mapQueueFilterToId } from '../riot/regions';
 import { getChampionNameByIdSync } from '../riot/ddragon';
 import { getMatchesLpChanges, MatchLpChange } from './lpService';
-import { buildScoresFromSavedHeroScores, DeepLolScore } from './scoreService';
+import { calculateMatchScores, DeepLolScore } from './scoreService';
 import {
   findTeammateCoOccurrences,
   detectTeamPremades,
@@ -265,7 +265,25 @@ export async function getSummonerMatches(
 
     const matchScores = isRemake
       ? new Map<string, DeepLolScore>()
-      : buildScoresFromSavedHeroScores(allParticipants);
+      : calculateMatchScores(allParticipants, m.gameDuration, {
+          queueId: m.queueId,
+          mapId: m.mapId,
+          endOfGameResult: m.endOfGameResult,
+          matchObjectives: {
+            blueTowerKills: m.blueTowerKills,
+            blueInhibitorKills: m.blueInhibitorKills,
+            blueBaronKills: m.blueBaronKills,
+            blueDragonKills: m.blueDragonKills,
+            blueRiftHeraldKills: m.blueRiftHeraldKills,
+            blueHordeKills: m.blueHordeKills,
+            redTowerKills: m.redTowerKills,
+            redInhibitorKills: m.redInhibitorKills,
+            redBaronKills: m.redBaronKills,
+            redDragonKills: m.redDragonKills,
+            redRiftHeraldKills: m.redRiftHeraldKills,
+            redHordeKills: m.redHordeKills,
+          },
+        });
 
     const formattedParticipants = allParticipants.map((p) => {
       const isBlue = p.teamId === 100;
@@ -275,8 +293,9 @@ export async function getSummonerMatches(
         isBlue ? blueTotalKills : redTotalKills,
         isBlue ? blueTotalDmg : redTotalDmg
       );
-      formatted.score = isRemake ? undefined : matchScores.get(p.puuid);
-      formatted.heroScore = isRemake ? null : (p.heroScore ?? null);
+      const computed = isRemake ? undefined : matchScores.get(p.puuid);
+      formatted.score = computed;
+      formatted.heroScore = isRemake ? null : (computed?.score ?? p.heroScore ?? null);
       return formatted;
     });
     const blueTeam = formattedParticipants
@@ -327,8 +346,9 @@ export async function getSummonerMatches(
 
     const matchLpChange = lpMap.get(m.id) || null;
     currentFormatted.lpChange = matchLpChange;
-    currentFormatted.score = isRemake ? undefined : matchScores.get(up.puuid);
-    currentFormatted.heroScore = isRemake ? null : (up.heroScore ?? null);
+    const currentComputed = isRemake ? undefined : matchScores.get(up.puuid);
+    currentFormatted.score = currentComputed;
+    currentFormatted.heroScore = isRemake ? null : (currentComputed?.score ?? up.heroScore ?? null);
     currentFormatted.premadeGroup = (isCurrentBlue ? bluePremades : redPremades).get(up.puuid) || null;
 
     const isSurrender = false;

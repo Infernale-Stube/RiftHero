@@ -34,6 +34,7 @@ export interface HeroScoreBreakdown {
     csDiffVsLane: number | null;
     dmgDiffVsLane: number | null;
     objectiveTakedowns: number;
+    teamObjectiveControl: number; // 0 - 100 (%)
   };
 }
 
@@ -404,6 +405,7 @@ export function calculateMatchScores(
     const totalCs = getParticipantTotalCs(p);
     const goldEarned = p.goldEarned || 0;
     const visionScore = p.visionScore || 0;
+    const wardsPlaced = p.wardsPlaced || 0;
     const wardsKilled = p.wardsKilled || 0;
     const controlWards = p.visionWardsBoughtInGame || 0;
     const champLevel = p.champLevel || 1;
@@ -418,39 +420,32 @@ export function calculateMatchScores(
     const vpm = visionScore / durationMin;
 
     // ------------------------------------------------------------------
-    // 1. Combat, KDA, Kill Participation & Utility/Survivability (0-100)
+    // 1. Combat, KDA, Kill Participation & Survivability (0-100)
+    //    Uses canonical persisted stats so overview & details match 100%.
     // ------------------------------------------------------------------
     const expectedKp = isSupport ? 0.58 : isJungle ? 0.56 : isAram ? 0.65 : role === 'TOP' ? 0.42 : 0.50;
-    const kdaFactor = Math.tanh((kda - 2.4) / 2.6) * 23;
+    const kdaFactor = Math.tanh((kda - 2.4) / 2.6) * 24;
     const zeroDeathBonus = deaths === 0 && kills + assists >= 3 ? 4.5 : 0;
     const deathsPerMin = deaths / durationMin;
     const excessDeathPenalty = deathsPerMin > 0.21 ? Math.min(20, (deathsPerMin - 0.21) * 65) : 0;
-    const kpFactor = Math.tanh((kp - expectedKp) / 0.20) * 18;
+    const kpFactor = Math.tanh((kp - expectedKp) / 0.20) * 19;
 
-    // Survivability / Tanking / Healing / CC bonus
+    // Frontline / Tanking efficiency (absorbing damage without excessive deaths)
     const dmgTakenPerDeath = totalDmgTaken / Math.max(deaths, 1);
     const dmgTakenShare = teamDmgTaken > 0 ? totalDmgTaken / teamDmgTaken : 0.2;
     const frontlineBonus =
-      deaths <= 6 && dmgTakenShare > 0.22
-        ? Math.min(5, (dmgTakenPerDeath / 4500) * 2.2)
+      deaths <= 6 && dmgTakenShare > 0.21
+        ? Math.min(6, (dmgTakenPerDeath / 4200) * 2.5)
         : 0;
 
-    const healShield =
-      (p.totalHealsOnTeammates || 0) +
-      (p.totalDamageShieldedOnTeammates || 0) +
-      (p.challenges?.effectiveHealAndShielding || 0);
-    const healShieldBonus = healShield > 0 ? Math.min(8, (healShield / (durationMin * 320)) * 4.5) : 0;
-
-    const ccSeconds = p.timeCCingOthers || 0;
-    const ccBonus = ccSeconds > 0 ? Math.min(5, (ccSeconds / durationMin) * 1.4) : 0;
-
-    const multiKillBonus =
-      (p.pentaKills ? 6 : p.quadraKills ? 4 : p.tripleKills ? 2 : 0) +
-      (p.firstBloodKill || p.firstBloodAssist ? 1.5 : 0) +
-      Math.min(3, (p.challenges?.soloKills || 0) * 1.0);
+    // Support / Utility teamfight contribution (assists per min)
+    const assistsPerMin = assists / durationMin;
+    const supportUtilityBonus = isSupport
+      ? Math.tanh((assistsPerMin - 0.45) / 0.25) * 6
+      : 0;
 
     const combatScore = clamp(
-      50 + kdaFactor + zeroDeathBonus - excessDeathPenalty + kpFactor + frontlineBonus + healShieldBonus + ccBonus + multiKillBonus,
+      50 + kdaFactor + zeroDeathBonus - excessDeathPenalty + kpFactor + frontlineBonus + supportUtilityBonus,
       0,
       100
     );
@@ -540,22 +535,27 @@ export function calculateMatchScores(
     // 4. Vision & Map Control (0-100)
     // ------------------------------------------------------------------
     const tlExtras = timelineExtrasMap.get(p.puuid);
-    const effectiveWardsKilled = Math.max(wardsKilled, tlExtras?.wardsKilled || 0);
     const expectedVpm = isSupport ? 1.85 : isJungle ? 0.92 : 0.70;
+    const expectedWardsPlacedPerMin = isSupport ? 1.15 : 0.42;
     const expectedCw = (isSupport ? 3.5 : isJungle ? 2.2 : 1.5) * (durationMin / 25);
 
     const vpmFactor = isAram
       ? 0
-      : Math.tanh((vpm - expectedVpm) / (isSupport ? 0.65 : 0.35)) * 27;
+      : Math.tanh((vpm - expectedVpm) / (isSupport ? 0.65 : 0.35)) * 22;
+    const placedFactor = isAram
+      ? 0
+      : Math.tanh((wardsPlaced / durationMin - expectedWardsPlacedPerMin) / (isSupport ? 0.45 : 0.22)) * 8;
     const clearFactor = isAram
       ? 0
-      : Math.tanh((effectiveWardsKilled / durationMin - (isSupport ? 0.35 : 0.18)) / 0.22) * 13;
-    const cwFactor = isAram ? 0 : Math.tanh((controlWards - expectedCw) / 1.8) * 10;
+      : Math.tanh((wardsKilled / durationMin - (isSupport ? 0.35 : 0.18)) / 0.22) * 12;
+    const cwFactor = isAram ? 0 : Math.tanh((controlWards - expectedCw) / 1.8) * 8;
 
-    const visionScoreVal = isAram ? 50 : clamp(50 + vpmFactor + clearFactor + cwFactor, 0, 100);
+    const visionScoreVal = isAram ? 50 : clamp(50 + vpmFactor + placedFactor + clearFactor + cwFactor, 0, 100);
 
     // ------------------------------------------------------------------
     // 5. Objectives & Macro (0-100)
+    //    Score uses canonical team objectives + individual map/pressure stats.
+    //    Optional timeline/challenges takedowns are surfaced in highlights only.
     // ------------------------------------------------------------------
     const turretTakedowns =
       p.challenges?.turretTakedowns ?? p.turretTakedowns ?? tlExtras?.towerTakedowns ?? 0;
@@ -566,7 +566,6 @@ export function calculateMatchScores(
     const heraldTakedowns =
       (p.challenges?.riftHeraldTakedowns ?? tlExtras?.riftHeraldTakedowns ?? 0) +
       (tlExtras?.hordeTakedowns ? tlExtras.hordeTakedowns * 0.4 : 0);
-    const objStolen = p.objectivesStolen ?? p.challenges?.objectivesStolen ?? 0;
 
     const totalObjTakedowns =
       turretTakedowns +
@@ -575,11 +574,6 @@ export function calculateMatchScores(
       baronTakedowns +
       Math.round(heraldTakedowns);
 
-    const hasIndividualObjStats =
-      typeof p.damageDealtToObjectives === 'number' ||
-      typeof p.challenges?.turretTakedowns === 'number' ||
-      tlExtras !== undefined;
-
     const teamObj = resolveTeamObjectiveScore(p.teamId, context);
     const teamObjRatio =
       teamObj.hasData && teamObj.myPower + teamObj.enemyPower > 0
@@ -587,35 +581,16 @@ export function calculateMatchScores(
         : p.win
         ? 0.62
         : 0.38;
-    const teamObjFactor = Math.tanh((teamObjRatio - 0.5) / 0.24) * 24;
+    const teamObjFactor = Math.tanh((teamObjRatio - 0.5) / 0.24) * 22;
+    const presenceFactor = Math.tanh((kp - expectedKp) / 0.22) * 13;
+    const tempoLevelFactor = Math.tanh((champLevel - avgEnemyLevel) / 2.2) * 7;
+    const uptimeFactor = deathsPerMin <= 0.2 ? 4 : -Math.min(8, (deathsPerMin - 0.2) * 28);
 
-    let objectivesScore = 50;
-    if (hasIndividualObjStats) {
-      const weightedTakedowns =
-        turretTakedowns * 1.1 +
-        inhibTakedowns * 1.4 +
-        dragonTakedowns * 1.6 +
-        baronTakedowns * 2.5 +
-        heraldTakedowns * 1.2 +
-        objStolen * 3.0;
-      const expectedWeighted = isJungle ? 5.2 : isSupport ? 3.5 : 4.2;
-      const takedownFactor =
-        Math.tanh((weightedTakedowns - expectedWeighted * (durationMin / 28)) / 3.2) * 26;
-
-      const objDmg = p.damageDealtToObjectives || 0;
-      const turretDmg = p.damageDealtToTurrets || 0;
-      const expectedObjDmgPerMin = isJungle ? 650 : role === 'BOTTOM' ? 480 : isSupport ? 140 : 380;
-      const objDmgFactor =
-        objDmg > 0 || turretDmg > 0
-          ? Math.tanh(((objDmg + turretDmg * 0.4) / durationMin - expectedObjDmgPerMin) / (expectedObjDmgPerMin * 0.7)) * 12
-          : 0;
-
-      objectivesScore = clamp(50 + takedownFactor + objDmgFactor + teamObjFactor * 0.55, 0, 100);
-    } else {
-      // Pure DB fallback: blend team objective differential with player's map presence (KP + survival)
-      const presenceFactor = Math.tanh((kp - expectedKp) / 0.22) * 14;
-      objectivesScore = clamp(50 + teamObjFactor * 0.85 + presenceFactor, 0, 100);
-    }
+    const objectivesScore = clamp(
+      50 + teamObjFactor + presenceFactor + tempoLevelFactor + uptimeFactor,
+      0,
+      100
+    );
 
     // ------------------------------------------------------------------
     // 6. Lane Matchup Diff (0-100)
@@ -654,15 +629,8 @@ export function calculateMatchScores(
       const laneLevelFactor = Math.tanh((champLevel - oppLevel) / 1.8) * 6;
       const laneKdaFactor = Math.tanh((kda - oppKda) / 2.5) * 6;
 
-      // Early game minute-15 gold/cs diff bonus if timeline is present
-      let earlyLeadBonus = 0;
-      const oppTl = timelineExtrasMap.get(directOpponent.puuid);
-      if (tlExtras?.goldAt15 !== undefined && oppTl?.goldAt15 !== undefined) {
-        earlyLeadBonus = Math.tanh((tlExtras.goldAt15 - oppTl.goldAt15) / 1500) * 6;
-      }
-
       laneScore = clamp(
-        50 + laneGoldFactor + laneCsOrVisFactor + laneDmgFactor + laneLevelFactor + laneKdaFactor + earlyLeadBonus,
+        50 + laneGoldFactor + laneCsOrVisFactor + laneDmgFactor + laneLevelFactor + laneKdaFactor,
         0,
         100
       );
@@ -712,6 +680,7 @@ export function calculateMatchScores(
         csDiffVsLane,
         dmgDiffVsLane,
         objectiveTakedowns: totalObjTakedowns,
+        teamObjectiveControl: Math.round(teamObjRatio * 100),
       },
     };
 

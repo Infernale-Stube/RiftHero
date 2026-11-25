@@ -170,6 +170,7 @@ export interface HeroScoreBreakdown {
     csDiffVsLane: number | null;
     dmgDiffVsLane: number | null;
     objectiveTakedowns: number;
+    teamObjectiveControl?: number;
   };
 }
 

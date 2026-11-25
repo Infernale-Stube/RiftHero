@@ -122,7 +122,10 @@ export default function HeroScoreAnalysis({ participants, onInspectPlayer }: Her
           icon: Target,
           score: breakdown.objectives.score,
           weight: breakdown.objectives.weight,
-          detail: `${breakdown.highlights.objectiveTakedowns} ${t('matchDetail.objTakedowns')}`,
+          detail:
+            breakdown.highlights.objectiveTakedowns > 0
+              ? `${breakdown.highlights.objectiveTakedowns} ${t('matchDetail.objTakedowns')}`
+              : `${breakdown.highlights.teamObjectiveControl ?? 50}% ${t('matchDetail.teamObjControl')}`,
         },
         {
           key: 'vision',

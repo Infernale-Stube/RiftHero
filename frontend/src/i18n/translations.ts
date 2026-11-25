@@ -267,6 +267,7 @@ export interface TranslationDictionary {
     clickForDetails: string;
     damageTakenLabel: string;
     baseSum: string;
+    teamObjControl: string;
   };
   live: {
     analyzing: string;
@@ -835,6 +836,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       clickForDetails: 'Klicken für Score-Details',
       damageTakenLabel: 'Erlittener Schaden',
       baseSum: 'Basis',
+      teamObjControl: 'Team-Objektive',
     },
     live: {
       analyzing: 'Spectator-Status wird abgefragt...',
@@ -1401,6 +1403,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       clickForDetails: 'Click for score details',
       damageTakenLabel: 'Damage Taken',
       baseSum: 'Base',
+      teamObjControl: 'Team Objectives',
     },
     live: {
       analyzing: 'Checking Spectator status...',
