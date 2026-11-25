@@ -559,9 +559,6 @@ export interface CounterPickMatchupEntry {
   enemyImage: string;
   enemyPositions: string[];
   vsWr: number | null;
-  d1: number | null;
-  d2: number | null;
-  allWr: number | null;
   games: number | null;
   defaultLane: string | null;
 }
@@ -578,11 +575,7 @@ export interface CounterPickChampionResponse {
     winrate: number | null;
     pickrate: number | null;
     banrate: number | null;
-    avgWinrate: number | null;
     analysedGames: number | null;
-    roleShare: number | null;
-    totalMatchupsWithData: number;
-    totalChampions: number;
   };
   roleShares: Array<{
     role: string;

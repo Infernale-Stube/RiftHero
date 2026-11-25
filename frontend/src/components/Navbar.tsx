@@ -104,7 +104,7 @@ export default function Navbar() {
     },
     {
       href: `/${locale}/counterpicks`,
-      label: t('nav.counterpicks') || 'CounterPicks',
+      label: t('nav.counterpicks') || 'Counter Picks',
       icon: Crosshair,
       isActive: Boolean(pathname?.includes('/counterpicks')),
     },

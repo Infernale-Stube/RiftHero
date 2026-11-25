@@ -38,9 +38,6 @@ export type CounterPickSlot = 'current' | 'previous';
 
 export interface CounterMatchupStats {
   vsWr: number;
-  d1: number;
-  d2: number;
-  allWr: number;
   games: number;
   defaultLane?: string;
 }
@@ -54,15 +51,11 @@ export interface ParsedLolalyticsCounters {
   winrate: number | null;
   pickrate: number | null;
   banrate: number | null;
-  avgWinrate: number | null;
   analysedGames: number | null;
   lanes: Record<string, number>;
   counters: Array<{
     cid: number;
     vsWr: number;
-    d1: number;
-    d2: number;
-    allWr: number;
     games: number;
     defaultLane?: string;
   }>;
@@ -129,13 +122,15 @@ export async function ensureCounterPickTableExists(): Promise<void> {
         winrate DOUBLE PRECISION,
         pickrate DOUBLE PRECISION,
         banrate DOUBLE PRECISION,
-        "avgWinrate" DOUBLE PRECISION,
         "analysedGames" INTEGER,
         "roleShare" DOUBLE PRECISION,
         matchups JSONB NOT NULL,
         "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE counter_picks DROP COLUMN IF EXISTS "avgWinrate"
     `);
     await prisma.$executeRawUnsafe(`
       CREATE UNIQUE INDEX IF NOT EXISTS counter_picks_slot_championId_tier_role_key
@@ -222,21 +217,15 @@ export function parseLolalyticsCounterHtml(html: string): ParsedLolalyticsCounte
     if (!item || typeof item !== 'object') continue;
     const cid = toFiniteNumber(item.cid);
     const vsWr = toFiniteNumber(item.vsWr);
-    const d1 = toFiniteNumber(item.d1);
-    const d2 = toFiniteNumber(item.d2);
-    const allWr = toFiniteNumber(item.allWr);
     const games = toFiniteNumber(item.n);
 
-    if (cid === null || vsWr === null || d1 === null || d2 === null || allWr === null || games === null) {
+    if (cid === null || vsWr === null || games === null) {
       continue;
     }
 
     counters.push({
       cid: Math.round(cid),
       vsWr,
-      d1,
-      d2,
-      allWr,
       games: Math.round(games),
       defaultLane: typeof item.defaultLane === 'string' ? item.defaultLane : undefined,
     });
@@ -268,7 +257,6 @@ export function parseLolalyticsCounterHtml(html: string): ParsedLolalyticsCounte
     winrate: toFiniteNumber(stats.wr),
     pickrate: toFiniteNumber(stats.pr),
     banrate: toFiniteNumber(stats.br),
-    avgWinrate: toFiniteNumber(stats.avgWr),
     analysedGames: toFiniteNumber(stats.analysed),
     lanes,
     counters,
@@ -473,9 +461,6 @@ export async function syncCounterPicksForCurrentPatch(force = false): Promise<{
             for (const c of parsed.counters) {
               parsedByEnemyId.set(c.cid, {
                 vsWr: c.vsWr,
-                d1: c.d1,
-                d2: c.d2,
-                allWr: c.allWr,
                 games: c.games,
                 ...(c.defaultLane ? { defaultLane: c.defaultLane } : {}),
               });
@@ -507,7 +492,6 @@ export async function syncCounterPicksForCurrentPatch(force = false): Promise<{
               winrate: parsed?.winrate ?? null,
               pickrate: parsed?.pickrate ?? null,
               banrate: parsed?.banrate ?? null,
-              avgWinrate: parsed?.avgWinrate ?? null,
               analysedGames: parsed?.analysedGames !== null && parsed?.analysedGames !== undefined
                 ? Math.round(parsed.analysedGames)
                 : null,
@@ -520,7 +504,6 @@ export async function syncCounterPicksForCurrentPatch(force = false): Promise<{
               winrate: parsed?.winrate ?? null,
               pickrate: parsed?.pickrate ?? null,
               banrate: parsed?.banrate ?? null,
-              avgWinrate: parsed?.avgWinrate ?? null,
               analysedGames: parsed?.analysedGames !== null && parsed?.analysedGames !== undefined
                 ? Math.round(parsed.analysedGames)
                 : null,
@@ -763,9 +746,6 @@ export async function getChampionCounterPicks(params: {
         enemyImage: enemy.image,
         enemyPositions: enemy.positions,
         vsWr: stats ? stats.vsWr : null,
-        d1: stats ? stats.d1 : null,
-        d2: stats ? stats.d2 : null,
-        allWr: stats ? stats.allWr : null,
         games: stats ? stats.games : null,
         defaultLane: stats?.defaultLane ?? null,
       };
@@ -803,11 +783,7 @@ export async function getChampionCounterPicks(params: {
       winrate: row?.winrate ?? null,
       pickrate: row?.pickrate ?? null,
       banrate: row?.banrate ?? null,
-      avgWinrate: row?.avgWinrate ?? null,
       analysedGames: row?.analysedGames ?? null,
-      roleShare: row?.roleShare ?? null,
-      totalMatchupsWithData: withData.length,
-      totalChampions: matchups.length,
     },
     roleShares: COUNTERPICK_ROLES.map((r) => {
       const found = roleSummaries.find((s) => s.role === r);

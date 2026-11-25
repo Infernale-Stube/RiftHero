@@ -17,6 +17,7 @@ import {
   History,
   ChevronDown,
   Filter,
+  Clock,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -35,7 +36,7 @@ import {
   CounterPickMatchupEntry,
 } from '@/types';
 
-type SortField = 'enemyName' | 'vsWr' | 'd1' | 'd2' | 'allWr' | 'games';
+type SortField = 'enemyName' | 'vsWr' | 'games';
 
 const ROLES: Array<{ key: string; labelDe: string; labelEn: string; posKey: PositionKey }> = [
   { key: 'top', labelDe: 'Top', labelEn: 'Top', posKey: 'TOP' },
@@ -85,12 +86,6 @@ const TIER_ORDER = [
   'challenger',
 ];
 
-function formatDelta(val: number | null): string {
-  if (val === null) return '—';
-  const sign = val > 0 ? '+' : '';
-  return `${sign}${val.toFixed(2)}%`;
-}
-
 function getWinrateColor(wr: number | null): string {
   if (wr === null) return 'text-zinc-500';
   if (wr >= 53) return 'text-emerald-400';
@@ -98,13 +93,6 @@ function getWinrateColor(wr: number | null): string {
   if (wr <= 47) return 'text-rose-400';
   if (wr <= 49.5) return 'text-rose-300';
   return 'text-zinc-200';
-}
-
-function getDeltaColor(val: number | null): string {
-  if (val === null) return 'text-zinc-500';
-  if (val > 0.5) return 'text-emerald-400';
-  if (val < -0.5) return 'text-rose-400';
-  return 'text-zinc-300';
 }
 
 export default function CounterPicksView() {
@@ -131,7 +119,7 @@ export default function CounterPicksView() {
   const [champSearch, setChampSearch] = useState('');
   const [champMenuOpen, setChampMenuOpen] = useState(false);
   const [enemySearch, setEnemySearch] = useState('');
-  const [onlyWithData, setOnlyWithData] = useState(false);
+  const [onlyWithData, setOnlyWithData] = useState(true);
   const [sortField, setSortField] = useState<SortField>('vsWr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -139,22 +127,17 @@ export default function CounterPicksView() {
   const [isLoadingMeta, setIsLoadingMeta] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Load metadata (champions from Champion table, patches, tiers, roles)
+  // Load metadata (champions from Champion table, patches, tiers, roles) without pre-selecting any champion
   useEffect(() => {
     setIsLoadingMeta(true);
     fetchCounterPickMeta(locale)
       .then((m) => {
-        if (!m) return;
-        setMeta(m);
-        if (!selectedChampion && m.champions.length > 0) {
-          const briar = m.champions.find((c) => c.key.toLowerCase() === 'briar');
-          setSelectedChampion((briar || m.champions[0]).key);
-        }
+        if (m) setMeta(m);
       })
       .finally(() => setIsLoadingMeta(false));
   }, [locale]);
 
-  // Keep URL query synchronized
+  // Keep URL query synchronized when a champion is selected
   useEffect(() => {
     if (!selectedChampion) return;
     const params = new URLSearchParams();
@@ -167,7 +150,10 @@ export default function CounterPicksView() {
 
   // Load CounterPicks for selected champion + tier + role + slot
   useEffect(() => {
-    if (!selectedChampion) return;
+    if (!selectedChampion) {
+      setData(null);
+      return;
+    }
     setIsLoadingData(true);
     fetchChampionCounterPicks({
       champion: selectedChampion,
@@ -265,31 +251,50 @@ export default function CounterPicksView() {
   const previousPatchLabel = meta?.patches.previous.patch;
   const previousAvailable = Boolean(meta?.patches.previous.available);
 
-  const activeChamp = data?.champion || meta?.champions.find((c) => c.key === selectedChampion);
+  const activeFetchedAt =
+    data?.fetchedAt ||
+    (selectedSlot === 'previous'
+      ? meta?.patches.previous.fetchedAt
+      : meta?.patches.current.fetchedAt) ||
+    null;
+
+  const formattedFetchedAt = useMemo(() => {
+    if (!activeFetchedAt) return null;
+    const date = new Date(activeFetchedAt);
+    if (Number.isNaN(date.getTime())) return null;
+    const formatted = date.toLocaleString(isDe ? 'de-DE' : 'en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return isDe ? `${formatted} Uhr` : formatted;
+  }, [activeFetchedAt, isDe]);
+
+  const activeChamp = selectedChampion
+    ? data?.champion || meta?.champions.find((c) => c.key === selectedChampion)
+    : null;
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-      <Breadcrumbs items={[{ label: 'CounterPicks' }]} />
+      <Breadcrumbs items={[{ label: 'Counter Picks' }]} />
 
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">
-            <Crosshair className="h-3.5 w-3.5" />
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+            Champion Counter Picks
+          </h1>
+          <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+            <Clock className="h-3.5 w-3.5 text-amber-400/80" />
             <span>
-              {isDe
-                ? `Patch ${data?.patch || currentPatchLabel} • Lolalytics CounterPicks`
-                : `Patch ${data?.patch || currentPatchLabel} • Lolalytics CounterPicks`}
+              {isDe ? 'Datenstand:' : 'Last updated:'}{' '}
+              <span className="font-semibold text-zinc-200">
+                {formattedFetchedAt || '—'}
+              </span>
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-            {isDe ? 'Champion CounterPicks' : 'Champion CounterPicks'}
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-zinc-400 max-w-2xl">
-            {isDe
-              ? 'Stündlich aktualisierte Matchup-Daten pro Tier, Rolle und Patch gegen jeden Champion aus der Datenbank.'
-              : 'Hourly updated matchup analytics per tier, role, and patch against every champion in the database.'}
-          </p>
         </div>
 
         {/* Patch Slot Toggle (Current vs Previous) */}
@@ -360,15 +365,25 @@ export default function CounterPicksView() {
                   unoptimized
                 />
               ) : (
-                <div className="h-8 w-8 rounded-lg bg-zinc-800 shrink-0" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] border border-white/10 text-zinc-500 shrink-0">
+                  <Crosshair className="h-4 w-4" />
+                </div>
               )}
               <div className="min-w-0">
                 <div className="text-sm font-bold text-white truncate">
-                  {activeChamp?.name || (isLoadingMeta ? '...' : 'Champion')}
+                  {activeChamp
+                    ? activeChamp.name
+                    : isLoadingMeta
+                    ? '...'
+                    : isDe
+                    ? 'Champion auswählen...'
+                    : 'Select a champion...'}
                 </div>
-                <div className="text-[11px] text-zinc-400 truncate">
-                  {activeChamp?.title || ''}
-                </div>
+                {activeChamp?.title && (
+                  <div className="text-[11px] text-zinc-400 truncate">
+                    {activeChamp.title}
+                  </div>
+                )}
               </div>
             </div>
             <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
@@ -422,7 +437,6 @@ export default function CounterPicksView() {
           </label>
           <div className="flex flex-wrap gap-1.5">
             {ROLES.map((r) => {
-              const shareObj = data?.roleShares?.find((s) => s.role === r.key);
               const isActive = (selectedRole || data?.role) === r.key;
               return (
                 <button
@@ -444,11 +458,6 @@ export default function CounterPicksView() {
                     unoptimized
                   />
                   <span>{isDe ? r.labelDe : r.labelEn}</span>
-                  {shareObj?.roleShare !== null && shareObj?.roleShare !== undefined && (
-                    <span className="text-[10px] text-zinc-500 font-semibold">
-                      {shareObj.roleShare.toFixed(0)}%
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -477,9 +486,26 @@ export default function CounterPicksView() {
         </div>
       </div>
 
-      {/* Champion Overall Stats Banner */}
-      {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Empty state when no champion selected */}
+      {!selectedChampion && (
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 px-6 py-14 text-center flex flex-col items-center gap-3 shadow-xl">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <Crosshair className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-extrabold text-white">
+            {isDe ? 'Bitte wähle einen Champion aus' : 'Please select a champion'}
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-md">
+            {isDe
+              ? 'Wähle oben einen Champion aus der Liste aus, um seine CounterPicks und Matchups anzuzeigen.'
+              : 'Choose a champion from the selector above to inspect their CounterPicks and matchups.'}
+          </p>
+        </div>
+      )}
+
+      {/* Champion Overall Stats Banner (Winrate, Pickrate, Banrate only) */}
+      {selectedChampion && data && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c1017]/90 p-4">
             <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
               Winrate
@@ -504,50 +530,23 @@ export default function CounterPicksView() {
               {data.stats.banrate !== null ? `${data.stats.banrate.toFixed(2)}%` : '—'}
             </div>
           </div>
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c1017]/90 p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-              {isDe ? 'Tier Ø-WR' : 'Tier Avg WR'}
-            </div>
-            <div className="mt-1 text-2xl font-black text-zinc-200">
-              {data.stats.avgWinrate !== null ? `${data.stats.avgWinrate.toFixed(2)}%` : '—'}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c1017]/90 p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-              {isDe ? 'Rollen-Anteil' : 'Role Share'}
-            </div>
-            <div className="mt-1 text-2xl font-black text-amber-300">
-              {data.stats.roleShare !== null ? `${data.stats.roleShare.toFixed(1)}%` : '—'}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c1017]/90 p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-              {isDe ? 'Matchups mit Daten' : 'Matchups w/ Data'}
-            </div>
-            <div className="mt-1 text-2xl font-black text-white">
-              {data.stats.totalMatchupsWithData}{' '}
-              <span className="text-sm font-semibold text-zinc-500">
-                / {data.stats.totalChampions}
-              </span>
-            </div>
-          </div>
         </div>
       )}
 
       {/* No Data Yet Notice */}
-      {data && !data.hasData && !isLoadingData && (
+      {selectedChampion && data && !data.hasData && !isLoadingData && (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200 flex items-center gap-3">
           <ShieldAlert className="h-5 w-5 text-amber-400 shrink-0" />
           <span>
             {isDe
-              ? 'Für diese Kombination (Champion / Tier / Rolle / Patch) liegen noch keine gescrapten Daten vor. Der stündliche CounterPick-Worker befüllt die Tabelle automatisch.'
-              : 'No scraped data available for this combination yet. The hourly CounterPick worker populates the table automatically.'}
+              ? 'Für diese Kombination (Champion / Tier / Rolle / Patch) liegen noch keine Daten vor.'
+              : 'No data available for this combination (Champion / Tier / Role / Patch) yet.'}
           </span>
         </div>
       )}
 
       {/* Strongest vs & Countered By Highlight Cards */}
-      {data && (data.strongestCounters.length > 0 || data.weakestCounters.length > 0) && (
+      {selectedChampion && data && (data.strongestCounters.length > 0 || data.weakestCounters.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Strongest Against */}
           <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/20 to-[#0c1017] p-5 shadow-xl">
@@ -590,7 +589,6 @@ export default function CounterPicksView() {
                     <div className="text-xs font-black text-emerald-400">
                       {m.vsWr?.toFixed(2)}%
                     </div>
-                    <div className="text-[10px] text-zinc-400">Δ2 {formatDelta(m.d2)}</div>
                   </div>
                 </button>
               ))}
@@ -638,7 +636,6 @@ export default function CounterPicksView() {
                     <div className="text-xs font-black text-rose-400">
                       {m.vsWr?.toFixed(2)}%
                     </div>
-                    <div className="text-[10px] text-zinc-400">Δ2 {formatDelta(m.d2)}</div>
                   </div>
                 </button>
               ))}
@@ -647,171 +644,142 @@ export default function CounterPicksView() {
         </div>
       )}
 
-      {/* Full Matchup Table (Every Champion from Champion Table) */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 shadow-2xl overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-white/[0.08]">
-          <div className="flex items-center gap-2">
-            <Swords className="h-4 w-4 text-amber-400" />
-            <h2 className="text-sm font-extrabold text-white uppercase tracking-wider">
-              {isDe
-                ? `Alle Matchups (${displayedMatchups.length} Champions)`
-                : `All Matchups (${displayedMatchups.length} Champions)`}
-            </h2>
-          </div>
+      {/* Full Matchup Table */}
+      {selectedChampion && (
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0c1017]/90 shadow-2xl overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-2">
+              <Swords className="h-4 w-4 text-amber-400" />
+              <h2 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                {isDe
+                  ? `Alle Matchups (${displayedMatchups.length} Champions)`
+                  : `All Matchups (${displayedMatchups.length} Champions)`}
+              </h2>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setOnlyWithData((v) => !v)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors cursor-pointer ${
-                onlyWithData
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-black/40 text-zinc-400 border-white/10 hover:text-white'
-              }`}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              <span>
-                {isDe ? 'Nur Matchups mit Daten' : 'Only matchups with data'}
-              </span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setOnlyWithData((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors cursor-pointer ${
+                  onlyWithData
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-black/40 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                <span>
+                  {isDe ? 'Nur Matchups mit Daten' : 'Only matchups with data'}
+                </span>
+              </button>
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-              <input
-                type="text"
-                value={enemySearch}
-                onChange={(e) => setEnemySearch(e.target.value)}
-                placeholder={isDe ? 'Gegner filtern...' : 'Filter opponent...'}
-                className="rounded-xl border border-white/10 bg-black/50 pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500/50 focus:outline-none w-48 sm:w-56"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  value={enemySearch}
+                  onChange={(e) => setEnemySearch(e.target.value)}
+                  placeholder={isDe ? 'Gegner filtern...' : 'Filter opponent...'}
+                  className="rounded-xl border border-white/10 bg-black/50 pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500/50 focus:outline-none w-48 sm:w-56"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/[0.06] bg-black/30 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                <th className="py-3 px-4">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('enemyName')}
-                    className="flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>{isDe ? 'Gegner-Champion' : 'Opponent Champion'}</span>
-                    {renderSortIcon('enemyName')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('vsWr')}
-                    className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>{isDe ? 'Winrate vs' : 'Winrate vs'}</span>
-                    {renderSortIcon('vsWr')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('d1')}
-                    className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>Δ1</span>
-                    {renderSortIcon('d1')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('d2')}
-                    className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>Δ2</span>
-                    {renderSortIcon('d2')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('allWr')}
-                    className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>{isDe ? 'Ø Gegner WR' : 'Avg Enemy WR'}</span>
-                    {renderSortIcon('allWr')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('games')}
-                    className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
-                  >
-                    <span>{isDe ? 'Spiele' : 'Games'}</span>
-                    {renderSortIcon('games')}
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04] text-sm">
-              {isLoadingData ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-400">
-                    {isDe ? 'Lade CounterPick-Daten...' : 'Loading CounterPick data...'}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/[0.06] bg-black/30 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <th className="py-3 px-4">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('enemyName')}
+                      className="flex items-center gap-1.5 hover:text-white cursor-pointer"
+                    >
+                      <span>{isDe ? 'Gegner-Champion' : 'Opponent Champion'}</span>
+                      {renderSortIcon('enemyName')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('vsWr')}
+                      className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
+                    >
+                      <span>Winrate vs</span>
+                      {renderSortIcon('vsWr')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('games')}
+                      className="inline-flex items-center gap-1.5 hover:text-white cursor-pointer"
+                    >
+                      <span>{isDe ? 'Spiele' : 'Games'}</span>
+                      {renderSortIcon('games')}
+                    </button>
+                  </th>
                 </tr>
-              ) : displayedMatchups.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-400">
-                    {isDe ? 'Keine Matchups gefunden.' : 'No matchups found.'}
-                  </td>
-                </tr>
-              ) : (
-                displayedMatchups.map((m) => (
-                  <tr
-                    key={m.enemyChampionId}
-                    onClick={() => handleSelectChampion(m.enemyKey)}
-                    className="hover:bg-white/[0.03] transition-colors cursor-pointer"
-                  >
-                    <td className="py-2.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <Image
-                          src={getChampionIconUrl(m.enemyKey)}
-                          alt={m.enemyName}
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-lg object-cover border border-white/10 shrink-0"
-                          unoptimized
-                        />
-                        <div className="min-w-0">
-                          <div className="font-bold text-white truncate">{m.enemyName}</div>
-                          <div className="text-[11px] text-zinc-500 truncate">{m.enemyTitle}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`py-2.5 px-4 text-right font-black ${getWinrateColor(m.vsWr)}`}>
-                      {m.vsWr !== null ? `${m.vsWr.toFixed(2)}%` : <span className="text-zinc-600 font-mono text-xs font-normal">null</span>}
-                    </td>
-                    <td className={`py-2.5 px-4 text-right font-semibold ${getDeltaColor(m.d1)}`}>
-                      {m.d1 !== null ? formatDelta(m.d1) : <span className="text-zinc-600 font-mono text-xs font-normal">null</span>}
-                    </td>
-                    <td className={`py-2.5 px-4 text-right font-semibold ${getDeltaColor(m.d2)}`}>
-                      {m.d2 !== null ? formatDelta(m.d2) : <span className="text-zinc-600 font-mono text-xs font-normal">null</span>}
-                    </td>
-                    <td className="py-2.5 px-4 text-right text-zinc-300 font-medium">
-                      {m.allWr !== null ? `${m.allWr.toFixed(2)}%` : <span className="text-zinc-600 font-mono text-xs font-normal">null</span>}
-                    </td>
-                    <td className="py-2.5 px-4 text-right text-zinc-400 font-medium">
-                      {m.games !== null ? m.games.toLocaleString() : <span className="text-zinc-600 font-mono text-xs font-normal">null</span>}
+              </thead>
+              <tbody className="divide-y divide-white/[0.04] text-sm">
+                {isLoadingData ? (
+                  <tr>
+                    <td colSpan={3} className="py-12 text-center text-zinc-400">
+                      {isDe ? 'Lade CounterPick-Daten...' : 'Loading CounterPick data...'}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : displayedMatchups.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-12 text-center text-zinc-400">
+                      {isDe ? 'Keine Matchups gefunden.' : 'No matchups found.'}
+                    </td>
+                  </tr>
+                ) : (
+                  displayedMatchups.map((m) => (
+                    <tr
+                      key={m.enemyChampionId}
+                      onClick={() => handleSelectChampion(m.enemyKey)}
+                      className="hover:bg-white/[0.03] transition-colors cursor-pointer"
+                    >
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={getChampionIconUrl(m.enemyKey)}
+                            alt={m.enemyName}
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 rounded-lg object-cover border border-white/10 shrink-0"
+                            unoptimized
+                          />
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">{m.enemyName}</div>
+                            <div className="text-[11px] text-zinc-500 truncate">{m.enemyTitle}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={`py-2.5 px-4 text-right font-black ${getWinrateColor(m.vsWr)}`}>
+                        {m.vsWr !== null ? (
+                          `${m.vsWr.toFixed(2)}%`
+                        ) : (
+                          <span className="text-zinc-600 font-mono text-xs font-normal">null</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-zinc-400 font-medium">
+                        {m.games !== null ? (
+                          m.games.toLocaleString()
+                        ) : (
+                          <span className="text-zinc-600 font-mono text-xs font-normal">null</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
