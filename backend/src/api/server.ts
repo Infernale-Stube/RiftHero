@@ -25,7 +25,7 @@ import { initMetaWorker } from '../worker/metaWorker';
 export async function buildServer() {
   const server = Fastify({
     logger: {
-      level: config.env === 'development' ? 'info' : 'warn',
+      level: config.logLevel,
     },
   });
 
@@ -36,7 +36,7 @@ export async function buildServer() {
   });
 
   await server.register(cors, {
-    origin: true,
+    origin: config.corsOrigin,
     credentials: true,
   });
 

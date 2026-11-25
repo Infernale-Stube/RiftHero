@@ -8,8 +8,10 @@ import {
 } from '../services/itemService';
 import { getLatestDDragonVersion } from '../riot/ddragon';
 import { prisma } from '../db/prisma';
+import { config } from '../config';
 
-export const CHAMPION_ITEM_WORKER_INTERVAL_MS = 60 * 60 * 1000; // Check hourly for new game patch
+export const CHAMPION_ITEM_WORKER_INTERVAL_MS =
+  config.championSyncIntervalMinutes * 60 * 1000; // Default: check hourly for new game patch
 let workerTimer: NodeJS.Timeout | null = null;
 let isSyncRunning = false;
 

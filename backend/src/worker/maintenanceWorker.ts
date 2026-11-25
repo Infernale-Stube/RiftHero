@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { highPriorityQueue, lowPriorityQueue } from '../queue/bullmq';
 import { prisma } from '../db/prisma';
+import { config } from '../config';
 import { setupWorkerProcess, registerGracefulShutdown } from './workerUtils';
 
 const execAsync = promisify(exec);
@@ -12,8 +13,8 @@ setupWorkerProcess('MaintenanceWorker');
 
 const QUEUE_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Hourly
 const DB_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // Daily (24h)
-const BACKUP_DIR = process.env.BACKUP_DIR || '/backups';
-const RETENTION_DAYS = parseInt(process.env.BACKUP_RETENTION_DAYS || '7', 10);
+const BACKUP_DIR = config.backupDir;
+const RETENTION_DAYS = config.backupRetentionDays;
 
 let queueInterval: NodeJS.Timeout | null = null;
 let dbInterval: NodeJS.Timeout | null = null;
@@ -69,11 +70,11 @@ async function runDatabaseMaintenance(): Promise<void> {
  * 3. Creates a compressed PostgreSQL database backup via pg_dump
  */
 async function runDatabaseBackup(): Promise<void> {
-  const host = process.env.POSTGRES_HOST || 'postgres';
-  const port = process.env.POSTGRES_PORT || '5432';
-  const user = process.env.POSTGRES_USER || 'rifthero';
-  const password = process.env.POSTGRES_PASSWORD || 'rifthero_secret_2026';
-  const database = process.env.POSTGRES_DB || 'rifthero';
+  const host = config.postgresHost;
+  const port = String(config.postgresPort);
+  const user = config.postgresUser;
+  const password = config.postgresPassword;
+  const database = config.postgresDb;
 
   try {
     if (!fs.existsSync(BACKUP_DIR)) {

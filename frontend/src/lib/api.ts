@@ -19,9 +19,17 @@ import {
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
-    return process.env.INTERNAL_API_URL || 'http://api:4000/api';
+    const url = process.env.INTERNAL_API_URL;
+    if (!url) {
+      throw new Error('[Config] Missing required environment variable: INTERNAL_API_URL');
+    }
+    return url;
   }
-  return process.env.NEXT_PUBLIC_API_URL || '/api';
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) {
+    throw new Error('[Config] Missing required environment variable: NEXT_PUBLIC_API_URL');
+  }
+  return url;
 }
 
 export async function fetchSummonerProfile(

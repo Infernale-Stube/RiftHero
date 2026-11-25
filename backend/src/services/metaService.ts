@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma';
+import { config } from '../config';
 import { getLatestDDragonVersion, getChampionNameById } from '../riot/ddragon';
 
 export interface MetaChampion {
@@ -67,7 +68,7 @@ const POSITION_MAP: Record<string, 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'>
 };
 
 export const MIN_NEW_PATCH_MATCHES = 30;
-export const META_WORKER_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+export const META_WORKER_INTERVAL_MS = config.metaWorkerIntervalHours * 60 * 60 * 1000; // Default: 6 hours
 let isAnalysisRunning = false;
 let tableChecked = false;
 

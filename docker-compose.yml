@@ -20,13 +20,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "${CADDY_HTTP_PORT:-80}:80"
-      - "${CADDY_HTTPS_PORT:-443}:443"
-      - "${CADDY_HTTPS_PORT:-443}:443/udp"
-    environment:
-      - APP_DOMAIN=${APP_DOMAIN:-rifthero.gg}
-      - API_DOMAIN=${API_DOMAIN:-api.rifthero.gg}
-      - ACME_EMAIL=${ACME_EMAIL:-admin@rifthero.gg}
+      - "${CADDY_HTTP_PORT}:80"
+      - "${CADDY_HTTPS_PORT}:443"
+      - "${CADDY_HTTPS_PORT}:443/udp"
+    env_file:
+      - path: .env
+        required: true
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -45,21 +44,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     image: rifthero-frontend:latest
     pull_policy: build
     container_name: rifthero-frontend
     restart: unless-stopped
     ports:
-      - "${BIND_IP:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"
+      - "${BIND_IP}:${FRONTEND_PORT}:3000"
     env_file:
       - path: .env
-        required: false
+        required: true
     environment:
-      - NODE_ENV=production
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
-      - NEXT_PUBLIC_APP_DOMAIN=${APP_DOMAIN:-rifthero.gg}
-      - NEXT_PUBLIC_API_DOMAIN=${API_DOMAIN:-api.rifthero.gg}
     depends_on:
       api:
         condition: service_healthy
@@ -84,23 +81,10 @@ services:
     command: ["api"]
     restart: unless-stopped
     ports:
-      - "${BIND_IP:-127.0.0.1}:${PORT:-4000}:4000"
+      - "${BIND_IP}:${PORT}:4000"
     env_file:
       - path: .env
-        required: false
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
-      - PORT=4000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
-      - RIOT_API_KEY=${RIOT_API_KEY}
-      - PROFILE_STALE_MINUTES=${PROFILE_STALE_MINUTES:-1}
-      - INITIAL_MATCH_COUNT=${INITIAL_MATCH_COUNT:-50}
-      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
+        required: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,18 +112,7 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - RIOT_API_KEY=${RIOT_API_KEY}
-      - RATE_LIMIT_10S=${RATE_LIMIT_10S:-1000}
-      - RATE_LIMIT_10M=${RATE_LIMIT_10M:-60000}
-      - INITIAL_MATCH_COUNT=${INITIAL_MATCH_COUNT:-50}
+        required: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,20 +134,7 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - RIOT_API_KEY=${RIOT_API_KEY}
-      - RATE_LIMIT_10S=${RATE_LIMIT_10S:-1000}
-      - RATE_LIMIT_10M=${RATE_LIMIT_10M:-60000}
-      - ENABLE_SNOWBALL_CRAWLER=${ENABLE_SNOWBALL_CRAWLER:-true}
-      - SNOWBALL_MATCH_DEPTH=${SNOWBALL_MATCH_DEPTH:-20}
-      - SNOWBALL_MAX_CONCURRENCY=${SNOWBALL_MAX_CONCURRENCY:-2}
+        required: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,14 +156,7 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
+        required: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -225,15 +178,9 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
+        required: true
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
       - NODE_OPTIONS=--max-old-space-size=2048
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
     depends_on:
       postgres:
         condition: service_healthy
@@ -255,16 +202,9 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
+        required: true
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
       - NODE_OPTIONS=--max-old-space-size=1536
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - COUNTERPICK_CONCURRENCY=${COUNTERPICK_CONCURRENCY:-8}
     depends_on:
       postgres:
         condition: service_healthy
@@ -286,19 +226,7 @@ services:
     restart: unless-stopped
     env_file:
       - path: .env
-        required: false
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - APP_ENV=${APP_ENV:-prod}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
-      - POSTGRES_USER=${POSTGRES_USER:-rifthero}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rifthero_secret_2026}
-      - POSTGRES_DB=${POSTGRES_DB:-rifthero}
-      - POSTGRES_HOST=postgres
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+        required: true
     volumes:
       - backups-data:/backups
     depends_on:
@@ -308,30 +236,29 @@ services:
         condition: service_healthy
 
   # =========================================================================
-  # 9. PostgreSQL 16 Database
+  # 10. PostgreSQL 16 Database
   # =========================================================================
   postgres:
     <<: *default-logging
     image: postgres:16-alpine
     container_name: rifthero-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-rifthero}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rifthero_secret_2026}
-      POSTGRES_DB: ${POSTGRES_DB:-rifthero}
+    env_file:
+      - path: .env
+        required: true
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rifthero} -d ${POSTGRES_DB:-rifthero}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   # =========================================================================
-  # 10. Redis 7 (In-Memory Datastore & BullMQ Queue Broker)
+  # 11. Redis 7 (In-Memory Datastore & BullMQ Queue Broker)
   # =========================================================================
   redis:
     <<: *default-logging
@@ -342,7 +269,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -351,14 +278,14 @@ services:
       start_period: 5s
 
   # =========================================================================
-  # 11. Production Mailserver (docker-mailserver)
+  # 12. Production Mailserver (docker-mailserver)
   # =========================================================================
   mailserver:
     <<: *default-logging
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: rifthero-mailserver
     hostname: mail
-    domainname: ${APP_DOMAIN:-rifthero.gg}
+    domainname: ${APP_DOMAIN}
     restart: unless-stopped
     ports:
       - "25:25"     # SMTP
@@ -366,17 +293,17 @@ services:
       - "587:587"   # Submission
       - "993:993"   # IMAPS
     environment:
-      - OVERRIDE_HOSTNAME=mail.${APP_DOMAIN:-rifthero.gg}
-      - LOG_LEVEL=${MAIL_LOG_LEVEL:-info}
+      - OVERRIDE_HOSTNAME=mail.${APP_DOMAIN}
+      - LOG_LEVEL=${MAIL_LOG_LEVEL}
       - ONE_DIR=1
-      - POSTMASTER_ADDRESS=${POSTMASTER_ADDRESS:-postmaster@rifthero.gg}
+      - POSTMASTER_ADDRESS=${POSTMASTER_ADDRESS}
       - ENABLE_RSPAMD=1
       - ENABLE_SPAMASSASSIN=0
       - ENABLE_CLAMAV=0
       - ENABLE_FAIL2BAN=1
       - ENABLE_POSTGREY=0
       - PERMIT_DOCKER=network
-      - SSL_TYPE=${MAIL_SSL_TYPE:-manual}
+      - SSL_TYPE=${MAIL_SSL_TYPE}
       - SSL_CERT_PATH=/tmp/docker-mailserver/ssl/cert.pem
       - SSL_KEY_PATH=/tmp/docker-mailserver/ssl/key.pem
     cap_add:
@@ -395,22 +322,22 @@ services:
       start_period: 40s
 
 # =========================================================================
-# Volumes (without 'prod' prefixes)
+# Volumes
 # =========================================================================
 volumes:
   caddy-data:
-    name: ${CADDY_DATA_VOLUME:-rifthero-caddy-data}
+    name: ${CADDY_DATA_VOLUME}
   caddy-config:
-    name: ${CADDY_CONFIG_VOLUME:-rifthero-caddy-config}
+    name: ${CADDY_CONFIG_VOLUME}
   postgres-data:
-    name: ${POSTGRES_DATA_VOLUME:-rifthero-postgres-data}
+    name: ${POSTGRES_DATA_VOLUME}
   redis-data:
-    name: ${REDIS_DATA_VOLUME:-rifthero-redis-data}
+    name: ${REDIS_DATA_VOLUME}
   mail-data:
-    name: ${MAIL_DATA_VOLUME:-rifthero-mail-data}
+    name: ${MAIL_DATA_VOLUME}
   mail-state:
-    name: ${MAIL_STATE_VOLUME:-rifthero-mail-state}
+    name: ${MAIL_STATE_VOLUME}
   mail-logs:
-    name: ${MAIL_LOGS_VOLUME:-rifthero-mail-logs}
+    name: ${MAIL_LOGS_VOLUME}
   backups-data:
-    name: ${BACKUPS_DATA_VOLUME:-rifthero-backups-data}
+    name: ${BACKUPS_DATA_VOLUME}

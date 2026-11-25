@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma';
+import { config } from '../config';
 import { getLatestDDragonVersion, getLatestPatch } from '../riot/ddragon';
 import { syncChampionSnapshot } from './championService';
 
@@ -62,9 +63,10 @@ export interface ParsedLolalyticsCounters {
   champPath: Record<string, string>;
 }
 
-export const COUNTERPICK_WORKER_INTERVAL_MS = 60 * 60 * 1000; // Every 1 hour
-const FETCH_TIMEOUT_MS = 15000;
-const DEFAULT_CONCURRENCY = Number(process.env.COUNTERPICK_CONCURRENCY || '8');
+export const COUNTERPICK_WORKER_INTERVAL_MS =
+  config.counterpickIntervalMinutes * 60 * 1000;
+const FETCH_TIMEOUT_MS = config.counterpickFetchTimeoutMs;
+const DEFAULT_CONCURRENCY = config.counterpickConcurrency;
 
 let tableChecked = false;
 let isSyncRunning = false;
