@@ -9,6 +9,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 
 interface HeroScoreAnalysisProps {
   participants: MatchParticipant[];
+  onInspectPlayer?: (p: MatchParticipant) => void;
 }
 
 export function getTierBadgeClasses(tier?: ScoreTier | string): string {
@@ -42,7 +43,7 @@ function formatDiff(val: number | null | undefined, suffix = ''): string {
   return `${sign}${val.toLocaleString()}${suffix}`;
 }
 
-export default function HeroScoreAnalysis({ participants }: HeroScoreAnalysisProps) {
+export default function HeroScoreAnalysis({ participants, onInspectPlayer }: HeroScoreAnalysisProps) {
   const { t } = useTranslation();
 
   const rankedParticipants = useMemo(() => {
@@ -313,7 +314,14 @@ export default function HeroScoreAnalysis({ participants }: HeroScoreAnalysisPro
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => onInspectPlayer && onInspectPlayer(selectedPlayer)}
+                title={onInspectPlayer ? t('matchDetail.clickForDetails') : undefined}
+                className={`flex items-center gap-2 shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1.5 transition-colors ${
+                  onInspectPlayer ? 'hover:bg-white/[0.1] cursor-pointer' : 'cursor-default'
+                }`}
+              >
                 <span
                   className={`rounded-lg border px-2.5 py-1 text-sm font-black ${getTierBadgeClasses(
                     tier
@@ -325,7 +333,7 @@ export default function HeroScoreAnalysis({ participants }: HeroScoreAnalysisPro
                   <span className="text-2xl font-black text-white leading-none">{finalScore}</span>
                   <span className="text-[10px] font-bold uppercase text-zinc-500">Hero Score</span>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* 6 Criteria Progress Bars */}

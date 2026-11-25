@@ -259,6 +259,14 @@ export interface TranslationDictionary {
     hideBreakdown: string;
     scoreRanking: string;
     noScoreTimeline: string;
+    scoreModalTitle: string;
+    scoreFormula: string;
+    weightedPoints: string;
+    close: string;
+    loadingDetails: string;
+    clickForDetails: string;
+    damageTakenLabel: string;
+    baseSum: string;
   };
   live: {
     analyzing: string;
@@ -819,6 +827,14 @@ export const translations: Record<Locale, TranslationDictionary> = {
       hideBreakdown: 'Schließen',
       scoreRanking: 'Spieler-Ranking nach Hero Score',
       noScoreTimeline: 'Für dieses Match sind keine Timeline-Daten für den minütlichen Hero Score-Verlauf verfügbar.',
+      scoreModalTitle: 'Hero Score Berechnung im Detail',
+      scoreFormula: 'Berechnung',
+      weightedPoints: 'Gewichtung & Punktebeitrag',
+      close: 'Schließen',
+      loadingDetails: 'Lade genaue Kriterien-Details...',
+      clickForDetails: 'Klicken für Score-Details',
+      damageTakenLabel: 'Erlittener Schaden',
+      baseSum: 'Basis',
     },
     live: {
       analyzing: 'Spectator-Status wird abgefragt...',
@@ -1377,6 +1393,14 @@ export const translations: Record<Locale, TranslationDictionary> = {
       hideBreakdown: 'Close',
       scoreRanking: 'Player Hero Score Ranking',
       noScoreTimeline: 'No timeline data available for minute-by-minute Hero Score progression.',
+      scoreModalTitle: 'Hero Score Breakdown',
+      scoreFormula: 'Formula',
+      weightedPoints: 'Weight & point contribution',
+      close: 'Close',
+      loadingDetails: 'Loading score criteria details...',
+      clickForDetails: 'Click for score details',
+      damageTakenLabel: 'Damage Taken',
+      baseSum: 'Base',
     },
     live: {
       analyzing: 'Checking Spectator status...',

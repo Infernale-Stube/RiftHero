@@ -33,6 +33,7 @@ import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { isRankedQueue, getQueueName } from '@/lib/gameMetadata';
 import PremadeBadge from './PremadeBadge';
+import HeroScoreModal from './HeroScoreModal';
 
 interface MatchCardProps {
   match: FormattedMatch;
@@ -155,6 +156,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const { t, locale } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [damageMode, setDamageMode] = useState<'dealt' | 'taken'>('dealt');
+  const [modalParticipant, setModalParticipant] = useState<MatchParticipant | null>(null);
 
   const isNewMatch = isNew ?? match.isNew;
   const [isDismissed, setIsDismissed] = useState(false);
@@ -701,17 +703,24 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
                   {/* HERO SCORE (0-100 rounded integer) */}
                   <div className="w-16 text-center shrink-0">
-                    <span
-                      className={`text-xs font-black ${
-                        rankInfo?.isMvp
-                          ? 'text-amber-400 text-sm'
-                          : rankInfo?.isAce
-                          ? 'text-emerald-400 text-sm'
-                          : 'text-zinc-200'
-                      }`}
-                    >
-                      {pScore > 0 ? pScore : '—'}
-                    </span>
+                    {pScore > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setModalParticipant(p)}
+                        title={t('matchDetail.clickForDetails')}
+                        className={`text-xs font-black rounded px-1.5 py-0.5 transition-colors hover:bg-white/10 cursor-pointer ${
+                          rankInfo?.isMvp
+                            ? 'text-amber-400 text-sm'
+                            : rankInfo?.isAce
+                            ? 'text-emerald-400 text-sm'
+                            : 'text-zinc-200'
+                        }`}
+                      >
+                        {pScore}
+                      </button>
+                    ) : (
+                      <span className="text-xs font-black text-zinc-500">—</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -941,25 +950,30 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </div>
           </div>
 
-          {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
+          {/* Score Block (Prominent & Clean, clickable for full popup breakdown) */}
           {((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
-            <div className="flex flex-col items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setModalParticipant(participant)}
+              title={t('matchDetail.clickForDetails')}
+              className="flex flex-col items-center justify-center shrink-0 cursor-pointer transition-transform hover:scale-[1.03]"
+            >
               {participant.score?.isMvp ? (
-                <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black shadow-md tracking-tight whitespace-nowrap">
+                <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black shadow-md tracking-tight whitespace-nowrap hover:bg-amber-300">
                   <Trophy className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-black fill-black" />
                   <span>MVP {formatScore(participant.heroScore ?? participant.score)}</span>
                 </span>
               ) : participant.score?.isAce ? (
-                <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-emerald-300 shadow-md tracking-tight whitespace-nowrap">
+                <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-emerald-300 shadow-md tracking-tight whitespace-nowrap hover:bg-emerald-500/30">
                   <Award className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-emerald-400" />
                   <span>ACE {formatScore(participant.heroScore ?? participant.score)}</span>
                 </span>
               ) : (
-                <span className="rounded-lg bg-white/[0.08] border border-white/15 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap">
+                <span className="rounded-lg bg-white/[0.08] border border-white/15 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap hover:bg-white/[0.15]">
                   Hero Score {formatScore(participant.heroScore ?? participant.score)}
                 </span>
               )}
-            </div>
+            </button>
           )}
 
           {/* 5 Matchups with centered Role Icon Separator */}
@@ -1127,6 +1141,15 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
           )}
         </div>
       )}
+
+      {/* Hero Score Details Popup */}
+      <HeroScoreModal
+        participant={modalParticipant}
+        region={region}
+        matchId={match.matchId}
+        gameDuration={gameDuration}
+        onClose={() => setModalParticipant(null)}
+      />
     </div>
   );
 }

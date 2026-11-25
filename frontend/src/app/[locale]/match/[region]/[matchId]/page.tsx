@@ -6,8 +6,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ChevronLeft,
-  ChevronDown,
-  ChevronUp,
   Swords,
   Coins,
   Shield,
@@ -45,7 +43,8 @@ import {
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
 import ScoreTimelineChart from '@/components/ScoreTimelineChart';
-import HeroScoreAnalysis, { getTierBadgeClasses, getBarColorClass } from '@/components/HeroScoreAnalysis';
+import HeroScoreAnalysis, { getTierBadgeClasses } from '@/components/HeroScoreAnalysis';
+import HeroScoreModal from '@/components/HeroScoreModal';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import PremadeBadge from '@/components/PremadeBadge';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -60,16 +59,7 @@ export default function MatchDetailPage() {
   const [matchData, setMatchData] = useState<MatchDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeHighlightPuuid, setActiveHighlightPuuid] = useState<string | null>(null);
-  const [expandedScorePuuids, setExpandedScorePuuids] = useState<Set<string>>(new Set());
-
-  const toggleScoreBreakdown = (puuid: string) => {
-    setExpandedScorePuuids((prev) => {
-      const next = new Set(prev);
-      if (next.has(puuid)) next.delete(puuid);
-      else next.add(puuid);
-      return next;
-    });
-  };
+  const [modalParticipant, setModalParticipant] = useState<MatchParticipant | null>(null);
 
   useEffect(() => {
     // Read URL hash e.g. #participant7 or #participant{puuid}
@@ -423,21 +413,19 @@ export default function MatchDetailPage() {
                         {((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (() => {
                           const rawHeroVal = p.score?.score ?? p.heroScore ?? 0;
                           const displayScore = Math.round(rawHeroVal <= 10 ? rawHeroVal * 10 : rawHeroVal);
-                          const isScoreOpen = expandedScorePuuids.has(p.puuid);
-                          const hasBreakdown = Boolean(p.score?.breakdown);
 
                           return (
                             <button
                               type="button"
-                              onClick={() => hasBreakdown && toggleScoreBreakdown(p.puuid)}
-                              title={hasBreakdown ? t('matchDetail.showBreakdown') : undefined}
-                              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 transition-colors ${
+                              onClick={() => setModalParticipant(p)}
+                              title={t('matchDetail.clickForDetails')}
+                              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 transition-colors cursor-pointer ${
                                 p.score?.isMvp
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm hover:bg-amber-500/30'
                                   : p.score?.isAce
                                   ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm hover:bg-teal-500/30'
-                                  : 'bg-white/[0.08] text-zinc-200 border border-white/10 hover:bg-white/[0.14]'
-                              } ${hasBreakdown ? 'cursor-pointer' : 'cursor-default'}`}
+                                  : 'bg-white/[0.08] text-zinc-200 border border-white/10 hover:bg-white/[0.15]'
+                              }`}
                             >
                               {p.score?.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
                               {p.score?.isAce && <Award className="h-3 w-3 text-teal-400" />}
@@ -460,12 +448,6 @@ export default function MatchDetailPage() {
                                   {p.score.tierRating}
                                 </span>
                               )}
-                              {hasBreakdown &&
-                                (isScoreOpen ? (
-                                  <ChevronUp className="h-3 w-3 opacity-70" />
-                                ) : (
-                                  <ChevronDown className="h-3 w-3 opacity-70" />
-                                ))}
                             </button>
                           );
                         })()}
@@ -570,40 +552,6 @@ export default function MatchDetailPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Expandable Inline Hero Score Criteria Breakdown */}
-                {expandedScorePuuids.has(p.puuid) && p.score?.breakdown && (
-                  <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/40 p-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-[11px]">
-                    {[
-                      { label: t('matchDetail.criteriaCombat'), metric: p.score.breakdown.combat },
-                      { label: t('matchDetail.criteriaDamage'), metric: p.score.breakdown.damage },
-                      { label: t('matchDetail.criteriaEconomy'), metric: p.score.breakdown.economy },
-                      { label: t('matchDetail.criteriaObjectives'), metric: p.score.breakdown.objectives },
-                      { label: t('matchDetail.criteriaVision'), metric: p.score.breakdown.vision },
-                      { label: t('matchDetail.criteriaLane'), metric: p.score.breakdown.lane },
-                    ].map((item) => {
-                      const weightPct = Math.round(item.metric.weight * 100);
-                      return (
-                        <div key={item.label} className={`flex flex-col gap-1 ${weightPct === 0 ? 'opacity-45' : ''}`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-zinc-400 font-semibold truncate">
-                              {item.label} ({weightPct}%)
-                            </span>
-                            <span className="font-black text-white">
-                              {weightPct === 0 ? '—' : item.metric.score}
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-white/[0.07] overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${getBarColorClass(item.metric.score)}`}
-                              style={{ width: `${weightPct === 0 ? 0 : Math.max(4, item.metric.score)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -922,7 +870,10 @@ export default function MatchDetailPage() {
       </div>
 
       {/* 5. HERO SCORE ANALYSE & VERLAUF */}
-      <HeroScoreAnalysis participants={participants} />
+      <HeroScoreAnalysis
+        participants={participants}
+        onInspectPlayer={(p) => setModalParticipant(p)}
+      />
 
       <ScoreTimelineChart
         scoreTimeline={scoreTimeline}
@@ -934,6 +885,15 @@ export default function MatchDetailPage() {
       <GoldAdvantageChart
         timeline={goldAdvantageTimeline}
         blueWon={blueTeam.win}
+      />
+
+      {/* Hero Score Details Popup */}
+      <HeroScoreModal
+        participant={modalParticipant}
+        region={region}
+        matchId={matchData.matchId}
+        gameDuration={gameDuration}
+        onClose={() => setModalParticipant(null)}
       />
     </div>
   );
