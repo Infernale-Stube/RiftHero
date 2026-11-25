@@ -275,7 +275,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
     return (
       <div
-        className={`flex flex-col rounded-xl border overflow-hidden ${
+        className={`flex flex-col rounded-xl border overflow-hidden min-w-full lg:w-max ${
           isRemake
             ? 'border-slate-800 bg-[#12151c]/90'
             : teamWon
@@ -748,355 +748,360 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
         isNewMatch ? 'animate-slideDownFade ring-1 ring-amber-400/30 shadow-[0_0_24px_rgba(245,158,11,0.18)]' : ''
       }`}
     >
-      {/* Main LoLDB Match Row (~30% taller container with larger icons and texts) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 sm:p-5 gap-4 min-h-[110px]">
-        {/* Left Side: Vertical accent pill + Champion Avatar + Spells/Runes side-by-side + Outcome Info */}
-        <div className="flex items-center gap-3.5 shrink-0">
-          {/* Vertical Accent Pill */}
-          <div
-            className={`w-1.5 self-stretch min-h-[68px] rounded-full my-0.5 shrink-0 ${accentBarClass}`}
-          />
-
-          {/* Champion Avatar with Uncropped Level Badge */}
-          <div className="relative h-16 w-16 shrink-0">
-            <div className="h-full w-full rounded-full overflow-hidden border border-white/10 shadow-md">
-              <Image
-                src={getChampionIconUrl(participant.championName)}
-                alt={participant.championName}
-                width={64}
-                height={64}
-                className="h-full w-full object-cover"
-                unoptimized
-              />
-            </div>
-            {/* Level Badge at bottom-right - Not cropped by overflow-hidden! */}
+      {/* Main LoLDB Match Row */}
+      <div className="flex flex-col sm:flex-row sm:items-stretch justify-between p-3.5 sm:p-4 gap-3 min-h-[110px]">
+        {/* Main Content Area: wraps gracefully on medium widths, single row on wide desktop */}
+        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-x-2.5 2xl:gap-x-3 gap-y-3">
+          {/* Left Side: Vertical accent pill + Champion Avatar + Spells/Runes side-by-side + Outcome Info */}
+          <div className="flex items-center gap-2.5 2xl:gap-3 shrink-0 min-w-0">
+            {/* Vertical Accent Pill */}
             <div
-              className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/95 border border-white/30 text-[10px] font-black text-white flex items-center justify-center shadow-lg z-10"
-              title={`Level ${participant.champLevel}`}
-            >
-              {participant.champLevel}
-            </div>
-          </div>
+              className={`w-1.5 self-stretch min-h-[68px] rounded-full my-0.5 shrink-0 ${accentBarClass}`}
+            />
 
-          {/* Summoner Spells & Runes (Side-by-Side 2x2 grid) */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Spells Column */}
-            <div className="flex flex-col gap-1 shrink-0">
-              <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shrink-0 shadow-sm">
+            {/* Champion Avatar with Uncropped Level Badge */}
+            <div className="relative h-14 w-14 2xl:h-16 2xl:w-16 shrink-0">
+              <div className="h-full w-full rounded-full overflow-hidden border border-white/10 shadow-md">
                 <Image
-                  src={getSpellIconUrl(participant.spells[0])}
-                  alt="S1"
-                  width={20}
-                  height={20}
+                  src={getChampionIconUrl(participant.championName)}
+                  alt={participant.championName}
+                  width={64}
+                  height={64}
                   className="h-full w-full object-cover"
                   unoptimized
                 />
               </div>
-              <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shrink-0 shadow-sm">
-                <Image
-                  src={getSpellIconUrl(participant.spells[1])}
-                  alt="S2"
-                  width={20}
-                  height={20}
-                  className="h-full w-full object-cover"
-                  unoptimized
-                />
+              {/* Level Badge at bottom-right - Not cropped by overflow-hidden! */}
+              <div
+                className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/95 border border-white/30 text-[10px] font-black text-white flex items-center justify-center shadow-lg z-10"
+                title={`Level ${participant.champLevel}`}
+              >
+                {participant.champLevel}
               </div>
             </div>
 
-            {/* Runes Column */}
-            <div className="flex flex-col gap-1 shrink-0">
-              <div
-                className="h-5 w-5 rounded overflow-hidden flex items-center justify-center bg-black/60 border border-white/10 shrink-0 shadow-sm"
-                title="Keystone Rune"
-              >
-                {runeKeystoneUrl ? (
+            {/* Summoner Spells & Runes (Side-by-Side 2x2 grid) */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Spells Column */}
+              <div className="flex flex-col gap-1 shrink-0">
+                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shrink-0 shadow-sm">
                   <Image
-                    src={runeKeystoneUrl}
-                    alt="Keystone"
-                    width={18}
-                    height={18}
-                    className="object-contain"
+                    src={getSpellIconUrl(participant.spells[0])}
+                    alt="S1"
+                    width={20}
+                    height={20}
+                    className="h-full w-full object-cover"
                     unoptimized
                   />
-                ) : null}
-              </div>
-              <div
-                className="h-5 w-5 rounded overflow-hidden flex items-center justify-center bg-black/60 border border-white/10 shrink-0 shadow-sm"
-                title="Secondary Style"
-              >
-                {runeStyleUrl ? (
+                </div>
+                <div className="h-5 w-5 rounded overflow-hidden border border-white/10 shrink-0 shadow-sm">
                   <Image
-                    src={runeStyleUrl}
-                    alt="Style"
-                    width={16}
-                    height={16}
-                    className="object-contain"
+                    src={getSpellIconUrl(participant.spells[1])}
+                    alt="S2"
+                    width={20}
+                    height={20}
+                    className="h-full w-full object-cover"
                     unoptimized
                   />
-                ) : null}
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Outcome & Queue & Duration & Surrender / LP */}
-          <div className="flex flex-col justify-center min-w-[100px]">
-            {showNewBadge && (
-              <div className="flex items-center mb-0.5">
-                <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[9px] font-black text-[#f9b771] shadow-sm tracking-wider uppercase leading-none select-none transition-opacity duration-300">
-                  {t('matches.badgeNew')}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`text-sm font-black uppercase tracking-wider ${outcomeTextClass}`}>
-                {outcomeText}
-              </span>
-              {effectiveLpDelta !== null && (
-                <span
-                  className={`text-sm font-black tracking-tight ${
-                    effectiveLpDelta > 0
-                      ? 'text-emerald-400'
-                      : effectiveLpDelta < 0
-                      ? 'text-rose-400'
-                      : 'text-zinc-400'
-                  }`}
+              {/* Runes Column */}
+              <div className="flex flex-col gap-1 shrink-0">
+                <div
+                  className="h-5 w-5 rounded overflow-hidden flex items-center justify-center bg-black/60 border border-white/10 shrink-0 shadow-sm"
+                  title="Keystone Rune"
                 >
-                  {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
+                  {runeKeystoneUrl ? (
+                    <Image
+                      src={runeKeystoneUrl}
+                      alt="Keystone"
+                      width={18}
+                      height={18}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : null}
+                </div>
+                <div
+                  className="h-5 w-5 rounded overflow-hidden flex items-center justify-center bg-black/60 border border-white/10 shrink-0 shadow-sm"
+                  title="Secondary Style"
+                >
+                  {runeStyleUrl ? (
+                    <Image
+                      src={runeStyleUrl}
+                      alt="Style"
+                      width={16}
+                      height={16}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            {/* Outcome & Queue & Duration & Surrender / LP */}
+            <div className="flex flex-col justify-center flex-1 sm:flex-none sm:w-[134px] 2xl:w-[140px] min-w-0">
+              {showNewBadge && (
+                <div className="flex items-center mb-0.5">
+                  <span className="inline-flex items-center rounded bg-[#432114] border border-[#783818] px-1.5 py-0.5 text-[9px] font-black text-[#f9b771] shadow-sm tracking-wider uppercase leading-none select-none transition-opacity duration-300">
+                    {t('matches.badgeNew')}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className={`text-sm font-black uppercase tracking-wide ${outcomeTextClass}`}>
+                  {outcomeText}
+                </span>
+                {effectiveLpDelta !== null && (
+                  <span
+                    className={`text-sm font-black tracking-tight whitespace-nowrap ${
+                      effectiveLpDelta > 0
+                        ? 'text-emerald-400'
+                        : effectiveLpDelta < 0
+                        ? 'text-rose-400'
+                        : 'text-zinc-400'
+                    }`}
+                  >
+                    {effectiveLpDelta > 0 ? `+${effectiveLpDelta}` : effectiveLpDelta} LP
+                  </span>
+                )}
+              </div>
+              <span
+                className="text-xs font-bold text-zinc-200 truncate mt-0.5"
+                title={effectiveQueueName}
+              >
+                {effectiveQueueName}
+              </span>
+              <div className="flex flex-wrap items-center gap-x-1 text-xs text-zinc-400 mt-0.5 font-medium leading-tight">
+                <span className="whitespace-nowrap">{formatDuration(gameDuration)}</span>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">{formatTimeAgo(gameEndTime, locale)}</span>
+              </div>
+              {isSurrender && !isRemake && (
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="rounded bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 uppercase tracking-wide">
+                    {t('matches.surrender')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center: Items on top, KDA below items, Stats below KDA */}
+          <div className="flex flex-col items-center justify-center gap-2 shrink-0 max-w-full">
+            {/* Row 1: Items (6 items + Trinket, 32px larger icons) */}
+            <div className="flex items-center gap-1">
+              {[0, 1, 2, 3, 4, 5].map((idx) => (
+                <ItemSlot key={idx} itemId={participant.items[idx]} size={32} />
+              ))}
+              <div className="ml-2">
+                <ItemSlot itemId={participant.items[6]} size={32} isTrinket />
+              </div>
+            </div>
+
+            {/* Row 2: KDA */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-base font-black text-white">
+                <span>{participant.kills}</span>
+                <span className="text-zinc-600">/</span>
+                <span className="text-rose-400 font-bold">{participant.deaths}</span>
+                <span className="text-zinc-600">/</span>
+                <span>{participant.assists}</span>
+              </div>
+              <span className="text-xs font-bold text-zinc-400 ml-1">
+                {calculateKda(participant.kills, participant.deaths, participant.assists)} KDA
+              </span>
+            </div>
+
+            {/* Row 3: CS, KP, DMG, Gold */}
+            <div className="flex flex-wrap items-center justify-center gap-x-1.5 2xl:gap-x-2 gap-y-0.5 text-[11px] 2xl:text-xs text-zinc-400 font-medium">
+              <span>
+                <span className="text-zinc-200 font-bold">{participant.cs} CS</span>{' '}
+                <span className="text-zinc-500">({participant.csPerMinute}/m)</span>
+              </span>
+              <span className="text-zinc-600">•</span>
+              <span>
+                <span className="text-zinc-500">KP</span>{' '}
+                <span className="text-zinc-200 font-bold">{participant.killParticipation ?? 0}%</span>
+              </span>
+              <span className="text-zinc-600">•</span>
+              <span>
+                <span className="text-zinc-200 font-bold">
+                  {participant.totalDamageDealtToChampions.toLocaleString()}
+                </span>{' '}
+                DMG
+              </span>
+              <span className="text-zinc-600">•</span>
+              <div className="flex items-center gap-1 text-amber-300 font-bold">
+                <span>{participant.goldEarned.toLocaleString()}</span>
+                <Coins className="h-3 w-3 text-amber-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
+          {((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
+            <div className="flex flex-col items-center justify-center shrink-0">
+              {participant.score?.isMvp ? (
+                <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black shadow-md tracking-tight whitespace-nowrap">
+                  <Trophy className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-black fill-black" />
+                  <span>MVP {formatScore(participant.heroScore ?? participant.score)}</span>
+                </span>
+              ) : participant.score?.isAce ? (
+                <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-emerald-300 shadow-md tracking-tight whitespace-nowrap">
+                  <Award className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-emerald-400" />
+                  <span>ACE {formatScore(participant.heroScore ?? participant.score)}</span>
+                </span>
+              ) : (
+                <span className="rounded-lg bg-white/[0.08] border border-white/15 px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap">
+                  Hero Score {formatScore(participant.heroScore ?? participant.score)}
                 </span>
               )}
             </div>
-            <span
-              className="text-xs font-bold text-zinc-200 truncate mt-0.5"
-              title={effectiveQueueName}
-            >
-              {effectiveQueueName}
-            </span>
-            <span className="text-xs text-zinc-400 mt-0.5 font-medium">
-              {formatDuration(gameDuration)} · {formatTimeAgo(gameEndTime, locale)}
-            </span>
-            {isSurrender && !isRemake && (
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span className="rounded bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 uppercase tracking-wide">
-                  {t('matches.surrender')}
-                </span>
-              </div>
-            )}
+          )}
+
+          {/* 5 Matchups with centered Role Icon Separator */}
+          <div className="flex items-center justify-center sm:justify-start shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.06] w-full sm:w-auto">
+            <div className="flex flex-col gap-1.5 text-xs">
+              {POSITION_KEYS_ORDER.map((posKey, i) => {
+                const blueP = sortedBlueTeamSlots[i]?.participant;
+                const redP = sortedRedTeamSlots[i]?.participant;
+                const pos = posKey;
+                const isBlueCurrent = blueP?.puuid === participant.puuid;
+                const isRedCurrent = redP?.puuid === participant.puuid;
+                const blueFormatted = blueP
+                  ? `${blueP.riotIdGameName}-${blueP.riotIdTagline || region.toUpperCase()}`
+                  : '';
+                const redFormatted = redP
+                  ? `${redP.riotIdGameName}-${redP.riotIdTagline || region.toUpperCase()}`
+                  : '';
+
+                return (
+                  <div key={posKey} className="flex items-center gap-1.5 2xl:gap-2">
+                    {/* Blue Player */}
+                    <div className="flex items-center gap-1.5 w-[105px] sm:w-[110px] 2xl:w-[118px] min-w-0">
+                      {blueP && (
+                        <>
+                          <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
+                            <Image
+                              src={getChampionIconUrl(blueP.championName)}
+                              alt={blueP.championName}
+                              width={16}
+                              height={16}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          </div>
+                          <Link
+                            href={`/${locale}/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
+                            className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
+                              isBlueCurrent
+                                ? 'font-black text-white'
+                                : 'text-zinc-400 font-medium'
+                            }`}
+                            title={`${blueP.riotIdGameName}#${blueP.riotIdTagline}`}
+                          >
+                            {blueP.riotIdGameName}
+                          </Link>
+                          <PremadeBadge group={blueP.premadeGroup} compact />
+                        </>
+                      )}
+                    </div>
+
+                    {/* Role Icon Divider */}
+                    <div
+                      className="flex items-center justify-center shrink-0 w-4"
+                      title={pos}
+                    >
+                      <Image
+                        src={getPositionIconUrl(pos)}
+                        alt={pos}
+                        width={14}
+                        height={14}
+                        className="h-4 w-4 object-contain opacity-70 hover:opacity-100 transition-opacity"
+                        unoptimized
+                      />
+                    </div>
+
+                    {/* Red Player */}
+                    <div className="flex items-center gap-1.5 w-[105px] sm:w-[110px] 2xl:w-[118px] min-w-0">
+                      {redP && (
+                        <>
+                          <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
+                            <Image
+                              src={getChampionIconUrl(redP.championName)}
+                              alt={redP.championName}
+                              width={16}
+                              height={16}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          </div>
+                          <Link
+                            href={`/${locale}/summoner/${region}/${encodeURIComponent(redFormatted)}`}
+                            className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
+                              isRedCurrent
+                                ? 'font-black text-white'
+                                : 'text-zinc-400 font-medium'
+                            }`}
+                            title={`${redP.riotIdGameName}#${redP.riotIdTagline}`}
+                          >
+                            {redP.riotIdGameName}
+                          </Link>
+                          <PremadeBadge group={redP.premadeGroup} compact />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Center: Items on top, KDA below items, Stats below KDA */}
-        <div className="flex flex-col items-center justify-center gap-2 shrink-0">
-          {/* Row 1: Items (6 items + Trinket, 32px larger icons) */}
-          <div className="flex items-center gap-1">
-            {[0, 1, 2, 3, 4, 5].map((idx) => (
-              <ItemSlot key={idx} itemId={participant.items[idx]} size={32} />
-            ))}
-            <div className="ml-2">
-              <ItemSlot itemId={participant.items[6]} size={32} isTrinket />
-            </div>
-          </div>
-
-          {/* Row 2: KDA */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-base font-black text-white">
-              <span>{participant.kills}</span>
-              <span className="text-zinc-600">/</span>
-              <span className="text-rose-400 font-bold">{participant.deaths}</span>
-              <span className="text-zinc-600">/</span>
-              <span>{participant.assists}</span>
-            </div>
-            <span className="text-xs font-bold text-zinc-400 ml-1">
-              {calculateKda(participant.kills, participant.deaths, participant.assists)} KDA
-            </span>
-          </div>
-
-          {/* Row 3: CS, KP, DMG, Gold */}
-          <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-medium">
-            <span>
-              <span className="text-zinc-200 font-bold">{participant.cs} CS</span>{' '}
-              <span className="text-zinc-500">({participant.csPerMinute}/m)</span>
-            </span>
-            <span className="text-zinc-600">•</span>
-            <span>
-              <span className="text-zinc-500">KP</span>{' '}
-              <span className="text-zinc-200 font-bold">{participant.killParticipation ?? 0}%</span>
-            </span>
-            <span className="text-zinc-600">•</span>
-            <span>
-              <span className="text-zinc-200 font-bold">
-                {participant.totalDamageDealtToChampions.toLocaleString()}
-              </span>{' '}
-              DMG
-            </span>
-            <span className="text-zinc-600">•</span>
-            <div className="flex items-center gap-1 text-amber-300 font-bold">
-              <span>{participant.goldEarned.toLocaleString()}</span>
-              <Coins className="h-3 w-3 text-amber-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Score Block (Prominent & Clean, multi-kill/most dmg badges removed) */}
-        {((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
-          <div className="flex flex-col items-center justify-center shrink-0 min-w-[85px]">
-            {participant.score?.isMvp ? (
-              <span className="flex items-center gap-1.5 rounded-lg bg-amber-400 text-black border border-amber-300 px-3 py-1.5 text-sm font-black shadow-md tracking-tight">
-                <Trophy className="h-4 w-4 text-black fill-black" />
-                <span>MVP {formatScore(participant.heroScore ?? participant.score)}</span>
-              </span>
-            ) : participant.score?.isAce ? (
-              <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 text-sm font-black text-emerald-300 shadow-md tracking-tight">
-                <Award className="h-4 w-4 text-emerald-400" />
-                <span>ACE {formatScore(participant.heroScore ?? participant.score)}</span>
-              </span>
-            ) : (
-              <span className="rounded-lg bg-white/[0.08] border border-white/15 px-3 py-1.5 text-sm font-black text-zinc-100 shadow-sm tracking-tight whitespace-nowrap">
-                Hero Score {formatScore(participant.heroScore ?? participant.score)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Right Side: 5 Matchups with centered Role Icon Separator + Expand Button */}
-        <div className="flex items-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-white/[0.06]">
-          <div className="flex flex-col gap-1.5 text-xs">
-            {POSITION_KEYS_ORDER.map((posKey, i) => {
-              const blueP = sortedBlueTeamSlots[i]?.participant;
-              const redP = sortedRedTeamSlots[i]?.participant;
-              const pos = posKey;
-              const isBlueCurrent = blueP?.puuid === participant.puuid;
-              const isRedCurrent = redP?.puuid === participant.puuid;
-              const blueFormatted = blueP
-                ? `${blueP.riotIdGameName}-${blueP.riotIdTagline || region.toUpperCase()}`
-                : '';
-              const redFormatted = redP
-                ? `${redP.riotIdGameName}-${redP.riotIdTagline || region.toUpperCase()}`
-                : '';
-
-              return (
-                <div key={posKey} className="flex items-center gap-1.5 sm:gap-2.5">
-                  {/* Blue Player */}
-                  <div className="flex items-center gap-1.5 w-[100px] sm:w-[120px] md:w-[128px] min-w-0">
-                    {blueP && (
-                      <>
-                        <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
-                          <Image
-                            src={getChampionIconUrl(blueP.championName)}
-                            alt={blueP.championName}
-                            width={16}
-                            height={16}
-                            className="h-full w-full object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <Link
-                          href={`/${locale}/summoner/${region}/${encodeURIComponent(blueFormatted)}`}
-                          className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
-                            isBlueCurrent
-                              ? 'font-black text-white'
-                              : 'text-zinc-400 font-medium'
-                          }`}
-                          title={`${blueP.riotIdGameName}#${blueP.riotIdTagline}`}
-                        >
-                          {blueP.riotIdGameName}
-                        </Link>
-                        <PremadeBadge group={blueP.premadeGroup} compact />
-                      </>
-                    )}
-                  </div>
-
-                  {/* Role Icon Divider */}
-                  <div
-                    className="flex items-center justify-center shrink-0 w-4"
-                    title={pos}
-                  >
-                    <Image
-                      src={getPositionIconUrl(pos)}
-                      alt={pos}
-                      width={14}
-                      height={14}
-                      className="h-4 w-4 object-contain opacity-70 hover:opacity-100 transition-opacity"
-                      unoptimized
-                    />
-                  </div>
-
-                  {/* Red Player */}
-                  <div className="flex items-center gap-1.5 w-[100px] sm:w-[120px] md:w-[128px] min-w-0">
-                    {redP && (
-                      <>
-                        <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full border border-white/10">
-                          <Image
-                            src={getChampionIconUrl(redP.championName)}
-                            alt={redP.championName}
-                            width={16}
-                            height={16}
-                            className="h-full w-full object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <Link
-                          href={`/${locale}/summoner/${region}/${encodeURIComponent(redFormatted)}`}
-                          className={`truncate flex-1 min-w-0 hover:text-white transition-colors ${
-                            isRedCurrent
-                              ? 'font-black text-white'
-                              : 'text-zinc-400 font-medium'
-                          }`}
-                          title={`${redP.riotIdGameName}#${redP.riotIdTagline}`}
-                        >
-                          {redP.riotIdGameName}
-                        </Link>
-                        <PremadeBadge group={redP.premadeGroup} compact />
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right Actions Column: Match Details Icon (top) + Expand Arrow Button (bottom) */}
-          <div className="flex flex-col items-center justify-between self-stretch shrink-0 py-0.5 border-l border-white/[0.06] pl-2.5 ml-1 min-h-[92px]">
-            {/* Match Details Icon Link (in top right corner above the expand arrow) */}
-            <Link
-              href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
-              className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
-              title={t('matches.matchDetails')}
-              aria-label={t('matches.matchDetails')}
+        {/* Right Actions Column: Match Details Icon (top) + Expand Arrow Button (bottom) - Always pinned & visible */}
+        <div className="flex flex-row sm:flex-col items-center justify-end sm:justify-between self-stretch shrink-0 gap-2 pt-2 sm:pt-0 sm:py-0.5 border-t sm:border-t-0 sm:border-l border-white/[0.06] sm:pl-2.5 sm:min-h-[92px]">
+          {/* Match Details Icon Link (in top right corner above the expand arrow) */}
+          <Link
+            href={`/${locale}/match/${region}/${match.matchId}#participant${participant.puuid}`}
+            className="group/detail flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 transition-all shadow-sm active:scale-95"
+            title={t('matches.matchDetails')}
+            aria-label={t('matches.matchDetails')}
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 text-amber-400 group-hover/detail:text-amber-300 transition-colors"
             >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-amber-400 group-hover/detail:text-amber-300 transition-colors"
-              >
-                <path
-                  d="M2.5 3V17H18"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <rect x="5" y="11" width="2" height="6" rx="0.5" fill="currentColor" />
-                <rect x="8.5" y="6" width="2" height="11" rx="0.5" fill="currentColor" />
-                <rect x="12" y="8.5" width="2" height="8.5" rx="0.5" fill="currentColor" />
-                <rect x="15.5" y="4" width="2" height="13" rx="0.5" fill="currentColor" />
-              </svg>
-            </Link>
+              <path
+                d="M2.5 3V17H18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <rect x="5" y="11" width="2" height="6" rx="0.5" fill="currentColor" />
+              <rect x="8.5" y="6" width="2" height="11" rx="0.5" fill="currentColor" />
+              <rect x="12" y="8.5" width="2" height="8.5" rx="0.5" fill="currentColor" />
+              <rect x="15.5" y="4" width="2" height="13" rx="0.5" fill="currentColor" />
+            </svg>
+          </Link>
 
-            {/* Expand Details Arrow Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (showNewBadge) setIsDismissed(true);
-                setIsExpanded(!isExpanded);
-              }}
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
-              aria-label={t('matches.toggleDetails')}
-            >
-              {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </button>
-          </div>
+          {/* Expand Details Arrow Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (showNewBadge) setIsDismissed(true);
+              setIsExpanded(!isExpanded);
+            }}
+            className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+            aria-label={t('matches.toggleDetails')}
+          >
+            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </button>
         </div>
       </div>
 
