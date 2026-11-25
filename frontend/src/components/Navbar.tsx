@@ -13,6 +13,7 @@ import {
   Sparkles,
   ChevronRight,
   Swords,
+  Crosshair,
 } from 'lucide-react';
 import SearchBar from './SearchBar';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -100,6 +101,12 @@ export default function Navbar() {
       label: t('nav.tierList') || 'Tier List',
       icon: Flame,
       isActive: Boolean(pathname?.includes('/tier-list')),
+    },
+    {
+      href: `/${locale}/counterpicks`,
+      label: t('nav.counterpicks') || 'CounterPicks',
+      icon: Crosshair,
+      isActive: Boolean(pathname?.includes('/counterpicks')),
     },
   ];
 

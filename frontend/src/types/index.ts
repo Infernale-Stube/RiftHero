@@ -515,3 +515,84 @@ export interface ItemsRosterResponse {
   tree: any[];
 }
 
+export interface CounterPickChampionSummary {
+  id: number;
+  key: string;
+  name: string;
+  nameDe: string;
+  nameEn: string;
+  title: string;
+  image: string;
+  role?: string | null;
+  positions: string[];
+}
+
+export interface CounterPickMetaResponse {
+  patches: {
+    current: {
+      slot: 'current';
+      patch: string;
+      fetchedAt: string | null;
+      rowCount: number;
+      available: boolean;
+    };
+    previous: {
+      slot: 'previous';
+      patch: string | null;
+      fetchedAt: string | null;
+      rowCount: number;
+      available: boolean;
+    };
+  };
+  tiers: string[];
+  roles: string[];
+  champions: CounterPickChampionSummary[];
+}
+
+export interface CounterPickMatchupEntry {
+  enemyChampionId: number;
+  enemyKey: string;
+  enemyName: string;
+  enemyNameDe: string;
+  enemyNameEn: string;
+  enemyTitle: string;
+  enemyImage: string;
+  enemyPositions: string[];
+  vsWr: number | null;
+  d1: number | null;
+  d2: number | null;
+  allWr: number | null;
+  games: number | null;
+  defaultLane: string | null;
+}
+
+export interface CounterPickChampionResponse {
+  slot: 'current' | 'previous';
+  patch: string | null;
+  tier: string;
+  role: string;
+  hasData: boolean;
+  fetchedAt: string | null;
+  champion: CounterPickChampionSummary;
+  stats: {
+    winrate: number | null;
+    pickrate: number | null;
+    banrate: number | null;
+    avgWinrate: number | null;
+    analysedGames: number | null;
+    roleShare: number | null;
+    totalMatchupsWithData: number;
+    totalChampions: number;
+  };
+  roleShares: Array<{
+    role: string;
+    roleShare: number | null;
+    winrate: number | null;
+    pickrate: number | null;
+  }>;
+  strongestCounters: CounterPickMatchupEntry[];
+  weakestCounters: CounterPickMatchupEntry[];
+  matchups: CounterPickMatchupEntry[];
+}
+
+

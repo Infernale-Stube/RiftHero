@@ -9,6 +9,7 @@ import { searchRoutes } from './routes/search';
 import { metaRoutes } from './routes/meta';
 import { championsRoutes } from './routes/champions';
 import { itemRoutes } from './routes/items';
+import { counterpickRoutes } from './routes/counterpicks';
 import { disconnectPrisma } from '../db/prisma';
 import { initDDragonScheduler } from '../riot/ddragon';
 import { loadQueuesFromDb } from '../services/gameMetadataService';
@@ -49,6 +50,7 @@ export async function buildServer() {
       await apiScope.register(championsRoutes);
       await apiScope.register(metaRoutes);
       await apiScope.register(itemRoutes);
+      await apiScope.register(counterpickRoutes);
     },
     { prefix: '/api' }
   );

@@ -13,6 +13,8 @@ import {
   ItemRosterItem,
   SummonerSearchResult,
   GameQueue,
+  CounterPickMetaResponse,
+  CounterPickChampionResponse,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -494,5 +496,45 @@ export async function fetchGameQueues(): Promise<GameQueue[]> {
     return [];
   }
 }
+
+export async function fetchCounterPickMeta(locale = 'de'): Promise<CounterPickMetaResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/counterpicks/meta?locale=${encodeURIComponent(locale)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchChampionCounterPicks(params: {
+  champion: string;
+  tier?: string;
+  role?: string;
+  slot?: 'current' | 'previous';
+  locale?: string;
+}): Promise<CounterPickChampionResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const search = new URLSearchParams();
+    if (params.tier) search.set('tier', params.tier);
+    if (params.role) search.set('role', params.role);
+    if (params.slot) search.set('slot', params.slot);
+    if (params.locale) search.set('locale', params.locale);
+
+    const res = await fetch(
+      `${baseUrl}/counterpicks/${encodeURIComponent(params.champion)}?${search.toString()}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 
 

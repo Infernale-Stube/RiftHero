@@ -18,6 +18,7 @@ export interface TranslationDictionary {
     searchPlaceholder: string;
     apiOnline: string;
     tierList: string;
+    counterpicks: string;
     champions: string;
     items: string;
     home: string;
@@ -31,6 +32,7 @@ export interface TranslationDictionary {
     champions: string;
     items: string;
     tierList: string;
+    counterpicks: string;
   };
   home: {
     heroBadge: string;
@@ -508,6 +510,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       searchPlaceholder: 'Beschwörer suchen (Name#TAG)...',
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
+      counterpicks: 'CounterPicks',
       champions: 'Champions',
       items: 'Items',
       home: 'Startseite',
@@ -521,6 +524,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       champions: 'Champions',
       items: 'Items',
       tierList: 'Tier List',
+      counterpicks: 'CounterPicks',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',
@@ -998,6 +1002,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       searchPlaceholder: 'Search summoner (Name#TAG)...',
       apiOnline: 'Riot API Online',
       tierList: 'Tier List',
+      counterpicks: 'CounterPicks',
       champions: 'Champions',
       items: 'Items',
       home: 'Homepage',
@@ -1011,6 +1016,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       champions: 'Champions',
       items: 'Items',
       tierList: 'Tier List',
+      counterpicks: 'CounterPicks',
     },
     home: {
       heroBadge: 'League of Legends Scouting & Stats',

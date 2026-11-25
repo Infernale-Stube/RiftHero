@@ -224,6 +224,8 @@ model Champion {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  counterPicks        CounterPick[]
+
   @@index([key])
   @@index([nameDe])
   @@index([nameEn])
@@ -282,5 +284,31 @@ model GameQueue {
   name String
 
   @@map("game_queues")
+}
+
+model CounterPick {
+  id            String   @id @default(cuid())
+  slot          String   // 'current' or 'previous'
+  patch         String   // e.g. '16.23'
+  championId    Int
+  tier          String   // 'all', 'iron', ..., 'd2_plus'
+  role          String   // 'top', 'jungle', 'middle', 'bottom', 'support'
+  winrate       Float?
+  pickrate      Float?
+  banrate       Float?
+  avgWinrate    Float?
+  analysedGames Int?
+  roleShare     Float?
+  matchups      Json     // Record<enemyChampionId, { vsWr, d1, d2, allWr, games } | null> for every Champion
+  fetchedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  champion      Champion @relation(fields: [championId], references: [id], onDelete: Cascade)
+
+  @@unique([slot, championId, tier, role])
+  @@index([slot, patch])
+  @@index([slot, tier, role])
+  @@index([championId, slot])
+  @@map("counter_picks")
 }
 

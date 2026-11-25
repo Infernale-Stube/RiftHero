@@ -241,7 +241,38 @@ services:
         condition: service_healthy
 
   # =========================================================================
-  # 8. RiftHero Maintenance Worker (Daily Vacuum, BullMQ Pruning, Backups)
+  # 8. RiftHero CounterPick Scraper Worker (Hourly Lolalytics & DDragon Sync)
+  # =========================================================================
+  worker-counterpicks:
+    <<: *default-logging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: rifthero-backend:${APP_ENV:-prod}
+    pull_policy: build
+    container_name: rifthero-${APP_ENV:-prod}-worker-counterpicks
+    command: ["worker:counterpicks"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - APP_ENV=${APP_ENV:-prod}
+      - NODE_OPTIONS=--max-old-space-size=1536
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rifthero}:${POSTGRES_PASSWORD:-rifthero_secret_2026}@postgres:5432/${POSTGRES_DB:-rifthero}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - COUNTERPICK_CONCURRENCY=${COUNTERPICK_CONCURRENCY:-8}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # =========================================================================
+  # 9. RiftHero Maintenance Worker (Daily Vacuum, BullMQ Pruning, Backups)
   # =========================================================================
   worker-maintenance:
     <<: *default-logging

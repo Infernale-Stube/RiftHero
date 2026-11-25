@@ -29,6 +29,10 @@ case "$1" in
     echo "📊 [Entrypoint] Starting RiftHero Meta Analysis & Tier List Worker..."
     exec node dist/worker/metaWorkerRunner.js
     ;;
+  worker:counterpicks)
+    echo "🛡️ [Entrypoint] Starting RiftHero CounterPick Scraper Worker..."
+    exec node dist/worker/counterPickWorker.js
+    ;;
   worker:maintenance)
     echo "🛠️ [Entrypoint] Starting RiftHero Housekeeping & Maintenance Worker..."
     exec node dist/worker/maintenanceWorker.js
