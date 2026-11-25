@@ -1,4 +1,4 @@
-name: rifthero-${APP_ENV:-prod}
+name: rifthero
 
 # Global log rotation defaults (caps log sizes at 150MB per container)
 x-logging: &default-logging
@@ -15,7 +15,7 @@ services:
   caddy:
     <<: *default-logging
     image: caddy:2-alpine
-    container_name: rifthero-${APP_ENV:-prod}-caddy
+    container_name: rifthero-caddy
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -45,9 +45,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: rifthero-frontend:${APP_ENV:-prod}
+    image: rifthero-frontend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-frontend
+    container_name: rifthero-frontend
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"
@@ -78,9 +78,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-api
+    container_name: rifthero-api
     command: ["api"]
     restart: unless-stopped
     ports:
@@ -121,9 +121,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-high
+    container_name: rifthero-worker-high
     command: ["worker:high"]
     restart: unless-stopped
     env_file:
@@ -154,9 +154,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-low
+    container_name: rifthero-worker-low
     command: ["worker:low"]
     restart: unless-stopped
     env_file:
@@ -189,9 +189,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-champions
+    container_name: rifthero-worker-champions
     command: ["worker:champions"]
     restart: unless-stopped
     env_file:
@@ -218,9 +218,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-meta
+    container_name: rifthero-worker-meta
     command: ["worker:meta"]
     restart: unless-stopped
     env_file:
@@ -248,9 +248,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-counterpicks
+    container_name: rifthero-worker-counterpicks
     command: ["worker:counterpicks"]
     restart: unless-stopped
     env_file:
@@ -279,9 +279,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rifthero-backend:${APP_ENV:-prod}
+    image: rifthero-backend:latest
     pull_policy: build
-    container_name: rifthero-${APP_ENV:-prod}-worker-maintenance
+    container_name: rifthero-worker-maintenance
     command: ["worker:maintenance"]
     restart: unless-stopped
     env_file:
@@ -313,7 +313,7 @@ services:
   postgres:
     <<: *default-logging
     image: postgres:16-alpine
-    container_name: rifthero-${APP_ENV:-prod}-postgres
+    container_name: rifthero-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rifthero}
@@ -336,7 +336,7 @@ services:
   redis:
     <<: *default-logging
     image: redis:7-alpine
-    container_name: rifthero-${APP_ENV:-prod}-redis
+    container_name: rifthero-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -356,7 +356,7 @@ services:
   mailserver:
     <<: *default-logging
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
-    container_name: rifthero-${APP_ENV:-prod}-mailserver
+    container_name: rifthero-mailserver
     hostname: mail
     domainname: ${APP_DOMAIN:-rifthero.gg}
     restart: unless-stopped

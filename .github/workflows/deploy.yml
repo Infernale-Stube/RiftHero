@@ -80,6 +80,7 @@ jobs:
             fi
 
             echo "🐳 [3/4] Rebuilding and launching Docker containers..."
+            docker ps -a --filter "name=^rifthero-prod-" -q | xargs -r docker rm -f || true
             docker compose up -d --build --remove-orphans
 
             # Reload Caddy reverse proxy routes
