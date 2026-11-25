@@ -67,10 +67,12 @@ function ItemSlot({
   itemId,
   size = 24,
   isTrinket = false,
+  responsiveCompact = false,
 }: {
   itemId?: number;
   size?: 24 | 32;
   isTrinket?: boolean;
+  responsiveCompact?: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
   const isValid = Boolean(itemId && itemId > 0 && !hasError);
@@ -78,6 +80,10 @@ function ItemSlot({
   const containerClasses =
     size === 32
       ? `h-8 w-8 min-w-[32px] min-h-[32px] rounded-md ${
+          isTrinket ? 'border border-amber-500/25' : 'border border-white/[0.08]'
+        } bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm`
+      : responsiveCompact
+      ? `h-5 w-5 2xl:h-6 2xl:w-6 rounded ${
           isTrinket ? 'border border-amber-500/25' : 'border border-white/[0.08]'
         } bg-black/60 overflow-hidden flex items-center justify-center shrink-0 shadow-sm`
       : `h-6 w-6 min-w-[24px] min-h-[24px] rounded ${
@@ -279,7 +285,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
 
     return (
       <div
-        className={`flex flex-col rounded-xl border overflow-hidden min-w-full lg:w-max ${
+        className={`flex flex-col rounded-xl border overflow-hidden w-full ${
           isRemake
             ? 'border-slate-800 bg-[#12151c]/90'
             : teamWon
@@ -289,7 +295,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
       >
         {/* Team Header Row */}
         <div
-          className={`flex items-center justify-between px-3.5 py-2.5 text-xs border-b ${
+          className={`flex items-center justify-between gap-2 px-3 py-2 text-xs border-b ${
             isRemake
               ? 'border-slate-700/30 bg-slate-800/30 text-slate-300'
               : teamWon
@@ -298,8 +304,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
           }`}
         >
           {/* Left: Outcome, Side, Objective counters, Bans */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-x-2.5 gap-y-1.5 flex-wrap flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span
                 className={`font-black uppercase tracking-wider text-xs ${
                   isRemake
@@ -317,7 +323,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </div>
 
             {/* Objective icons + counts */}
-            <div className="flex items-center gap-2.5 text-[11px] text-zinc-300 font-bold ml-1">
+            <div className="flex items-center gap-2 text-[11px] text-zinc-300 font-bold shrink-0">
               <span className="flex items-center gap-1" title={t('matches.towers')}>
                 <Image
                   src={getObjectiveIconUrl('tower', teamSide)}
@@ -376,9 +382,9 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </div>
 
             {/* Bans (Always 5 slots per team, with empty slot placeholders) */}
-            <div className="flex items-center gap-1.5 ml-2 shrink-0">
-              <span className="text-[10px] sm:text-[11px] text-zinc-500 font-bold uppercase tracking-wider">{t('matches.bans')}</span>
-              <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{t('matches.bans')}</span>
+              <div className="flex items-center gap-0.5 shrink-0">
                 {[0, 1, 2, 3, 4].map((slotIdx) => (
                   <BanSlot
                     key={slotIdx}
@@ -391,16 +397,16 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
           </div>
 
           {/* Right: Table Column Labels with Interactive Damage/Taken Toggle */}
-          <div className="hidden lg:flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500">
-            <span className="w-[185px] text-center">{t('matches.build')}</span>
-            <span className="w-16 text-center">KDA</span>
-            <span className="w-12 text-center">KP</span>
-            <span className="w-14 text-center">CS</span>
+          <div className="hidden lg:flex items-center gap-1.5 2xl:gap-2 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 shrink-0">
+            <span className="w-[158px] 2xl:w-[184px] text-center">{t('matches.build')}</span>
+            <span className="w-[52px] 2xl:w-[60px] text-center">KDA</span>
+            <span className="w-[34px] 2xl:w-[40px] text-center">KP</span>
+            <span className="w-[40px] 2xl:w-[48px] text-center">CS</span>
             {/* Interactive Toggle Button for Damage Dealt vs Damage Taken */}
             <button
               type="button"
               onClick={() => setDamageMode((prev) => (prev === 'dealt' ? 'taken' : 'dealt'))}
-              className="w-28 flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-white/[0.05] transition-colors cursor-pointer group"
+              className="w-[86px] 2xl:w-[104px] flex items-center justify-between px-1 py-0.5 rounded hover:bg-white/[0.05] transition-colors cursor-pointer group"
               title={
                 damageMode === 'dealt'
                   ? t('matches.switchToTaken')
@@ -408,18 +414,18 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
               }
             >
               <span
-                className="text-[10px] font-black uppercase tracking-wider transition-colors text-zinc-400 group-hover:text-zinc-200"
+                className="text-[10px] font-black uppercase tracking-wider transition-colors text-zinc-400 group-hover:text-zinc-200 truncate"
               >
                 {damageMode === 'dealt' ? t('matches.damage') : t('matches.taken')}
               </span>
-              <div className="flex items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
+              <div className="flex items-center gap-0.5 text-zinc-500 group-hover:text-zinc-300 shrink-0">
                 <ChevronLeft className="h-3 w-3" />
                 <ChevronRight className="h-3 w-3" />
               </div>
             </button>
-            <span className="w-14 text-center">{t('matches.vision')}</span>
-            <span className="w-16 text-right pr-1">{t('matches.gold')}</span>
-            <span className="w-16 text-center text-[10px] font-bold tracking-tight" title={t('matches.heroScore')}>{t('matches.heroScore')}</span>
+            <span className="w-[40px] 2xl:w-[48px] text-center">{t('matches.vision')}</span>
+            <span className="w-[48px] 2xl:w-[56px] text-right pr-1">{t('matches.gold')}</span>
+            <span className="w-[52px] 2xl:w-[60px] text-center text-[9px] 2xl:text-[10px] font-bold tracking-tight leading-tight" title={t('matches.heroScore')}>{t('matches.heroScore')}</span>
           </div>
         </div>
 
@@ -438,33 +444,35 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             return (
               <div
                 key={p.puuid}
-                className={`flex flex-col lg:flex-row lg:items-center justify-between px-3.5 py-2.5 gap-2 text-xs transition-colors ${
+                className={`flex flex-col lg:flex-row lg:items-center justify-between px-3 py-2.5 gap-2 text-xs transition-colors ${
                   isTarget ? 'bg-white/[0.06] border-l-2 border-l-white/60' : 'hover:bg-white/[0.02]'
                 }`}
               >
                 {/* Left: Rank Badge + Champion Avatar + Spells/Runes + Role Icon + Name */}
-                <div className="flex items-center gap-2.5 min-w-[240px]">
+                <div className="flex items-center gap-1.5 2xl:gap-2 flex-1 min-w-0">
                   {/* Rank Badge: MVP (gold), ACE (teal), or 2nd..10th */}
-                  {rankInfo && (
-                    <div className="w-10 sm:w-11 h-6 rounded-md flex items-center justify-center shrink-0">
-                      {rankInfo.isMvp ? (
-                        <span className="w-full h-full rounded-md bg-amber-400 text-black border border-amber-300 font-black text-xs flex items-center justify-center shadow-sm">
+                  <div className="w-9 2xl:w-10 h-6 rounded-md flex items-center justify-center shrink-0">
+                    {rankInfo ? (
+                      rankInfo.isMvp ? (
+                        <span className="w-full h-full rounded-md bg-amber-400 text-black border border-amber-300 font-black text-[11px] 2xl:text-xs flex items-center justify-center shadow-sm">
                           MVP
                         </span>
                       ) : rankInfo.isAce ? (
-                        <span className="w-full h-full rounded-md bg-teal-500/20 border border-teal-500/50 text-teal-300 font-black text-xs flex items-center justify-center">
+                        <span className="w-full h-full rounded-md bg-teal-500/20 border border-teal-500/50 text-teal-300 font-black text-[11px] 2xl:text-xs flex items-center justify-center">
                           ACE
                         </span>
                       ) : (
                         <span className="w-full h-full rounded-md bg-white/[0.04] border border-white/[0.08] text-zinc-400 text-[10px] font-bold flex items-center justify-center">
                           {rankInfo.label}
                         </span>
-                      )}
-                    </div>
-                  )}
+                      )
+                    ) : (
+                      <span className="text-[10px] text-zinc-600">—</span>
+                    )}
+                  </div>
 
                   {/* Champion Avatar with Uncropped Level Badge */}
-                  <div className="relative h-8 w-8 shrink-0">
+                  <div className="relative h-7 w-7 2xl:h-8 2xl:w-8 shrink-0">
                     <div className="h-full w-full rounded-full overflow-hidden border border-white/10 shadow-sm">
                       <Image
                         src={getChampionIconUrl(p.championName)}
@@ -551,7 +559,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   ) : null}
 
                   {/* Player Game Name & Champion Name & LP */}
-                  <div className="flex flex-col justify-center min-w-[105px] max-w-[175px] shrink-0">
+                  <div className="flex flex-col justify-center flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Link
                         href={`/${locale}/summoner/${region}/${encodeURIComponent(formattedTag)}`}
@@ -606,19 +614,19 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                 </div>
 
                 {/* Right: Columns for Build, KDA, KP, CS, Damage/Taken, Vision, Gold, Score */}
-                <div className="flex items-center justify-between lg:justify-end gap-2 text-xs flex-1">
+                <div className="flex items-center justify-between lg:justify-end flex-wrap lg:flex-nowrap gap-1.5 2xl:gap-2 text-xs shrink-0">
                   {/* BUILD: 6 items + Trinket */}
-                  <div className="w-[185px] flex items-center gap-1 shrink-0 justify-center">
+                  <div className="w-[158px] 2xl:w-[184px] flex items-center gap-0.5 2xl:gap-1 shrink-0 justify-center">
                     {[0, 1, 2, 3, 4, 5].map((idx) => (
-                      <ItemSlot key={idx} itemId={p.items[idx]} size={24} />
+                      <ItemSlot key={idx} itemId={p.items[idx]} size={24} responsiveCompact />
                     ))}
-                    <div className="ml-1">
-                      <ItemSlot itemId={p.items[6]} size={24} isTrinket />
+                    <div className="ml-0.5 2xl:ml-1">
+                      <ItemSlot itemId={p.items[6]} size={24} isTrinket responsiveCompact />
                     </div>
                   </div>
 
                   {/* KDA */}
-                  <div className="w-16 text-center flex flex-col items-center justify-center shrink-0">
+                  <div className="w-[52px] 2xl:w-[60px] text-center flex flex-col items-center justify-center shrink-0">
                     <div className="flex items-center gap-0.5 font-bold text-white text-xs">
                       <span>{p.kills}</span>
                       <span className="text-zinc-600">/</span>
@@ -632,18 +640,18 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   </div>
 
                   {/* KP */}
-                  <div className="w-12 text-center text-xs font-bold text-zinc-200 shrink-0">
+                  <div className="w-[34px] 2xl:w-[40px] text-center text-xs font-bold text-zinc-200 shrink-0">
                     {p.killParticipation ?? 0}%
                   </div>
 
                   {/* CS */}
-                  <div className="w-14 text-center flex flex-col items-center justify-center shrink-0">
+                  <div className="w-[40px] 2xl:w-[48px] text-center flex flex-col items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-zinc-200">{p.cs}</span>
                     <span className="text-[10px] text-zinc-400 font-medium">{p.csPerMinute}/m</span>
                   </div>
 
                   {/* DAMAGE / TAKEN COLUMN */}
-                  <div className="w-28 flex flex-col justify-center shrink-0">
+                  <div className="w-[86px] 2xl:w-[104px] flex flex-col justify-center shrink-0">
                     <div className="flex items-center justify-between text-xs font-bold">
                       {damageMode === 'dealt' ? (
                         <>
@@ -688,7 +696,7 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   </div>
 
                   {/* VISION */}
-                  <div className="w-14 text-center flex flex-col items-center justify-center shrink-0">
+                  <div className="w-[40px] 2xl:w-[48px] text-center flex flex-col items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-zinc-200">{p.visionScore}</span>
                     <span className="text-[10px] text-zinc-400 font-medium">
                       {p.wardsPlaced}/{p.wardsKilled}
@@ -696,15 +704,15 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
                   </div>
 
                   {/* GOLD */}
-                  <div className="w-16 text-right flex items-center justify-end gap-1 shrink-0">
+                  <div className="w-[48px] 2xl:w-[56px] text-right flex items-center justify-end gap-0.5 2xl:gap-1 shrink-0">
                     <span className="text-xs font-bold text-amber-300">
                       {(p.goldEarned / 1000).toFixed(1)}K
                     </span>
-                    <Coins className="h-2.5 w-2.5 text-amber-400" />
+                    <Coins className="h-2.5 w-2.5 text-amber-400 shrink-0" />
                   </div>
 
                   {/* HERO SCORE (0-100 rounded integer) */}
-                  <div className="w-16 text-center shrink-0">
+                  <div className="w-[52px] 2xl:w-[60px] text-center shrink-0">
                     {pScore > 0 ? (
                       <button
                         type="button"
