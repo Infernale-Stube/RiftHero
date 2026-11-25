@@ -12,7 +12,6 @@ import {
 } from './premadeService';
 import {
   calculateMatchScores,
-  buildScoresFromSavedHeroScores,
   calculateScoreTimeline,
   DeepLolScore,
   ScoreTimelinePoint,
@@ -183,7 +182,11 @@ export async function getMatchDetails(
 
           participants: {
             create: (() => {
-              const precalculatedScores = calculateMatchScores(info.participants, info.gameDuration);
+              const precalculatedScores = calculateMatchScores(info.participants, info.gameDuration, {
+                queueId: info.queueId,
+                mapId: info.mapId,
+                teams: info.teams,
+              });
               return info.participants.map((p) => {
                 const heroScore = precalculatedScores.get(p.puuid)?.score ?? null;
                 return {
@@ -289,7 +292,45 @@ export async function getMatchDetails(
     );
   }
 
-  const matchScores = buildScoresFromSavedHeroScores(participants);
+  const matchScores = calculateMatchScores(participants, match.gameDuration, {
+    queueId: match.queueId,
+    mapId: match.mapId,
+    matchObjectives: {
+      blueTowerKills: match.blueTowerKills,
+      blueInhibitorKills: match.blueInhibitorKills,
+      blueBaronKills: match.blueBaronKills,
+      blueDragonKills: match.blueDragonKills,
+      blueRiftHeraldKills: match.blueRiftHeraldKills,
+      blueHordeKills: match.blueHordeKills,
+      redTowerKills: match.redTowerKills,
+      redInhibitorKills: match.redInhibitorKills,
+      redBaronKills: match.redBaronKills,
+      redDragonKills: match.redDragonKills,
+      redRiftHeraldKills: match.redRiftHeraldKills,
+      redHordeKills: match.redHordeKills,
+    },
+    timeline,
+  });
+
+  // Sync recalculated heroScores back to DB if missing or outdated (e.g. legacy MVP=100)
+  const scoreSyncOps = participants
+    .map((p) => {
+      const computedScore = matchScores.get(p.puuid)?.score;
+      if (typeof computedScore === 'number' && p.heroScore !== computedScore) {
+        return prisma.matchParticipant.update({
+          where: { id: p.id },
+          data: { heroScore: computedScore },
+        });
+      }
+      return null;
+    })
+    .filter((op): op is ReturnType<typeof prisma.matchParticipant.update> => op !== null);
+
+  if (scoreSyncOps.length > 0) {
+    prisma.$transaction(scoreSyncOps).catch((err: any) => {
+      console.warn('[MatchDetailService] Failed to sync updated heroScores:', err?.message || err);
+    });
+  }
 
   const formattedParticipants = await Promise.all(
     participants.map(async (p) => {
@@ -353,7 +394,7 @@ export async function getMatchDetails(
         postGameRank: p.postGameRank,
         postGameTotalLp: p.postGameTotalLp,
         lpChange,
-        heroScore: p.heroScore ?? score?.score ?? null,
+        heroScore: score?.score ?? p.heroScore ?? null,
         score,
         premadeGroup: null as any,
       };

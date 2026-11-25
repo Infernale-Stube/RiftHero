@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Swords,
   Coins,
   Shield,
@@ -43,6 +45,7 @@ import {
 import { formatDuration, formatTimeAgo, getKdaColor } from '@/lib/utils';
 import GoldAdvantageChart from '@/components/GoldAdvantageChart';
 import ScoreTimelineChart from '@/components/ScoreTimelineChart';
+import HeroScoreAnalysis, { getTierBadgeClasses, getBarColorClass } from '@/components/HeroScoreAnalysis';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import PremadeBadge from '@/components/PremadeBadge';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -57,6 +60,16 @@ export default function MatchDetailPage() {
   const [matchData, setMatchData] = useState<MatchDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeHighlightPuuid, setActiveHighlightPuuid] = useState<string | null>(null);
+  const [expandedScorePuuids, setExpandedScorePuuids] = useState<Set<string>>(new Set());
+
+  const toggleScoreBreakdown = (puuid: string) => {
+    setExpandedScorePuuids((prev) => {
+      const next = new Set(prev);
+      if (next.has(puuid)) next.delete(puuid);
+      else next.add(puuid);
+      return next;
+    });
+  };
 
   useEffect(() => {
     // Read URL hash e.g. #participant7 or #participant{puuid}
@@ -241,6 +254,21 @@ export default function MatchDetailPage() {
           </div>
 
           <div className="flex items-center gap-4 text-xs font-bold text-slate-200">
+            {(() => {
+              const scored = team.filter((tp) => (tp.score?.score ?? tp.heroScore ?? 0) > 0);
+              if (scored.length === 0) return null;
+              const avgTeamHero = Math.round(
+                scored.reduce((acc, tp) => acc + (tp.score?.score ?? tp.heroScore ?? 0), 0) / scored.length
+              );
+              return (
+                <span className="hidden sm:flex items-center gap-1 rounded-md bg-white/[0.06] border border-white/10 px-2 py-0.5 text-[11px]">
+                  <span className="text-slate-400">{t('matchDetail.avgTeamScore')}:</span>
+                  <span className={isBlue ? 'text-blue-300 font-black' : 'text-rose-300 font-black'}>
+                    {avgTeamHero}
+                  </span>
+                </span>
+              );
+            })()}
             <span className="flex items-center gap-1.5">
               <Swords className="h-4 w-4 text-slate-400" />
               <span>{teamDetail.totalKills} {t('matchDetail.kills')}</span>
@@ -392,24 +420,55 @@ export default function MatchDetailPage() {
                             {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
                           </span>
                         )}
-                        {((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (
-                          <span
-                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 ${
-                              p.score?.isMvp
-                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                                : p.score?.isAce
-                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
-                                : 'bg-white/[0.08] text-zinc-300 border border-white/10'
-                            }`}
-                          >
-                            {p.score?.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
-                            {p.score?.isAce && <Award className="h-3 w-3 text-purple-400" />}
-                            <span>
-                              {p.score?.isMvp ? 'MVP' : p.score?.isAce ? 'ACE' : 'Score'}{' '}
-                              {Math.round((p.heroScore ?? p.score!.score) <= 10 ? (p.heroScore ?? p.score!.score) * 10 : (p.heroScore ?? p.score!.score))}
-                            </span>
-                          </span>
-                        )}
+                        {((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (() => {
+                          const rawHeroVal = p.score?.score ?? p.heroScore ?? 0;
+                          const displayScore = Math.round(rawHeroVal <= 10 ? rawHeroVal * 10 : rawHeroVal);
+                          const isScoreOpen = expandedScorePuuids.has(p.puuid);
+                          const hasBreakdown = Boolean(p.score?.breakdown);
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => hasBreakdown && toggleScoreBreakdown(p.puuid)}
+                              title={hasBreakdown ? t('matchDetail.showBreakdown') : undefined}
+                              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black shrink-0 transition-colors ${
+                                p.score?.isMvp
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm hover:bg-amber-500/30'
+                                  : p.score?.isAce
+                                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm hover:bg-teal-500/30'
+                                  : 'bg-white/[0.08] text-zinc-200 border border-white/10 hover:bg-white/[0.14]'
+                              } ${hasBreakdown ? 'cursor-pointer' : 'cursor-default'}`}
+                            >
+                              {p.score?.isMvp && <Trophy className="h-3 w-3 text-amber-400" />}
+                              {p.score?.isAce && <Award className="h-3 w-3 text-teal-400" />}
+                              <span>
+                                {p.score?.isMvp
+                                  ? 'MVP'
+                                  : p.score?.isAce
+                                  ? 'ACE'
+                                  : p.score?.rank
+                                  ? `#${p.score.rank}`
+                                  : 'Score'}{' '}
+                                {displayScore}
+                              </span>
+                              {p.score?.tierRating && (
+                                <span
+                                  className={`rounded border px-1 text-[9px] leading-tight ${getTierBadgeClasses(
+                                    p.score.tierRating
+                                  )}`}
+                                >
+                                  {p.score.tierRating}
+                                </span>
+                              )}
+                              {hasBreakdown &&
+                                (isScoreOpen ? (
+                                  <ChevronUp className="h-3 w-3 opacity-70" />
+                                ) : (
+                                  <ChevronDown className="h-3 w-3 opacity-70" />
+                                ))}
+                            </button>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-slate-500 truncate">
                         <span>#{targetTag}</span>
@@ -511,6 +570,40 @@ export default function MatchDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Expandable Inline Hero Score Criteria Breakdown */}
+                {expandedScorePuuids.has(p.puuid) && p.score?.breakdown && (
+                  <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/40 p-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-[11px]">
+                    {[
+                      { label: t('matchDetail.criteriaCombat'), metric: p.score.breakdown.combat },
+                      { label: t('matchDetail.criteriaDamage'), metric: p.score.breakdown.damage },
+                      { label: t('matchDetail.criteriaEconomy'), metric: p.score.breakdown.economy },
+                      { label: t('matchDetail.criteriaObjectives'), metric: p.score.breakdown.objectives },
+                      { label: t('matchDetail.criteriaVision'), metric: p.score.breakdown.vision },
+                      { label: t('matchDetail.criteriaLane'), metric: p.score.breakdown.lane },
+                    ].map((item) => {
+                      const weightPct = Math.round(item.metric.weight * 100);
+                      return (
+                        <div key={item.label} className={`flex flex-col gap-1 ${weightPct === 0 ? 'opacity-45' : ''}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 font-semibold truncate">
+                              {item.label} ({weightPct}%)
+                            </span>
+                            <span className="font-black text-white">
+                              {weightPct === 0 ? '—' : item.metric.score}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-white/[0.07] overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${getBarColorClass(item.metric.score)}`}
+                              style={{ width: `${weightPct === 0 ? 0 : Math.max(4, item.metric.score)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -828,14 +921,14 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* 5. MATCH PERFORMANCE SCORE GRAPH */}
-      {scoreTimeline && scoreTimeline.length > 1 && (
-        <ScoreTimelineChart
-          scoreTimeline={scoreTimeline}
-          participants={participants}
-          blueWon={blueTeam.win}
-        />
-      )}
+      {/* 5. HERO SCORE ANALYSE & VERLAUF */}
+      <HeroScoreAnalysis participants={participants} />
+
+      <ScoreTimelineChart
+        scoreTimeline={scoreTimeline}
+        participants={participants}
+        blueWon={blueTeam.win}
+      />
 
       {/* 6. GOLD-VORTEIL GRAPH (Interaktives Timeline-Diagramm) */}
       <GoldAdvantageChart

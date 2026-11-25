@@ -154,7 +154,7 @@ export default function HomeView() {
           </div>
           <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center gap-2 text-[11px] text-zinc-400 font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            <span>MVP 100 • ACE • Damage Share • Vision</span>
+            <span>MVP • ACE • 6 Kriterien • Verlauf</span>
           </div>
         </div>
 

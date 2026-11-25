@@ -397,7 +397,11 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
 
       // Save all 10 participants
       if (Array.isArray(info.participants)) {
-        const matchScores = calculateMatchScores(info.participants, info.gameDuration);
+        const matchScores = calculateMatchScores(info.participants, info.gameDuration, {
+          queueId: info.queueId,
+          mapId: info.mapId,
+          teams: info.teams,
+        });
 
         for (const p of info.participants) {
           const isMainPlayer = p.puuid === puuid;

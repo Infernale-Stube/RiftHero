@@ -239,6 +239,26 @@ export interface TranslationDictionary {
     redLeads: string;
     goldUnit: string;
     noTimeline: string;
+    heroScoreTitle: string;
+    heroScoreSubtitle: string;
+    criteriaCombat: string;
+    criteriaDamage: string;
+    criteriaEconomy: string;
+    criteriaObjectives: string;
+    criteriaVision: string;
+    criteriaLane: string;
+    winBonus: string;
+    lossPenalty: string;
+    remakeNeutral: string;
+    avgTeamScore: string;
+    laneDiffGold: string;
+    laneDiffCs: string;
+    laneDiffDmg: string;
+    objTakedowns: string;
+    showBreakdown: string;
+    hideBreakdown: string;
+    scoreRanking: string;
+    noScoreTimeline: string;
   };
   live: {
     analyzing: string;
@@ -779,6 +799,26 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redLeads: '(Rot führt)',
       goldUnit: '{amount}k Gold',
       noTimeline: 'Keine Timeline-Daten für dieses Match verfügbar.',
+      heroScoreTitle: 'Hero Score Analyse & Rangliste',
+      heroScoreSubtitle: 'Rollenbasierte Bewertung aus 6 Kriterien (Combat, Damage, Economy, Objectives, Vision & Lane-Diff)',
+      criteriaCombat: 'Kampf & KDA',
+      criteriaDamage: 'Schaden',
+      criteriaEconomy: 'Gold & Farm',
+      criteriaObjectives: 'Objektive',
+      criteriaVision: 'Vision',
+      criteriaLane: 'Lane-Matchup',
+      winBonus: 'Sieg-Bonus',
+      lossPenalty: 'Niederlage',
+      remakeNeutral: 'Remake',
+      avgTeamScore: 'Ø Hero Score',
+      laneDiffGold: 'Gold vs. Lane',
+      laneDiffCs: 'CS vs. Lane',
+      laneDiffDmg: 'Schaden vs. Lane',
+      objTakedowns: 'Objektiv-Beteiligung',
+      showBreakdown: 'Kriterien',
+      hideBreakdown: 'Schließen',
+      scoreRanking: 'Spieler-Ranking nach Hero Score',
+      noScoreTimeline: 'Für dieses Match sind keine Timeline-Daten für den minütlichen Hero Score-Verlauf verfügbar.',
     },
     live: {
       analyzing: 'Spectator-Status wird abgefragt...',
@@ -1317,6 +1357,26 @@ export const translations: Record<Locale, TranslationDictionary> = {
       redLeads: '(Red leads)',
       goldUnit: '{amount}k Gold',
       noTimeline: 'No timeline data available for this match.',
+      heroScoreTitle: 'Hero Score Analysis & Leaderboard',
+      heroScoreSubtitle: 'Role-based evaluation across 6 criteria (Combat, Damage, Economy, Objectives, Vision & Lane Diff)',
+      criteriaCombat: 'Combat & KDA',
+      criteriaDamage: 'Damage',
+      criteriaEconomy: 'Gold & Farm',
+      criteriaObjectives: 'Objectives',
+      criteriaVision: 'Vision',
+      criteriaLane: 'Lane Matchup',
+      winBonus: 'Win Bonus',
+      lossPenalty: 'Defeat',
+      remakeNeutral: 'Remake',
+      avgTeamScore: 'Avg Hero Score',
+      laneDiffGold: 'Gold vs Lane',
+      laneDiffCs: 'CS vs Lane',
+      laneDiffDmg: 'Damage vs Lane',
+      objTakedowns: 'Objective Takedowns',
+      showBreakdown: 'Criteria',
+      hideBreakdown: 'Close',
+      scoreRanking: 'Player Hero Score Ranking',
+      noScoreTimeline: 'No timeline data available for minute-by-minute Hero Score progression.',
     },
     live: {
       analyzing: 'Checking Spectator status...',

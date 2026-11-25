@@ -134,12 +134,52 @@ export interface MatchParticipant {
   premadeGroup?: PremadeGroupInfo | null;
 }
 
+export type ScoreTier = 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
+
+export type HeroScoreRole =
+  | 'TOP'
+  | 'JUNGLE'
+  | 'MIDDLE'
+  | 'BOTTOM'
+  | 'UTILITY'
+  | 'ARAM'
+  | 'UNKNOWN';
+
+export interface HeroScoreCategoryMetrics {
+  score: number;
+  weight: number;
+}
+
+export interface HeroScoreBreakdown {
+  role: HeroScoreRole;
+  combat: HeroScoreCategoryMetrics;
+  damage: HeroScoreCategoryMetrics;
+  economy: HeroScoreCategoryMetrics;
+  objectives: HeroScoreCategoryMetrics;
+  vision: HeroScoreCategoryMetrics;
+  lane: HeroScoreCategoryMetrics;
+  winBonus: number;
+  highlights: {
+    kda: number;
+    killParticipation: number;
+    damageShare: number;
+    csPerMin: number;
+    goldPerMin: number;
+    visionPerMin: number;
+    goldDiffVsLane: number | null;
+    csDiffVsLane: number | null;
+    dmgDiffVsLane: number | null;
+    objectiveTakedowns: number;
+  };
+}
+
 export interface DeepLolScore {
   score: number;
   rank: number;
   isMvp: boolean;
   isAce: boolean;
-  tierRating: 'S+' | 'S' | 'A' | 'B' | 'C' | 'D';
+  tierRating: ScoreTier;
+  breakdown?: HeroScoreBreakdown;
 }
 
 export interface ScoreTimelinePoint {

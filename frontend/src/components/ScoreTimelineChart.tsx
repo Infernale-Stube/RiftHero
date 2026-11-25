@@ -53,8 +53,18 @@ export default function ScoreTimelineChart({
 
   const [selectedPuuids, setSelectedPuuids] = useState<Set<string>>(defaultSelectedPuuids);
 
+  // Map each participant PUUID to a stable color across chips, paths, and hover tooltip
+  const colorByPuuid = new Map<string, string>();
+  participants.forEach((p, idx) => {
+    colorByPuuid.set(p.puuid, PLAYER_COLORS[idx % PLAYER_COLORS.length]);
+  });
+
   if (!scoreTimeline || scoreTimeline.length < 2) {
-    return null;
+    return (
+      <div className="rounded-2xl border border-white/[0.08] bg-black/50 p-6 text-center text-xs text-slate-500">
+        {t('matchDetail.noScoreTimeline')}
+      </div>
+    );
   }
 
   // Dimensions
@@ -257,15 +267,19 @@ export default function ScoreTimelineChart({
               <Trophy className="h-3.5 w-3.5 text-amber-400" />
               <span className="text-[10px] font-black text-amber-300">MVP</span>
               <span className="text-[11px] font-bold text-white">{mvpParticipant.riotIdGameName}</span>
-              <span className="text-[10px] font-black text-amber-400">({toScore100(mvpParticipant.score?.score)})</span>
+              <span className="text-[10px] font-black text-amber-400">
+                ({toScore100(mvpParticipant.score?.score ?? mvpParticipant.heroScore)} · {mvpParticipant.score?.tierRating || 'S'})
+              </span>
             </div>
           )}
           {aceParticipant && (
-            <div className="flex items-center gap-1.5 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5">
-              <Award className="h-3.5 w-3.5 text-purple-400" />
-              <span className="text-[10px] font-black text-purple-300">ACE</span>
+            <div className="flex items-center gap-1.5 rounded-md bg-teal-500/10 border border-teal-500/30 px-2 py-0.5">
+              <Award className="h-3.5 w-3.5 text-teal-400" />
+              <span className="text-[10px] font-black text-teal-300">ACE</span>
               <span className="text-[11px] font-bold text-white">{aceParticipant.riotIdGameName}</span>
-              <span className="text-[10px] font-black text-purple-400">({toScore100(aceParticipant.score?.score)})</span>
+              <span className="text-[10px] font-black text-teal-400">
+                ({toScore100(aceParticipant.score?.score ?? aceParticipant.heroScore)} · {aceParticipant.score?.tierRating || 'A'})
+              </span>
             </div>
           )}
         </div>
@@ -296,9 +310,9 @@ export default function ScoreTimelineChart({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {participants.map((p, idx) => {
+            {participants.map((p) => {
               const isSelected = selectedPuuids.has(p.puuid);
-              const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
+              const color = colorByPuuid.get(p.puuid) || PLAYER_COLORS[0];
               const pos = getParticipantPosition(p);
 
               return (
@@ -440,12 +454,12 @@ export default function ScoreTimelineChart({
           {/* Player Curves Mode */}
           {viewMode === 'players' && (
             <>
-              {participants.map((p, idx) => {
+              {participants.map((p) => {
                 if (!selectedPuuids.has(p.puuid)) return null;
-                const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
+                const color = colorByPuuid.get(p.puuid) || PLAYER_COLORS[0];
 
                 const points = scoreTimeline.map((pt) => {
-                  const scoreVal = pt.playerScores[p.puuid] ?? 5.5;
+                  const scoreVal = pt.playerScores[p.puuid] ?? 50;
                   return `${getX(pt.minute).toFixed(1)},${getY(scoreVal).toFixed(1)}`;
                 });
                 const d = `M ${points.join(' L ')}`;
@@ -499,6 +513,27 @@ export default function ScoreTimelineChart({
                   />
                 </>
               )}
+              {viewMode === 'players' && hoveredPoint && (
+                <>
+                  {participants
+                    .filter((p) => selectedPuuids.has(p.puuid))
+                    .map((p) => {
+                      const sc = hoveredPoint.playerScores[p.puuid] ?? 50;
+                      const color = colorByPuuid.get(p.puuid) || '#38bdf8';
+                      return (
+                        <circle
+                          key={p.puuid}
+                          cx={hoverX}
+                          cy={getY(sc)}
+                          r="3.5"
+                          fill={color}
+                          stroke="#ffffff"
+                          strokeWidth="1.2"
+                        />
+                      );
+                    })}
+                </>
+              )}
             </g>
           )}
         </svg>
@@ -506,9 +541,9 @@ export default function ScoreTimelineChart({
         {/* Hover Tooltip Box */}
         {hoverX !== null && hoveredPoint && (
           <div
-            className="pointer-events-none absolute z-20 rounded-xl border border-white/20 bg-black/90 p-3 shadow-2xl backdrop-blur-md transition-all text-xs"
+            className="pointer-events-none absolute z-20 rounded-xl border border-white/20 bg-black/90 p-3 shadow-2xl backdrop-blur-md transition-all text-xs min-w-[170px]"
             style={{
-              left: `${Math.min(svgWidth - 200, Math.max(10, hoverX - 80))}px`,
+              left: `${Math.min(76, Math.max(3, (hoverX / svgWidth) * 100))}%`,
               top: '10px',
             }}
           >
@@ -538,9 +573,9 @@ export default function ScoreTimelineChart({
               <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto pr-1">
                 {participants
                   .filter((p) => selectedPuuids.has(p.puuid))
-                  .map((p, idx) => {
+                  .map((p) => {
                     const sc = hoveredPoint.playerScores[p.puuid] ?? 50;
-                    const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
+                    const color = colorByPuuid.get(p.puuid) || '#38bdf8';
 
                     return (
                       <div key={p.puuid} className="flex items-center justify-between gap-3">
