@@ -219,9 +219,11 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
   const maxGameCs = Math.max(...allParticipants.map((p) => p.cs), 1);
 
 
-  const hasAnyScore = allParticipants.some(
-    (p) => (typeof p.heroScore === 'number' && p.heroScore > 0) || (typeof p.score?.score === 'number' && p.score.score > 0)
-  );
+  const hasAnyScore =
+    !isRemake &&
+    allParticipants.some(
+      (p) => (typeof p.heroScore === 'number' && p.heroScore > 0) || (typeof p.score?.score === 'number' && p.score.score > 0)
+    );
 
   // Sort all 10 players by score descending to assign overall rank (1st to 10th) if score exists
   const allPlayersRanked = hasAnyScore
@@ -950,8 +952,8 @@ export default function MatchCard({ match, region, isNew }: MatchCardProps) {
             </div>
           </div>
 
-          {/* Score Block (Prominent & Clean, clickable for full popup breakdown) */}
-          {((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
+          {/* Score Block (Prominent & Clean, clickable for full popup breakdown; hidden on remakes) */}
+          {!isRemake && ((participant.heroScore && participant.heroScore > 0) || (participant.score && participant.score.score > 0)) && (
             <button
               type="button"
               onClick={() => setModalParticipant(participant)}

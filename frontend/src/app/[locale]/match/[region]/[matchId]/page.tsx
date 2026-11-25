@@ -130,6 +130,7 @@ export default function MatchDetailPage() {
     scoreTimeline,
   } = matchData;
 
+  const isRemake = Boolean(matchData.isRemake || gameDuration <= 330);
   const durationMinutes = gameDuration / 60;
   const blueParticipants = participants.filter((p) => p.teamId === 100);
   const redParticipants = participants.filter((p) => p.teamId === 200);
@@ -410,7 +411,7 @@ export default function MatchDetailPage() {
                             {p.lpChange.delta > 0 ? `+${p.lpChange.delta}` : p.lpChange.delta} LP
                           </span>
                         )}
-                        {((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (() => {
+                        {!isRemake && ((p.heroScore && p.heroScore > 0) || (p.score && p.score.score > 0)) && (() => {
                           const rawHeroVal = p.score?.score ?? p.heroScore ?? 0;
                           const displayScore = Math.round(rawHeroVal <= 10 ? rawHeroVal * 10 : rawHeroVal);
 
@@ -646,6 +647,11 @@ export default function MatchDetailPage() {
               >
                 {queueName}
               </span>
+              {isRemake && (
+                <span className="rounded bg-slate-500/20 border border-slate-500/40 px-2 py-0.5 text-xs font-black uppercase text-slate-300">
+                  REMAKE
+                </span>
+              )}
               {matchData.lpChange && (
                 <div className="flex items-center gap-1.5 ml-1">
                   <span
@@ -869,17 +875,21 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* 5. HERO SCORE ANALYSE & VERLAUF */}
-      <HeroScoreAnalysis
-        participants={participants}
-        onInspectPlayer={(p) => setModalParticipant(p)}
-      />
+      {/* 5. HERO SCORE ANALYSE & VERLAUF (Hidden on Remakes) */}
+      {!isRemake && (
+        <>
+          <HeroScoreAnalysis
+            participants={participants}
+            onInspectPlayer={(p) => setModalParticipant(p)}
+          />
 
-      <ScoreTimelineChart
-        scoreTimeline={scoreTimeline}
-        participants={participants}
-        blueWon={blueTeam.win}
-      />
+          <ScoreTimelineChart
+            scoreTimeline={scoreTimeline}
+            participants={participants}
+            blueWon={blueTeam.win}
+          />
+        </>
+      )}
 
       {/* 6. GOLD-VORTEIL GRAPH (Interaktives Timeline-Diagramm) */}
       <GoldAdvantageChart

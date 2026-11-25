@@ -259,7 +259,13 @@ export async function getSummonerMatches(
     const blueTotalDmg = allParticipants.filter((p) => p.teamId === 100).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
     const redTotalDmg = allParticipants.filter((p) => p.teamId === 200).reduce((acc, p) => acc + p.totalDamageDealtToChampions, 0);
 
-    const matchScores = buildScoresFromSavedHeroScores(allParticipants);
+    const isRemake =
+      m.gameDuration <= 330 ||
+      Boolean(m.endOfGameResult && m.endOfGameResult.toLowerCase().includes('remake'));
+
+    const matchScores = isRemake
+      ? new Map<string, DeepLolScore>()
+      : buildScoresFromSavedHeroScores(allParticipants);
 
     const formattedParticipants = allParticipants.map((p) => {
       const isBlue = p.teamId === 100;
@@ -269,8 +275,8 @@ export async function getSummonerMatches(
         isBlue ? blueTotalKills : redTotalKills,
         isBlue ? blueTotalDmg : redTotalDmg
       );
-      formatted.score = matchScores.get(p.puuid);
-      formatted.heroScore = p.heroScore ?? null;
+      formatted.score = isRemake ? undefined : matchScores.get(p.puuid);
+      formatted.heroScore = isRemake ? null : (p.heroScore ?? null);
       return formatted;
     });
     const blueTeam = formattedParticipants
@@ -321,12 +327,10 @@ export async function getSummonerMatches(
 
     const matchLpChange = lpMap.get(m.id) || null;
     currentFormatted.lpChange = matchLpChange;
-    currentFormatted.score = matchScores.get(up.puuid);
+    currentFormatted.score = isRemake ? undefined : matchScores.get(up.puuid);
+    currentFormatted.heroScore = isRemake ? null : (up.heroScore ?? null);
     currentFormatted.premadeGroup = (isCurrentBlue ? bluePremades : redPremades).get(up.puuid) || null;
 
-    const isRemake =
-      m.gameDuration <= 330 ||
-      Boolean(m.endOfGameResult && m.endOfGameResult.toLowerCase().includes('remake'));
     const isSurrender = false;
     const gameEndTimestamp = m.gameEndTimestamp
       ? Number(m.gameEndTimestamp)

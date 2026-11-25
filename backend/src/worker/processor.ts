@@ -400,6 +400,7 @@ export async function processSummonerJob(job: Job<SummonerJobData>): Promise<voi
         const matchScores = calculateMatchScores(info.participants, info.gameDuration, {
           queueId: info.queueId,
           mapId: info.mapId,
+          endOfGameResult: info.endOfGameResult,
           teams: info.teams,
         });
 

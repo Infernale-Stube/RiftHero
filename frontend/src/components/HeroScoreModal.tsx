@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import {
   X,
@@ -43,9 +44,14 @@ export default function HeroScoreModal({
   onClose,
 }: HeroScoreModalProps) {
   const { t } = useTranslation();
+  const [mounted, setMounted] = useState(false);
   const [loadedParticipant, setLoadedParticipant] = useState<MatchParticipant | null>(null);
   const [loadedDuration, setLoadedDuration] = useState<number | undefined>(gameDuration);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close on Escape
   useEffect(() => {
@@ -90,7 +96,7 @@ export default function HeroScoreModal({
     };
   }, [participant, region, matchId, gameDuration]);
 
-  if (!participant) return null;
+  if (!participant || !mounted) return null;
 
   const active = loadedParticipant || participant;
   const breakdown: HeroScoreBreakdown | undefined = active.score?.breakdown;
@@ -185,9 +191,9 @@ export default function HeroScoreModal({
       ]
     : [];
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -437,6 +443,7 @@ export default function HeroScoreModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

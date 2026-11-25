@@ -508,6 +508,7 @@ export interface MatchDetailResponse {
   gameVersion: string;
   queueId: number;
   queueName: string;
+  isRemake?: boolean;
   blueTeam: TeamMatchDetail;
   redTeam: TeamMatchDetail;
   participants: MatchParticipant[];

@@ -13,6 +13,7 @@ import {
 import {
   calculateMatchScores,
   calculateScoreTimeline,
+  isMatchRemake,
   DeepLolScore,
   ScoreTimelinePoint,
 } from './scoreService';
@@ -75,6 +76,7 @@ export interface MatchDetailResponse {
   gameVersion: string;
   queueId: number;
   queueName: string;
+  isRemake: boolean;
   blueTeam: TeamMatchDetail;
   redTeam: TeamMatchDetail;
   participants: any[];
@@ -185,6 +187,7 @@ export async function getMatchDetails(
               const precalculatedScores = calculateMatchScores(info.participants, info.gameDuration, {
                 queueId: info.queueId,
                 mapId: info.mapId,
+                endOfGameResult: info.endOfGameResult,
                 teams: info.teams,
               });
               return info.participants.map((p) => {
@@ -292,34 +295,39 @@ export async function getMatchDetails(
     );
   }
 
-  const matchScores = calculateMatchScores(participants, match.gameDuration, {
-    queueId: match.queueId,
-    mapId: match.mapId,
-    matchObjectives: {
-      blueTowerKills: match.blueTowerKills,
-      blueInhibitorKills: match.blueInhibitorKills,
-      blueBaronKills: match.blueBaronKills,
-      blueDragonKills: match.blueDragonKills,
-      blueRiftHeraldKills: match.blueRiftHeraldKills,
-      blueHordeKills: match.blueHordeKills,
-      redTowerKills: match.redTowerKills,
-      redInhibitorKills: match.redInhibitorKills,
-      redBaronKills: match.redBaronKills,
-      redDragonKills: match.redDragonKills,
-      redRiftHeraldKills: match.redRiftHeraldKills,
-      redHordeKills: match.redHordeKills,
-    },
-    timeline,
-  });
+  const isRemake = isMatchRemake(match.gameDuration, participants, match.endOfGameResult);
 
-  // Sync recalculated heroScores back to DB if missing or outdated (e.g. legacy MVP=100)
+  const matchScores = isRemake
+    ? new Map<string, DeepLolScore>()
+    : calculateMatchScores(participants, match.gameDuration, {
+        queueId: match.queueId,
+        mapId: match.mapId,
+        endOfGameResult: match.endOfGameResult,
+        matchObjectives: {
+          blueTowerKills: match.blueTowerKills,
+          blueInhibitorKills: match.blueInhibitorKills,
+          blueBaronKills: match.blueBaronKills,
+          blueDragonKills: match.blueDragonKills,
+          blueRiftHeraldKills: match.blueRiftHeraldKills,
+          blueHordeKills: match.blueHordeKills,
+          redTowerKills: match.redTowerKills,
+          redInhibitorKills: match.redInhibitorKills,
+          redBaronKills: match.redBaronKills,
+          redDragonKills: match.redDragonKills,
+          redRiftHeraldKills: match.redRiftHeraldKills,
+          redHordeKills: match.redHordeKills,
+        },
+        timeline,
+      });
+
+  // Sync recalculated heroScores back to DB (or clear heroScore on remakes)
   const scoreSyncOps = participants
     .map((p) => {
-      const computedScore = matchScores.get(p.puuid)?.score;
-      if (typeof computedScore === 'number' && p.heroScore !== computedScore) {
+      const targetScore = isRemake ? null : (matchScores.get(p.puuid)?.score ?? null);
+      if (p.heroScore !== targetScore) {
         return prisma.matchParticipant.update({
           where: { id: p.id },
-          data: { heroScore: computedScore },
+          data: { heroScore: targetScore },
         });
       }
       return null;
@@ -394,8 +402,8 @@ export async function getMatchDetails(
         postGameRank: p.postGameRank,
         postGameTotalLp: p.postGameTotalLp,
         lpChange,
-        heroScore: score?.score ?? p.heroScore ?? null,
-        score,
+        heroScore: isRemake ? null : (score?.score ?? p.heroScore ?? null),
+        score: isRemake ? undefined : score,
         premadeGroup: null as any,
       };
     })
@@ -542,8 +550,11 @@ export async function getMatchDetails(
   const maxDamage = Math.max(...formattedParticipants.map((p) => p.totalDamageDealtToChampions), 1);
   const maxDamageTaken = Math.max(...formattedParticipants.map((p) => p.totalDamageTaken), 1);
 
-  // Compute minute-by-minute score progression timeline (DeepLoL style) if scores exist
-  const scoreTimeline = matchScores.size > 0 ? calculateScoreTimeline(timeline, participants, matchScores) : [];
+  // Compute minute-by-minute score progression timeline if scores exist and not a remake
+  const scoreTimeline =
+    !isRemake && matchScores.size > 0
+      ? calculateScoreTimeline(timeline, participants, matchScores)
+      : [];
 
   // Default overall match LP change from first participant with LP or first participant
   const matchOverallLpChange = formattedParticipants.find((p) => p.lpChange)?.lpChange || null;
@@ -560,6 +571,7 @@ export async function getMatchDetails(
     gameVersion: match.gameVersion,
     queueId: match.queueId,
     queueName: getQueueName(match.queueId),
+    isRemake,
     blueTeam,
     redTeam,
     participants: formattedParticipants,

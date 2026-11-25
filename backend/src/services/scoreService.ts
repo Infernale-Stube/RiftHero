@@ -72,9 +72,23 @@ export interface MatchObjectivesSummary {
 export interface CalculateScoresContext {
   queueId?: number;
   mapId?: number;
+  endOfGameResult?: string | null;
   teams?: any[];
   matchObjectives?: MatchObjectivesSummary;
   timeline?: any;
+}
+
+export function isMatchRemake(
+  gameDurationSeconds: number,
+  participants: any[] = [],
+  endOfGameResult?: string | null
+): boolean {
+  if (gameDurationSeconds <= 330) return true;
+  if (endOfGameResult && endOfGameResult.toLowerCase().includes('remake')) return true;
+  if (Array.isArray(participants) && participants.some((p) => p?.gameEndedInEarlySurrender === true)) {
+    return true;
+  }
+  return false;
 }
 
 interface TimelineParticipantExtras {
@@ -334,7 +348,10 @@ export function calculateMatchScores(
     return new Map<string, DeepLolScore>();
   }
 
-  const isRemake = gameDurationSeconds <= 330;
+  if (isMatchRemake(gameDurationSeconds, participants, context?.endOfGameResult)) {
+    return new Map<string, DeepLolScore>();
+  }
+
   const durationMin = Math.max(gameDurationSeconds / 60, 1);
   const timelineExtrasMap = extractTimelineExtras(context?.timeline, participants);
 
@@ -672,10 +689,8 @@ export function calculateMatchScores(
       visionScoreVal * weights.vision +
       laneScore * weights.lane;
 
-    const winBonus = isRemake ? 0 : p.win ? 4 : -3;
-    const rawScore = isRemake
-      ? clamp(Math.round(45 + (weightedBase - 50) * 0.25), 40, 60)
-      : clamp(Math.round(weightedBase + winBonus), 10, 100);
+    const winBonus = p.win ? 4 : -3;
+    const rawScore = clamp(Math.round(weightedBase + winBonus), 10, 100);
 
     const breakdown: HeroScoreBreakdown = {
       role,
@@ -711,14 +726,14 @@ export function calculateMatchScores(
   // Sort by rawScore descending
   scoredList.sort((a, b) => b.rawScore - a.rawScore);
 
-  const mvpItem = isRemake ? undefined : scoredList.find((s) => s.win);
-  const aceItem = isRemake ? undefined : scoredList.find((s) => !s.win);
+  const mvpItem = scoredList.find((s) => s.win);
+  const aceItem = scoredList.find((s) => !s.win);
 
   const resultMap = new Map<string, DeepLolScore>();
 
   scoredList.forEach((item, index) => {
-    const isMvp = !isRemake && item.puuid === mvpItem?.puuid;
-    const isAce = !isRemake && item.puuid === aceItem?.puuid;
+    const isMvp = item.puuid === mvpItem?.puuid;
+    const isAce = item.puuid === aceItem?.puuid;
     const finalScore = clamp(Math.round(item.rawScore), 10, 100);
 
     resultMap.set(item.puuid, {
