@@ -573,7 +573,7 @@ export default function ChampionsListView() {
               <p className="text-sm font-bold text-[#f0e6d3] leading-tight truncate">
                 {hoveredChampion.champ.name}
               </p>
-              <p className="text-[11px] text-zinc-400 capitalize truncate mt-0.5">
+              <p className="text-[11px] text-zinc-400 truncate mt-0.5">
                 {hoveredChampion.champ.title}
               </p>
               <div className="flex items-center gap-1.5 mt-1.5">

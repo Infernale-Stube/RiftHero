@@ -1050,7 +1050,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
             {data.name}
           </h1>
-          <p className="text-sm font-semibold text-amber-400 capitalize mt-0.5">
+          <p className="text-sm font-semibold text-amber-400 mt-0.5">
             {data.title}
           </p>
         </div>
@@ -2427,7 +2427,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
                   {champ.name}
                 </span>
                 {champ.title && (
-                  <span className="text-[11px] text-zinc-400 capitalize truncate mt-0.5">
+                  <span className="text-[11px] text-zinc-400 truncate mt-0.5">
                     {champ.title}
                   </span>
                 )}
