@@ -15,6 +15,7 @@ import {
   GameQueue,
   CounterPickMetaResponse,
   CounterPickChampionResponse,
+  CounterPickPoolResponse,
 } from '@/types';
 
 export function getApiBaseUrl(): string {
@@ -543,6 +544,30 @@ export async function fetchChampionCounterPicks(params: {
     return null;
   }
 }
+
+export async function fetchPoolCounterPicks(params: {
+  enemyChampion: string;
+  poolChampionIds: number[];
+  tier?: string;
+  role?: string;
+  slot?: 'current' | 'previous';
+  locale?: string;
+}): Promise<CounterPickPoolResponse | null> {
+  const baseUrl = getApiBaseUrl();
+  try {
+    const res = await fetch(`${baseUrl}/counterpicks/pool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 
 
 

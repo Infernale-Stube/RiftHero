@@ -491,6 +491,50 @@ export interface TranslationDictionary {
     tierBootsPlural: string;
     tierConsumablesPlural: string;
   };
+  counterPicks: {
+    pageTitle: string;
+    lastUpdated: string;
+    currentPatch: string;
+    previousPatch: string;
+    previousPatchTooltip: string;
+    selectOpponent: string;
+    selectOpponentPlaceholder: string;
+    searchChampion: string;
+    roleLabel: string;
+    tierLabel: string;
+    emptyTitle: string;
+    emptyDesc: string;
+    noDataNotice: string;
+    poolTitle: string;
+    poolEdit: string;
+    poolDone: string;
+    poolClear: string;
+    poolEmptyHint: string;
+    poolSearchPlaceholder: string;
+    poolAllRoles: string;
+    poolRecTitle: string;
+    poolRecLoading: string;
+    poolNoPoolTitle: string;
+    poolNoPoolDesc: string;
+    poolAddNow: string;
+    poolNoGoodMatchup: string;
+    poolBestPick: string;
+    poolChampWr: string;
+    poolNoMatchupData: string;
+    generalSectionTitle: string;
+    strongAgainst: string;
+    counteredBy: string;
+    allMatchups: string;
+    onlyWithData: string;
+    filterOpponent: string;
+    colOpponent: string;
+    colWinrateVs: string;
+    colGames: string;
+    loadingData: string;
+    noMatchupsFound: string;
+    gamesLabel: string;
+    inspectChampion: string;
+  };
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
@@ -987,6 +1031,50 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tierBootsPlural: 'STIEFEL',
       tierConsumablesPlural: 'VERBRAUCHSGÜTER',
     },
+    counterPicks: {
+      pageTitle: 'Champion Counter Picks',
+      lastUpdated: 'Datenstand:',
+      currentPatch: 'Aktueller Patch',
+      previousPatch: 'Vorheriger Patch',
+      previousPatchTooltip: 'Wird automatisch befüllt, sobald der nächste Patch erscheint',
+      selectOpponent: 'Gegnerischen Champion wählen',
+      selectOpponentPlaceholder: 'Gegner-Champion auswählen...',
+      searchChampion: 'Champion suchen...',
+      roleLabel: 'Rolle / Lane',
+      tierLabel: 'Rang / Tier',
+      emptyTitle: 'Wähle einen gegnerischen Champion aus',
+      emptyDesc: 'Wähle oben den gegnerischen Pick aus, um sofort passende Empfehlungen aus deinem Champion-Pool und alle allgemeinen Counterpicks zu sehen.',
+      noDataNotice: 'Für diese Kombination (Champion / Tier / Rolle / Patch) liegen noch keine Daten vor.',
+      poolTitle: 'Mein Champion-Pool',
+      poolEdit: 'Pool bearbeiten',
+      poolDone: 'Fertig',
+      poolClear: 'Leeren',
+      poolEmptyHint: 'Noch kein Champion im Pool. Klicke auf „Pool bearbeiten“, um deine Champions zu speichern.',
+      poolSearchPlaceholder: 'Champion suchen und per Klick hinzufügen...',
+      poolAllRoles: 'Alle Rollen',
+      poolRecTitle: 'Empfehlungen aus deinem Pool gegen {name}',
+      poolRecLoading: 'Werte deinen Champion-Pool aus...',
+      poolNoPoolTitle: 'Noch kein persönlicher Champion-Pool hinterlegt',
+      poolNoPoolDesc: 'Hinterlege deine gespielten Champions, um während der Champion Select sofort die besten Picks aus deinem Pool gegen {name} zu sehen.',
+      poolAddNow: 'Pool jetzt zusammenstellen',
+      poolNoGoodMatchup: 'Kein Champion aus deinem Pool hat aktuell ein positives Matchup (≥ 50% Winrate) gegen {name}. Unten findest du die besten allgemeinen Counterpicks.',
+      poolBestPick: 'Top-Empfehlung',
+      poolChampWr: 'Champ WR',
+      poolNoMatchupData: 'Keine Matchup-Daten',
+      generalSectionTitle: 'Allgemeine Counterpicks für {name}',
+      strongAgainst: '{name} ist stark gegen',
+      counteredBy: '{name} wird gecountert von',
+      allMatchups: 'Alle Matchups ({count} Champions)',
+      onlyWithData: 'Nur Matchups mit Daten',
+      filterOpponent: 'Gegner filtern...',
+      colOpponent: 'Gegner-Champion',
+      colWinrateVs: 'Winrate vs',
+      colGames: 'Spiele',
+      loadingData: 'Lade CounterPick-Daten...',
+      noMatchupsFound: 'Keine Matchups gefunden.',
+      gamesLabel: 'Spiele',
+      inspectChampion: 'Matchups ansehen',
+    },
   },
   en: {
     common: {
@@ -1480,6 +1568,50 @@ export const translations: Record<Locale, TranslationDictionary> = {
       tierStarters: 'STARTERS',
       tierBootsPlural: 'BOOTS',
       tierConsumablesPlural: 'CONSUMABLES',
+    },
+    counterPicks: {
+      pageTitle: 'Champion Counter Picks',
+      lastUpdated: 'Last updated:',
+      currentPatch: 'Current Patch',
+      previousPatch: 'Previous Patch',
+      previousPatchTooltip: 'Automatically populated once the next patch releases',
+      selectOpponent: 'Select Opponent Pick',
+      selectOpponentPlaceholder: 'Select opponent champion...',
+      searchChampion: 'Search champion...',
+      roleLabel: 'Role / Lane',
+      tierLabel: 'Rank / Tier',
+      emptyTitle: 'Select an opponent champion',
+      emptyDesc: 'Pick the enemy champion above to immediately see the best recommendations from your champion pool alongside all general counterpicks.',
+      noDataNotice: 'No data available for this combination (Champion / Tier / Role / Patch) yet.',
+      poolTitle: 'My Champion Pool',
+      poolEdit: 'Edit Pool',
+      poolDone: 'Done',
+      poolClear: 'Clear',
+      poolEmptyHint: 'No champions in your pool yet. Click "Edit Pool" to save your champions.',
+      poolSearchPlaceholder: 'Search champion and click to toggle...',
+      poolAllRoles: 'All Roles',
+      poolRecTitle: 'Pool Recommendations vs {name}',
+      poolRecLoading: 'Evaluating your champion pool...',
+      poolNoPoolTitle: 'No personal champion pool saved yet',
+      poolNoPoolDesc: 'Add your played champions to instantly see your best pool picks against {name} during Champion Select.',
+      poolAddNow: 'Build Pool Now',
+      poolNoGoodMatchup: 'No champion in your pool currently has a positive matchup (≥ 50% winrate) against {name}. Check the general counterpicks below.',
+      poolBestPick: 'Best Pick',
+      poolChampWr: 'Champ WR',
+      poolNoMatchupData: 'No matchup data',
+      generalSectionTitle: 'General Counterpicks for {name}',
+      strongAgainst: '{name} is Strong Against',
+      counteredBy: '{name} is Countered By',
+      allMatchups: 'All Matchups ({count} Champions)',
+      onlyWithData: 'Only matchups with data',
+      filterOpponent: 'Filter opponent...',
+      colOpponent: 'Opponent Champion',
+      colWinrateVs: 'Winrate vs',
+      colGames: 'Games',
+      loadingData: 'Loading CounterPick data...',
+      noMatchupsFound: 'No matchups found.',
+      gamesLabel: 'Games',
+      inspectChampion: 'Inspect matchups',
     },
   },
 };

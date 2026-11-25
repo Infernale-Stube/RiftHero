@@ -611,4 +611,34 @@ export interface CounterPickChampionResponse {
   matchups: CounterPickMatchupEntry[];
 }
 
+export interface CounterPickPoolRecommendation {
+  championId: number;
+  key: string;
+  name: string;
+  nameDe: string;
+  nameEn: string;
+  title: string;
+  image: string;
+  positions: string[];
+  vsWr: number | null;
+  games: number | null;
+  source: 'direct' | 'inverse' | null;
+  championWinrate: number | null;
+  championPickrate: number | null;
+  championBanrate: number | null;
+  roleShare: number | null;
+}
+
+export interface CounterPickPoolResponse {
+  slot: 'current' | 'previous';
+  patch: string | null;
+  tier: string;
+  role: string;
+  enemyChampion: CounterPickChampionSummary;
+  hasGoodMatchup: boolean;
+  poolCount: number;
+  recommendations: CounterPickPoolRecommendation[];
+}
+
+
 

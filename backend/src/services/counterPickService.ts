@@ -801,3 +801,206 @@ export async function getChampionCounterPicks(params: {
     matchups,
   };
 }
+
+/**
+ * Evaluates a user's personal champion pool against a selected opponent pick
+ * in a single batched DB query, returning sorted recommendations plus overall role stats.
+ */
+export async function getPoolCounterPicks(params: {
+  enemyChampion: string;
+  poolChampionIds: number[];
+  tier?: string;
+  role?: string;
+  slot?: CounterPickSlot;
+  locale?: string;
+}) {
+  await ensureCounterPickTableExists();
+
+  const locale = params.locale === 'en' ? 'en' : 'de';
+  const slot: CounterPickSlot = params.slot === 'previous' ? 'previous' : 'current';
+  const tier = COUNTERPICK_TIERS.includes(params.tier as CounterPickTier)
+    ? (params.tier as CounterPickTier)
+    : 'all';
+
+  const cleanPoolIds = Array.from(
+    new Set(
+      (params.poolChampionIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )
+  );
+
+  const allChampions = await prisma.champion.findMany({
+    select: {
+      id: true,
+      key: true,
+      nameDe: true,
+      nameEn: true,
+      titleDe: true,
+      titleEn: true,
+      image: true,
+      role: true,
+      positions: true,
+    },
+    orderBy: locale === 'de' ? { nameDe: 'asc' } : { nameEn: 'asc' },
+  });
+
+  const queryNorm = params.enemyChampion.trim().toLowerCase();
+  const numericQuery = /^\d+$/.test(queryNorm) ? parseInt(queryNorm, 10) : null;
+
+  const enemyChampion = allChampions.find((c) => {
+    if (numericQuery !== null && c.id === numericQuery) return true;
+    return (
+      c.key.toLowerCase() === queryNorm ||
+      c.nameEn.toLowerCase() === queryNorm ||
+      c.nameDe.toLowerCase() === queryNorm ||
+      c.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '') === queryNorm.replace(/[^a-z0-9]/g, '')
+    );
+  });
+
+  if (!enemyChampion) {
+    return null;
+  }
+
+  // Resolve role (requested role or enemy champion's primary role)
+  let role: CounterPickRole;
+  if (params.role && COUNTERPICK_ROLES.includes(params.role as CounterPickRole)) {
+    role = params.role as CounterPickRole;
+  } else {
+    const enemyRoleSummaries = await prisma.counterPick.findMany({
+      where: {
+        slot,
+        championId: enemyChampion.id,
+        tier,
+      },
+      select: { role: true, roleShare: true },
+    });
+    const sortedByShare = [...enemyRoleSummaries].sort(
+      (a, b) => (b.roleShare ?? -1) - (a.roleShare ?? -1)
+    );
+    const topRole = sortedByShare[0]?.role as CounterPickRole | undefined;
+    if (topRole && COUNTERPICK_ROLES.includes(topRole)) {
+      role = topRole;
+    } else {
+      const posMap: Record<string, CounterPickRole> = {
+        TOP: 'top',
+        JUNGLE: 'jungle',
+        MID: 'middle',
+        MIDDLE: 'middle',
+        ADC: 'bottom',
+        BOTTOM: 'bottom',
+        SUPPORT: 'support',
+      };
+      const firstPos = (enemyChampion.positions[0] || enemyChampion.role || '').toUpperCase();
+      role = posMap[firstPos] || 'jungle';
+    }
+  }
+
+  const targetPoolIds = cleanPoolIds.filter((id) => id !== enemyChampion.id);
+  const queryChampionIds = Array.from(new Set([enemyChampion.id, ...targetPoolIds]));
+
+  const rows = await prisma.counterPick.findMany({
+    where: {
+      slot,
+      championId: { in: queryChampionIds },
+      tier,
+      role,
+    },
+    select: {
+      championId: true,
+      patch: true,
+      winrate: true,
+      pickrate: true,
+      banrate: true,
+      roleShare: true,
+      fetchedAt: true,
+      matchups: true,
+    },
+  });
+
+  const rowByChampId = new Map(rows.map((r) => [r.championId, r]));
+  const enemyRow = rowByChampId.get(enemyChampion.id);
+  const enemyMatchups =
+    (enemyRow?.matchups as Record<string, CounterMatchupStats | null> | null) || {};
+
+  const champById = new Map(allChampions.map((c) => [c.id, c]));
+
+  const recommendations = targetPoolIds
+    .map((poolChampId) => {
+      const champ = champById.get(poolChampId);
+      if (!champ) return null;
+
+      const poolRow = rowByChampId.get(poolChampId);
+      const poolMatchups =
+        (poolRow?.matchups as Record<string, CounterMatchupStats | null> | null) || {};
+
+      const direct = poolMatchups[String(enemyChampion.id)] ?? null;
+      const inverse = enemyMatchups[String(poolChampId)] ?? null;
+
+      let vsWr: number | null = null;
+      let games: number | null = null;
+      let source: 'direct' | 'inverse' | null = null;
+
+      if (direct && typeof direct.vsWr === 'number') {
+        vsWr = Math.round(direct.vsWr * 100) / 100;
+        games = typeof direct.games === 'number' ? direct.games : null;
+        source = 'direct';
+      } else if (inverse && typeof inverse.vsWr === 'number') {
+        vsWr = Math.round((100 - inverse.vsWr) * 100) / 100;
+        games = typeof inverse.games === 'number' ? inverse.games : null;
+        source = 'inverse';
+      }
+
+      return {
+        championId: champ.id,
+        key: champ.key,
+        name: locale === 'de' ? champ.nameDe : champ.nameEn,
+        nameDe: champ.nameDe,
+        nameEn: champ.nameEn,
+        title: locale === 'de' ? champ.titleDe : champ.titleEn,
+        image: champ.image,
+        positions: champ.positions,
+        vsWr,
+        games,
+        source,
+        championWinrate: poolRow?.winrate ?? null,
+        championPickrate: poolRow?.pickrate ?? null,
+        championBanrate: poolRow?.banrate ?? null,
+        roleShare: poolRow?.roleShare ?? null,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => {
+      if (a.vsWr === null && b.vsWr === null) {
+        return (b.championWinrate ?? -1) - (a.championWinrate ?? -1) || a.name.localeCompare(b.name);
+      }
+      if (a.vsWr === null) return 1;
+      if (b.vsWr === null) return -1;
+      if (b.vsWr !== a.vsWr) return b.vsWr - a.vsWr;
+      if ((b.games ?? 0) !== (a.games ?? 0)) return (b.games ?? 0) - (a.games ?? 0);
+      return a.name.localeCompare(b.name);
+    });
+
+  const latestPatch = await getLatestPatch();
+  const hasGoodMatchup = recommendations.some((r) => r.vsWr !== null && r.vsWr >= 50);
+
+  return {
+    slot,
+    patch: enemyRow?.patch || rows[0]?.patch || (slot === 'current' ? latestPatch : null),
+    tier,
+    role,
+    enemyChampion: {
+      id: enemyChampion.id,
+      key: enemyChampion.key,
+      name: locale === 'de' ? enemyChampion.nameDe : enemyChampion.nameEn,
+      nameDe: enemyChampion.nameDe,
+      nameEn: enemyChampion.nameEn,
+      title: locale === 'de' ? enemyChampion.titleDe : enemyChampion.titleEn,
+      image: enemyChampion.image,
+      positions: enemyChampion.positions,
+    },
+    hasGoodMatchup,
+    poolCount: targetPoolIds.length,
+    recommendations,
+  };
+}
