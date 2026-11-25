@@ -127,6 +127,7 @@ export async function fetchLoldbSkinDetail(skinName: string): Promise<LoldbSkinD
   try {
     const res = await fetch(`https://loldb.info/skins/${clean}`, {
       headers: { RSC: '1', 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
     const text = await res.text();
@@ -570,75 +571,90 @@ export async function buildChampionRostersAndDetails(
               : 2011;
             const currentYear = new Date().getFullYear();
 
-            const processedSkins = rawSkins
-              .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
-              .map((s: any) => {
-                if (s.num === 0) {
+            const processedSkins = await Promise.all(
+              rawSkins
+                .filter((s: any) => s.parentSkin === undefined || s.parentSkin === null)
+                .map(async (s: any) => {
+                  if (s.num === 0) {
+                    return {
+                      id: String(s.id),
+                      num: 0,
+                      name: s.name,
+                      rarity: 'Regular',
+                      rarityColor: '#2E8D4C',
+                      releaseDate: storePrice.releaseDate,
+                      releaseYear: isNaN(baseYear) ? 2011 : baseYear,
+                      cost: 0,
+                      price: 0,
+                      currency: 'RP',
+                      isLegacy: false,
+                    };
+                  }
+
+                  const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                  const skinInfo =
+                    globalSkinMap.get(String(s.id)) ||
+                    skinsLookup?.get(String(s.id)) ||
+                    skinsLookup?.get(String(s.num)) ||
+                    skinsLookup?.get(normName);
+
+                  const englishSkinName = skinInfo?.name || s.name || '';
+                  const rarityRawInitial = skinInfo?.rarity || 'Regular';
+                  const upperRarity = rarityRawInitial.toUpperCase();
+
+                  // Enrich Mythic/Transcendent/Exalted skins during background worker sync so runtime API needs 0 external HTTP calls
+                  let detail = skinDetailCache.get(
+                    englishSkinName
+                      .toLowerCase()
+                      .replace(/k\/da/gi, 'kda')
+                      .replace(/['’.]/g, '')
+                      .replace(/&/g, 'and')
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/^-+|-+$/g, '')
+                  );
+                  if (
+                    !detail &&
+                    (upperRarity.includes('MYTHIC') ||
+                      upperRarity.includes('TRANSCENDENT') ||
+                      upperRarity.includes('EXALTED'))
+                  ) {
+                    detail = (await fetchLoldbSkinDetail(englishSkinName)) ?? undefined;
+                  }
+
+                  const rarityRaw = detail?.tier || rarityRawInitial;
+                  const rarityInfo = mapSkinRarity(rarityRaw);
+
+                  const relDate = detail?.releaseDate || skinInfo?.releaseDate || `${currentYear}`;
+                  let relYear = currentYear;
+                  if (relDate) {
+                    const dt = new Date(relDate);
+                    if (!isNaN(dt.getTime())) relYear = dt.getFullYear();
+                  }
+
+                  const cost = detail?.cost ?? skinInfo?.cost ?? 975;
+                  const price = detail?.price ?? skinInfo?.price ?? cost;
+                  const currency = detail?.currency || skinInfo?.currency || 'RP';
+                  const isLegacy =
+                    detail?.isLegacy !== undefined ? detail.isLegacy : Boolean(skinInfo?.isLegacy);
+
                   return {
                     id: String(s.id),
-                    num: 0,
+                    num: s.num,
                     name: s.name,
-                    rarity: 'Regular',
-                    rarityColor: '#2E8D4C',
-                    releaseDate: storePrice.releaseDate,
-                    releaseYear: isNaN(baseYear) ? 2011 : baseYear,
-                    cost: 0,
-                    price: 0,
-                    currency: 'RP',
-                    isLegacy: false,
+                    rarity: rarityInfo.rarity,
+                    rarityColor: rarityInfo.rarityColor,
+                    releaseDate: relDate,
+                    releaseYear: relYear,
+                    cost,
+                    price,
+                    currency,
+                    isLegacy,
+                    ...(detail?.mythicCost ? { mythicCost: detail.mythicCost } : {}),
+                    skinLines: skinInfo?.skinLines || [],
                   };
-                }
-
-                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-                const skinInfo =
-                  globalSkinMap.get(String(s.id)) ||
-                  skinsLookup?.get(String(s.id)) ||
-                  skinsLookup?.get(String(s.num)) ||
-                  skinsLookup?.get(normName);
-
-                // Check in-memory skinDetailCache without firing external HTTP requests
-                const englishSkinName = skinInfo?.name || s.name || '';
-                const cleanSlug = englishSkinName
-                  .toLowerCase()
-                  .replace(/k\/da/gi, 'kda')
-                  .replace(/['’.]/g, '')
-                  .replace(/&/g, 'and')
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-+|-+$/g, '');
-                const cachedDetail = skinDetailCache.get(cleanSlug);
-
-                const rarityRaw = cachedDetail?.tier || skinInfo?.rarity || 'Regular';
-                const rarityInfo = mapSkinRarity(rarityRaw);
-
-                const relDate = cachedDetail?.releaseDate || skinInfo?.releaseDate || `${currentYear}`;
-                let relYear = currentYear;
-                if (relDate) {
-                  const dt = new Date(relDate);
-                  if (!isNaN(dt.getTime())) relYear = dt.getFullYear();
-                }
-
-                const cost = cachedDetail?.cost ?? skinInfo?.cost ?? 975;
-                const price = cachedDetail?.price ?? skinInfo?.price ?? cost;
-                const currency = cachedDetail?.currency || skinInfo?.currency || 'RP';
-                const isLegacy =
-                  cachedDetail?.isLegacy !== undefined ? cachedDetail.isLegacy : Boolean(skinInfo?.isLegacy);
-
-                return {
-                  id: String(s.id),
-                  num: s.num,
-                  name: s.name,
-                  rarity: rarityInfo.rarity,
-                  rarityColor: rarityInfo.rarityColor,
-                  releaseDate: relDate,
-                  releaseYear: relYear,
-                  cost,
-                  price,
-                  currency,
-                  isLegacy,
-                  skinLines: skinInfo?.skinLines || [],
-                };
-              });
+                })
+            );
 
             // 1. Roster summary entry
             const rosterEntry = {
@@ -734,6 +750,7 @@ export function isSnapshotFresh(row: any): boolean {
 
 // In-memory cache for fast (<1ms) reads: slot -> memory object
 const championMemoryCache = new Map<'current' | 'previous', { data: ChampionSnapshotMemory; timestamp: number }>();
+const championLoadInFlight = new Map<'current' | 'previous', Promise<ChampionSnapshotMemory>>();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 let isChampionSyncRunning = false;
 
@@ -959,176 +976,197 @@ export async function loadActiveChampionSnapshot(
     return cached.data;
   }
 
-  try {
-    const rows = await prisma.champion.findMany();
-    if (rows && rows.length > 0) {
-      const first = rows[0];
-      const version = first.version || '15.1.1';
-      const patch = first.patch || version.split('.').slice(0, 2).join('.');
-
-      const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
-      const details: { de: Record<string, any>; en: Record<string, any> } = { de: {}, en: {} };
-
-      for (const row of rows) {
-        const champKey = String(row.id);
-        const ddragonKey = (row.key && row.key.trim().length > 0) ? row.key.trim() : (row.nameEn || '').replace(/[^a-zA-Z0-9]/g, '');
-        const cleanDDragon = ddragonKey.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanNameDe = (row.nameDe || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanNameEn = (row.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        const stats = {
-          hp: row.hp,
-          hpperlevel: row.hpPerLevel,
-          mp: row.mp,
-          mpperlevel: row.mpPerLevel,
-          movespeed: row.moveSpeed,
-          armor: row.armor,
-          armorperlevel: row.armorPerLevel,
-          spellblock: row.spellBlock,
-          spellblockperlevel: row.spellBlockPerLevel,
-          attackrange: row.attackRange,
-          hpregen: row.hpRegen,
-          hpregenperlevel: row.hpRegenPerLevel,
-          mpregen: row.mpRegen,
-          mpregenperlevel: row.mpRegenPerLevel,
-          crit: row.crit,
-          critperlevel: row.critPerLevel,
-          attackdamage: row.attackDamage,
-          attackdamageperlevel: row.attackDamagePerLevel,
-          attackspeed: row.attackSpeed,
-          attackspeedperlevel: row.attackSpeedPerLevel,
-        };
-
-        const defaultSkin = {
-          id: '0',
-          num: 0,
-          name: 'default',
-          rarity: 'Regular',
-          rarityColor: '#2E8D4C',
-          releaseDate: row.releaseDate || '2012-01-01',
-          releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
-          cost: 0,
-          price: 0,
-          currency: 'RP',
-          isLegacy: false,
-        };
-
-        const rawSpellsDe = Array.isArray(row.spellsDe) && (row.spellsDe as any[]).length > 0 ? (row.spellsDe as any[]) : (Array.isArray(row.spellsEn) ? (row.spellsEn as any[]) : []);
-        const rawSpellsEn = Array.isArray(row.spellsEn) && (row.spellsEn as any[]).length > 0 ? (row.spellsEn as any[]) : rawSpellsDe;
-        const passiveDe = (row.passiveDe as any) || (row.passiveEn as any) || null;
-        const passiveEn = (row.passiveEn as any) || (row.passiveDe as any) || null;
-        const skins = Array.isArray(row.skins) && (row.skins as any[]).length > 0 ? (row.skins as any[]) : [defaultSkin];
-
-        const champDe = {
-          id: ddragonKey,
-          key: champKey,
-          championId: row.id,
-          name: row.nameDe,
-          title: row.titleDe,
-          blurb: row.blurbDe || '',
-          lore: row.loreDe || '',
-          image: row.image,
-          role: row.role || 'Mid',
-          positions: row.positions || [],
-          tags: row.tags || [],
-          difficulty: row.difficulty ?? 5,
-          classes: row.classes || [],
-          releaseDate: row.releaseDate || '',
-          stats,
-          spells: rawSpellsDe,
-          skins,
-          passive: passiveDe,
-          partype: row.partype || 'Mana',
-          info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
-          allytips: row.allytips || [],
-          enemytips: row.enemytips || [],
-          meta: null,
-        };
-
-        const champEn = {
-          id: ddragonKey,
-          key: champKey,
-          championId: row.id,
-          name: row.nameEn,
-          title: row.titleEn,
-          blurb: row.blurbEn || '',
-          lore: row.loreEn || '',
-          image: row.image,
-          role: row.role || 'Mid',
-          positions: row.positions || [],
-          tags: row.tags || [],
-          difficulty: row.difficulty ?? 5,
-          classes: row.classes || [],
-          releaseDate: row.releaseDate || '',
-          stats,
-          spells: rawSpellsEn,
-          skins,
-          passive: passiveEn,
-          partype: row.partype || 'Mana',
-          info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
-          allytips: row.allytips || [],
-          enemytips: row.enemytips || [],
-          meta: null,
-        };
-
-        rosters.de.push(champDe);
-        rosters.en.push(champEn);
-
-        details.de[champKey] = champDe;
-        details.de[cleanDDragon] = champDe;
-        details.de[cleanNameDe] = champDe;
-        details.de[cleanNameEn] = champDe;
-
-        details.en[champKey] = champEn;
-        details.en[cleanDDragon] = champEn;
-        details.en[cleanNameDe] = champEn;
-        details.en[cleanNameEn] = champEn;
-
-        // Custom aliases for special names
-        if (cleanDDragon === 'monkeyking' || cleanNameEn === 'wukong') {
-          details.de['wukong'] = champDe;
-          details.en['wukong'] = champEn;
-          details.de['monkeyking'] = champDe;
-          details.en['monkeyking'] = champEn;
-        }
-        if (cleanDDragon === 'nunu' || cleanNameEn.includes('nunu')) {
-          details.de['nunu'] = champDe;
-          details.en['nunu'] = champEn;
-          details.de['nunuwillump'] = champDe;
-          details.en['nunuwillump'] = champEn;
-        }
-      }
-
-      rosters.de.sort((a, b) => a.name.localeCompare(b.name));
-      rosters.en.sort((a, b) => a.name.localeCompare(b.name));
-
-      const memoryObj: ChampionSnapshotMemory = {
-        id: 'current',
-        version,
-        patch,
-        championsCount: rows.length,
-        championsRoster: rosters as any,
-        championDetails: details as any,
-        timestamp: now,
-      };
-
-      championMemoryCache.set(slot, { data: memoryObj, timestamp: now });
-      return memoryObj;
-    }
-  } catch (err) {
-    console.warn('[ChampionService] Champions table read error:', (err as Error).message);
+  const existingPromise = championLoadInFlight.get(slot);
+  if (existingPromise) {
+    return existingPromise;
   }
 
-  // If table is empty or error occurs, return empty roster (do NOT fetch external DDragon on client request!)
-  return {
-    id: slot,
-    version: '',
-    patch: '',
-    championsCount: 0,
-    championsRoster: { de: [], en: [] },
-    championDetails: { de: {}, en: {} },
-    timestamp: now,
-  };
+  const loadPromise = (async (): Promise<ChampionSnapshotMemory> => {
+    try {
+      const rows = await prisma.champion.findMany();
+      if (rows && rows.length > 0) {
+        const first = rows[0];
+        const version = first.version || '15.1.1';
+        const patch = first.patch || version.split('.').slice(0, 2).join('.');
+
+        const rosters: { de: any[]; en: any[] } = { de: [], en: [] };
+        const details: { de: Record<string, any>; en: Record<string, any> } = { de: {}, en: {} };
+
+        for (const row of rows) {
+          const champKey = String(row.id);
+          const ddragonKey = (row.key && row.key.trim().length > 0) ? row.key.trim() : (row.nameEn || '').replace(/[^a-zA-Z0-9]/g, '');
+          const cleanDDragon = ddragonKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanNameDe = (row.nameDe || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanNameEn = (row.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+          const stats = {
+            hp: row.hp,
+            hpperlevel: row.hpPerLevel,
+            mp: row.mp,
+            mpperlevel: row.mpPerLevel,
+            movespeed: row.moveSpeed,
+            armor: row.armor,
+            armorperlevel: row.armorPerLevel,
+            spellblock: row.spellBlock,
+            spellblockperlevel: row.spellBlockPerLevel,
+            attackrange: row.attackRange,
+            hpregen: row.hpRegen,
+            hpregenperlevel: row.hpRegenPerLevel,
+            mpregen: row.mpRegen,
+            mpregenperlevel: row.mpRegenPerLevel,
+            crit: row.crit,
+            critperlevel: row.critPerLevel,
+            attackdamage: row.attackDamage,
+            attackdamageperlevel: row.attackDamagePerLevel,
+            attackspeed: row.attackSpeed,
+            attackspeedperlevel: row.attackSpeedPerLevel,
+          };
+
+          const defaultSkin = {
+            id: '0',
+            num: 0,
+            name: 'default',
+            rarity: 'Regular',
+            rarityColor: '#2E8D4C',
+            releaseDate: row.releaseDate || '2012-01-01',
+            releaseYear: row.releaseDate ? parseInt(row.releaseDate.slice(0, 4), 10) || 2012 : 2012,
+            cost: 0,
+            price: 0,
+            currency: 'RP',
+            isLegacy: false,
+          };
+
+          const rawSpellsDe = Array.isArray(row.spellsDe) && (row.spellsDe as any[]).length > 0 ? (row.spellsDe as any[]) : (Array.isArray(row.spellsEn) ? (row.spellsEn as any[]) : []);
+          const rawSpellsEn = Array.isArray(row.spellsEn) && (row.spellsEn as any[]).length > 0 ? (row.spellsEn as any[]) : rawSpellsDe;
+          const passiveDe = (row.passiveDe as any) || (row.passiveEn as any) || null;
+          const passiveEn = (row.passiveEn as any) || (row.passiveDe as any) || null;
+          const skins = Array.isArray(row.skins) && (row.skins as any[]).length > 0 ? (row.skins as any[]) : [defaultSkin];
+
+          // Lightweight roster entries (no spells/passive/lore/skins/stats) so /api/champions stays tiny (~40 KB instead of multi-MB)
+          const rosterDe = {
+            id: ddragonKey,
+            key: champKey,
+            championId: row.id,
+            name: row.nameDe,
+            title: row.titleDe,
+            image: row.image,
+            role: row.role || 'Mid',
+            positions: row.positions || [],
+            tags: row.tags || [],
+            difficulty: row.difficulty ?? 5,
+            classes: row.classes || [],
+            releaseDate: row.releaseDate || '',
+            meta: null,
+          };
+
+          const rosterEn = {
+            id: ddragonKey,
+            key: champKey,
+            championId: row.id,
+            name: row.nameEn,
+            title: row.titleEn,
+            image: row.image,
+            role: row.role || 'Mid',
+            positions: row.positions || [],
+            tags: row.tags || [],
+            difficulty: row.difficulty ?? 5,
+            classes: row.classes || [],
+            releaseDate: row.releaseDate || '',
+            meta: null,
+          };
+
+          const champDe = {
+            ...rosterDe,
+            blurb: row.blurbDe || '',
+            lore: row.loreDe || '',
+            stats,
+            spells: rawSpellsDe,
+            skins,
+            passive: passiveDe,
+            partype: row.partype || 'Mana',
+            info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
+            allytips: row.allytips || [],
+            enemytips: row.enemytips || [],
+          };
+
+          const champEn = {
+            ...rosterEn,
+            blurb: row.blurbEn || '',
+            lore: row.loreEn || '',
+            stats,
+            spells: rawSpellsEn,
+            skins,
+            passive: passiveEn,
+            partype: row.partype || 'Mana',
+            info: { attack: 5, defense: 5, magic: 5, difficulty: row.difficulty ?? 5 },
+            allytips: row.allytips || [],
+            enemytips: row.enemytips || [],
+          };
+
+          rosters.de.push(rosterDe);
+          rosters.en.push(rosterEn);
+
+          details.de[champKey] = champDe;
+          details.de[cleanDDragon] = champDe;
+          details.de[cleanNameDe] = champDe;
+          details.de[cleanNameEn] = champDe;
+
+          details.en[champKey] = champEn;
+          details.en[cleanDDragon] = champEn;
+          details.en[cleanNameDe] = champEn;
+          details.en[cleanNameEn] = champEn;
+
+          // Custom aliases for special names
+          if (cleanDDragon === 'monkeyking' || cleanNameEn === 'wukong') {
+            details.de['wukong'] = champDe;
+            details.en['wukong'] = champEn;
+            details.de['monkeyking'] = champDe;
+            details.en['monkeyking'] = champEn;
+          }
+          if (cleanDDragon === 'nunu' || cleanNameEn.includes('nunu')) {
+            details.de['nunu'] = champDe;
+            details.en['nunu'] = champEn;
+            details.de['nunuwillump'] = champDe;
+            details.en['nunuwillump'] = champEn;
+          }
+        }
+
+        rosters.de.sort((a, b) => a.name.localeCompare(b.name));
+        rosters.en.sort((a, b) => a.name.localeCompare(b.name));
+
+        const memoryObj: ChampionSnapshotMemory = {
+          id: 'current',
+          version,
+          patch,
+          championsCount: rows.length,
+          championsRoster: rosters as any,
+          championDetails: details as any,
+          timestamp: Date.now(),
+        };
+
+        championMemoryCache.set(slot, { data: memoryObj, timestamp: Date.now() });
+        return memoryObj;
+      }
+    } catch (err) {
+      console.warn('[ChampionService] Champions table read error:', (err as Error).message);
+    }
+
+    // If table is empty or error occurs, return empty roster (do NOT fetch external DDragon on client request!)
+    return {
+      id: slot,
+      version: '',
+      patch: '',
+      championsCount: 0,
+      championsRoster: { de: [], en: [] },
+      championDetails: { de: {}, en: {} },
+      timestamp: now,
+    };
+  })().finally(() => {
+    championLoadInFlight.delete(slot);
+  });
+
+  championLoadInFlight.set(slot, loadPromise);
+  return loadPromise;
 }
 
 /**
@@ -1320,33 +1358,6 @@ export async function getChampionDetail(
   }
 
   if (cached) {
-    if (globalSkinMap.size === 0) {
-      await syncLoldbSkins();
-    }
-    if (Array.isArray(cached.skins)) {
-      await Promise.all(
-        cached.skins.map(async (skin: any) => {
-          if (skin.num === 0) return;
-          const skinInfo = globalSkinMap.get(String(skin.id));
-          const lookupName = skinInfo?.name || skin.name;
-          const detail = await fetchLoldbSkinDetail(lookupName);
-          if (detail) {
-            if (detail.price !== undefined) skin.price = detail.price;
-            if (detail.cost !== undefined) skin.cost = detail.cost;
-            if (detail.currency) skin.currency = detail.currency;
-            if (detail.isLegacy !== undefined) skin.isLegacy = detail.isLegacy;
-            if (detail.tier) {
-              skin.rarity = detail.tier;
-              const rInfo = mapSkinRarity(detail.tier);
-              skin.rarityColor = rInfo.rarityColor;
-            }
-            if (detail.releaseDate) skin.releaseDate = detail.releaseDate;
-            if (detail.mythicCost) skin.mythicCost = detail.mythicCost;
-          }
-        })
-      );
-    }
-
     const cleanName = (cached.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const metaStats =
       metaSnapshot?.championStats?.[cleanName] || metaSnapshot?.championStats?.[cleanTarget] || null;
@@ -1392,49 +1403,42 @@ export async function getChampionDetail(
 }
 
 /**
- * Returns all skins or skins for a specific champion from the global skins catalog.
+ * Returns all skins or skins for a specific champion directly from PostgreSQL/memory cache (zero live HTTP calls).
  */
 export async function getAllSkins(championSlug?: string): Promise<{
   totalSkins: number;
   skins: LoldbSkinInfo[];
 }> {
-  await syncLoldbSkins();
+  const snapshot = await loadActiveChampionSnapshot('current');
 
   if (championSlug) {
     const cleanKey = championSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
-    let champMap = loldbSkinsCache.get(cleanKey);
-    if (!champMap) {
-      await syncLoldbCatalog();
-      const catalogInfo = loldbCatalogMap.get(cleanKey);
-      if (catalogInfo?.name) {
-        champMap = loldbSkinsCache.get(catalogInfo.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
-      }
-    }
-    const list = champMap ? Array.from(new Set(Array.from(champMap.values()))) : [];
-    // Enrich all skins generally with exact pricing, currency, legacy status from /skins/[slug]
-    await Promise.all(
-      list.map(async (skin) => {
-        const detail = await fetchLoldbSkinDetail(skin.name);
-        if (detail) {
-          if (detail.price !== undefined) skin.price = detail.price;
-          if (detail.cost !== undefined) skin.cost = detail.cost;
-          if (detail.currency) skin.currency = detail.currency as any;
-          if (detail.isLegacy !== undefined) skin.isLegacy = detail.isLegacy;
-          if (detail.tier) skin.rarity = detail.tier;
-          if (detail.releaseDate) skin.releaseDate = detail.releaseDate;
-          if (detail.mythicCost) skin.mythicCost = detail.mythicCost;
-        }
-      })
-    );
+    const champ =
+      snapshot.championDetails?.de?.[cleanKey] ||
+      snapshot.championDetails?.en?.[cleanKey] ||
+      null;
+    const list: LoldbSkinInfo[] = Array.isArray(champ?.skins) ? champ.skins : [];
     return {
       totalSkins: list.length,
       skins: list,
     };
   }
 
-  const all = Array.from(globalSkinMap.values());
+  const allSkins: LoldbSkinInfo[] = [];
+  const seen = new Set<string>();
+  const detailsMap = snapshot.championDetails?.en || snapshot.championDetails?.de || {};
+  for (const champ of Object.values(detailsMap) as any[]) {
+    if (!Array.isArray(champ?.skins)) continue;
+    for (const s of champ.skins) {
+      const idKey = String(s.id ?? s.name);
+      if (!seen.has(idKey)) {
+        seen.add(idKey);
+        allSkins.push(s);
+      }
+    }
+  }
   return {
-    totalSkins: all.length,
-    skins: all,
+    totalSkins: allSkins.length,
+    skins: allSkins,
   };
 }

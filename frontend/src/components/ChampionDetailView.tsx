@@ -46,7 +46,6 @@ import {
 import {
   fetchChampionDetailApi,
   fetchChampionsRosterApi,
-  fetchChampionSkinsApi,
   ChampionRosterItem,
   fetchTierList,
   TierListChampionItem,
@@ -544,48 +543,7 @@ export default function ChampionDetailView({ slug }: ChampionDetailViewProps) {
         setIsLoading(false);
       });
 
-    // Fetch official LoLDB skin metadata (isLegacy, AS/RP prices) directly
-    fetchChampionSkinsApi(slug)
-      .then((skinsRes) => {
-        if (skinsRes && Array.isArray(skinsRes.skins) && skinsRes.skins.length > 0) {
-          const loldbMap = new Map<string, any>();
-          skinsRes.skins.forEach((ls: any) => {
-            if (ls.id) loldbMap.set(String(ls.id), ls);
-            if (ls.num !== undefined) loldbMap.set(String(ls.num), ls);
-            if (ls.name) loldbMap.set(ls.name.toLowerCase().replace(/[^a-z0-9]/g, ''), ls);
-          });
-
-          setData((prev) => {
-            if (!prev || !prev.skins) return prev;
-            return {
-              ...prev,
-              skins: prev.skins.map((s) => {
-                const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                const match =
-                  loldbMap.get(String(s.id)) ||
-                  loldbMap.get(String(s.num)) ||
-                  loldbMap.get(normName);
-                if (match) {
-                  return {
-                    ...s,
-                    isLegacy: Boolean(match.isLegacy),
-                    cost: match.cost ?? s.cost,
-                    price: match.price ?? match.cost ?? s.price ?? s.cost,
-                    currency: match.currency || s.currency,
-                    ...(match.rarity ? { rarity: match.rarity } : {}),
-                    ...(match.releaseDate ? { releaseDate: match.releaseDate } : {}),
-                    ...(match.releaseYear ? { releaseYear: match.releaseYear } : {}),
-                  };
-                }
-                return s;
-              }),
-            };
-          });
-        }
-      })
-      .catch((err) => console.warn('[LoLDB] Skin enrichment error:', err));
-
-    // Load roster for "Same Year" carousel directly from PostgreSQL database
+    // Load slim roster for "Same Year" carousel directly from PostgreSQL database
     fetchChampionsRosterApi(locale)
       .then((res) => {
         if (res && res.champions) {
